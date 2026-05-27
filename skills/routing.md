@@ -40,6 +40,7 @@ When `routing.md` and `routing.json` disagree, use `routing.md` for safety/inten
 | Malware / virus sample | `reverse-engineering/` — YARA/sandbox/behavior analysis | `ida-reverse/` deep analysis |
 | Cryptography / encryption algorithms | `reverse-engineering/patterns*.md` — crypto patterns | `js-reverse/` (if frontend crypto) |
 | Protocol reverse / custom protocol | `reverse-engineering/platforms.md` — network protocols | `js-reverse/` (if WebSocket/HTTP) |
+| Protocol source implementation / codec workspace | `reverse-engineering/platforms.md` — define offline unit tests, CLI/fixture replay, and live-test isolation | `reverse-engineering/languages-compiled.md` if compiled binary evidence is required |
 | Go / Rust binary | `reverse-engineering/languages-compiled.md` + `go-reverse.md` | `ida-reverse/` or `radare2/` |
 | LLM / AI application | `llm-security/` — OWASP LLM Top 10 + ASI Top 10 | Prompt injection, Agent security |
 | API / REST / GraphQL | `api-security/` — BOLA/BFLA/JWT/OAuth | `pentest-tools/` for scanning |
@@ -101,6 +102,7 @@ When `routing.md` and `routing.json` disagree, use `routing.md` for safety/inten
 | "firmware / IoT / binwalk / ARM" | `reverse-engineering/platforms-hardware.md` |
 | "cryptography / AES / RSA" | `reverse-engineering/patterns*.md` — crypto pattern recognition |
 | "protocol reverse / Protobuf / custom protocol" | `reverse-engineering/platforms.md` |
+| "protocol source / Rust codec / Go client / fixture replay / cargo test" | `reverse-engineering/platforms.md` — protocol-source route with offline tests before live endpoints |
 | "cloud security / container escape / K8s" | `../CTF-Sandbox-Orchestrator/competition-agent-cloud/SKILL.md` |
 | "Prompt injection / AI security" | `llm-security/SKILL.md` — OWASP LLM + ASI Top 10 |
 | "internal network / lateral movement" | `pentest-tools/SKILL.md` + `references/network-attack-defense.md` |

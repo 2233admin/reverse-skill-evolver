@@ -71,6 +71,19 @@
       "success_oracles": ["fields_extracted", "message_sequence_replayed_or_documented"]
     },
     {
+      "id": "protocol-source-implementation",
+      "target_kinds": ["source_tree", "rust_workspace", "go_workspace", "custom_protocol_client", "market_data_protocol"],
+      "intent_keywords": ["protocol implementation", "codec", "packet parser", "fixture replay", "cargo test", "tdx", "level2", "l2", "levin"],
+      "primary_skill": "reverse-engineering/platforms.md",
+      "requires_capabilities": ["python"],
+      "fallback_edges": [
+        { "when": "compiled_binary_needed", "goto": "reverse-engineering/languages-compiled.md" },
+        { "when": "runtime_or_live_endpoint_needed", "goto": "reverse-engineering/tools-dynamic.md" },
+        { "when": "websocket_or_http_origin", "goto": "js-reverse/SKILL.md" }
+      ],
+      "success_oracles": ["offline_unit_tests_pass", "cli_or_fixture_replay_passed", "live_tests_isolated_or_explicitly_marked"]
+    },
+    {
       "id": "active-security-assessment",
       "target_kinds": ["web_app", "api", "cloud", "network", "source_tree"],
       "intent_keywords": ["pentest", "api security", "bug bounty", "src", "nuclei", "burp", "graphql", "jwt"],
