@@ -1,6 +1,5 @@
 > **[Chinese Version / 中文版](README_zh.md)**
-
-AI Community: https://linux.do
+> 
 
 # Cybersecurity Skills Router / Reverse-Engineering Skill Routing Pack
 
