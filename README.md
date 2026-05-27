@@ -1,5 +1,8 @@
 > **[Chinese Version / 中文版](README_zh.md)**
-> 
+
+<p align="center">
+  <img src="assets/reverse-skill-evolver-cover.png" alt="Reverse Skill Evolver tactical cover" width="100%" />
+</p>
 
 # Cybersecurity Skills Router / Reverse-Engineering Skill Routing Pack
 

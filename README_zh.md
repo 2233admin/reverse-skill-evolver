@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/reverse-skill-evolver-cover.png" alt="Reverse Skill Evolver tactical cover" width="100%" />
+</p>
+
 AI社区：https://linux.do
 
  # Cybersecurity Skills Router / 逆向技能路由包
