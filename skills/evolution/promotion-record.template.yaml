@@ -1,0 +1,28 @@
+schema_version: 1
+candidate_id: "<date>-<slug>"
+source_trace: "<trace-card path>"
+proposed_change:
+  type: "routing|skill_doc|tool_index|bootstrap_manifest|reference"
+  target_path: "<path>"
+  summary: "<what changes>"
+
+evidence:
+  oracle_passed: false
+  regression_checked: false
+  benchmark: "ReverseSkillsBench-mini"
+  success_delta: 0.0
+  cost_delta: 0.0
+  sensitive_data_scan: "pass|fail|not_run"
+
+requirements:
+  tools:
+    - name: "<tool>"
+      minimum_version: "<optional>"
+      capability_graph_key: "<tool key>"
+  environment: "<os/service/device constraints>"
+
+decision:
+  status: "candidate|promoted|rejected|deprecated"
+  reviewer: "agent|human"
+  reason: "<why>"
+  rollback: "<how to revert>"

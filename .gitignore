@@ -33,6 +33,7 @@ Desktop.ini
 # 工具索引（每台机器不同，由脚本自动生成）
 skills/tool-index.md
 skills/tool-index.json
+skills/capability-graph.json
 
 # 编译产物
 *.exe
@@ -49,6 +50,4 @@ burp-mcp-full/lib/
 *.class
 *.jar
 !burp-mcp-full/build/libs/burp-mcp-full.jar
-
-skills/tool-index.md
 BOOTSTRAP.md

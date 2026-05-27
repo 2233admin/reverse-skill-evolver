@@ -57,9 +57,12 @@ AI社区：https://linux.do
 ├── CTF-Sandbox-Orchestrator\     # CTF 竞赛全栈（40+ 子技能）
 └── skills\            # 主技能目录
     ├── SKILL.md                  # 总控入口
+    ├── evolution\                # GOAL 契约、能力图谱、TraceCard、晋级门禁
     ├── routing.md                # 场景 → 技能分流（路由矩阵）
+    ├── routing.json              # 机读路由镜像
     ├── CONTRIBUTING.md           # 新增 skill 指南
     ├── tool-index.md             # 工具索引（自动生成）
+    ├── capability-graph.json     # 会话级工具/MCP/服务健康图谱（自动生成）
     ├── scripts\                 # 工具索引刷新与共享脚本
     ├── field-journal\           # 自动进化经验日志
     ├── apk-reverse\             # APK 逆向
@@ -135,9 +138,10 @@ C:\Tools\radare2\                      # 可选
 2. 进入 `skills\SKILL.md`
 3. 遇到任务时按以下顺序读：
    1. `SKILL.md`
-   2. `routing.md`
-   3. 对应子目录的 `SKILL.md`
-   4. 需要确认本机工具时再看 `tool-index.md`
+   2. `evolution\SKILL.md`
+   3. `routing.json` + `routing.md`
+   4. 对应子目录的 `SKILL.md`
+   5. 需要确认本机工具时再看 `capability-graph.json` / `tool-index.md`
 
 ### 3.2 想让任意代码 CLI 自动走这套路由
 
@@ -146,7 +150,7 @@ C:\Tools\radare2\                      # 可选
 - 一个支持自定义规则 / system prompt / 项目指令 / hook 之一的代码 CLI
 - 一种把“逆向任务先读路由文件”注入模型上下文的方式
 - 如需直接调用外部能力，再配好 MCP 或等价工具桥接
-- 本包的 `SKILL.md / routing.md / tool-index.md`
+- 本包的 `SKILL.md / evolution\SKILL.md / routing.json / routing.md / capability-graph.json / tool-index.md`
 
 如果你已经有自己的 Claude hook、Codex CLI 项目指令、Cursor Rules、Cline 自定义指令或 Windsurf Rules，把里面指向旧路径的部分改成你当前安装位置即可。
 
@@ -205,8 +209,11 @@ C:\Tools\radare2\                      # 可选
 | 模块 | 目录 | 主要解决什么 |
 |---|---|---|
 | 总控入口 | `SKILL.md` | 先看全局地图，再决定进哪个子 skill |
+| 自进化路由内核 | `evolution\` | GOAL 契约、能力图谱、步骤级 TraceCard、晋级门禁 |
 | 路由表 | `routing.md` | 按目标类型、用户意图、工具链做分流 |
+| 机读路由镜像 | `routing.json` | 结构化路由、fallback edge、能力依赖、成功 oracle |
 | 工具索引 | `tool-index.md` | 看本机工具有没有、路径在哪、哪个脚本会调用 |
+| 能力图谱 | `capability-graph.json` | 会话级工具路径、版本、MCP 注册、服务健康、smoke 状态 |
 | APK 逆向 | `apk-reverse\` | 解包、jadx、smali、重打包、Frida、native 分流 |
 | IDA Pro | `ida-reverse\` | 深度二进制逆向、`idapro_*` 工作流 |
 | JS / Web | `js-reverse\` | 前端签名、请求链路、补环境、SourceMap / AST / Hook |
@@ -258,8 +265,10 @@ powershell -File "<SKILL_ROOT>\scripts\refresh-tool-index.ps1"
 
 - `skills\tool-index.md`
 - `skills\tool-index.json`
+- `skills\capability-graph.json`
 
 > 重要：`tool-index.md` 里的 `yes/no` 只代表**当前扫描机器**的结果，不代表你的机器一定一样。
+> `capability-graph.json` 用于当前会话事实：MCP 注册、服务端口、smoke 状态和晋级门禁策略。
 
 ## 6.2 IDA Pro 链路
 
@@ -425,10 +434,13 @@ frida-ps -U
 
 ### 最低提示要求
 
-无论你用的是 hook、RULES.md、Rules、workspace instructions、system prompt 还是其他项目级说明，至少要把以下三份文件告诉 AI：
+无论你用的是 hook、RULES.md、Rules、workspace instructions、system prompt 还是其他项目级说明，至少要把以下入口文件告诉 AI：
 
 - `skills\SKILL.md`
+- `skills\evolution\SKILL.md`
+- `skills\routing.json`
 - `skills\routing.md`
+- `skills\capability-graph.json`
 - `skills\tool-index.md`
 
 最低要求是让 AI 知道：
@@ -517,7 +529,10 @@ Codex CLI 也可以复用这套包，但建议把 README 理解成“接入原�
 那么迁移本包后，要把脚本里所有旧的：
 
 - `SKILL.md`
+- `evolution\SKILL.md`
+- `routing.json`
 - `routing.md`
+- `capability-graph.json`
 - `tool-index.md`
 - `refresh-tool-index.ps1`
 
@@ -636,7 +651,7 @@ powershell -File "<你的 skill 根目录>\scripts\refresh-tool-index.ps1"
 2. 一个已经改好路径的示例 `mcp.json`
 3. 一个已经改好路径的 Claude hook 示例
 4. 一份“首次安装 checklist”
-5. 一次 fresh scan 生成的 `tool-index.md`
+5. 一次 fresh scan 生成的 `tool-index.md` 和 `capability-graph.json`
 
 最理想的分发形态是：
 
@@ -648,13 +663,14 @@ powershell -File "<你的 skill 根目录>\scripts\refresh-tool-index.ps1"
 
 ## 12. 当前包内最重要的文件
 
-如果你只看五个文件，先看这五个：
+如果你只看核心文件，先看这些：
 
 1. `<本包根目录>\README.md`
 2. `<SKILL_ROOT>\RULES.md` — 全局路由规则（任何 AI 读完都会自动配置）
 3. `<SKILL_ROOT>\SKILL.md` — 总控入口
-4. `<SKILL_ROOT>\routing.md` — 场景→技能分流
-5. `<SKILL_ROOT>\tool-index.md` — 本机工具状态
+4. `<SKILL_ROOT>\evolution\SKILL.md` — GOAL、能力图谱、TraceCard、晋级门禁
+5. `<SKILL_ROOT>\routing.json` + `<SKILL_ROOT>\routing.md` — 场景→技能分流
+6. `<SKILL_ROOT>\capability-graph.json` + `<SKILL_ROOT>\tool-index.md` — 本机能力/工具状态
 
 如果 AI 不干活、只确认不执行，或输出"我不能协助对特定真实站点做渗透"，让它读这几个：
 
@@ -798,9 +814,13 @@ powershell -File "<你的 skill 根目录>\scripts\refresh-tool-index.ps1"
 ## 进化动作
 <!-- 本次回写后实际执行了哪些更新 -->
 - [ ] 更新了路由矩阵
+- [ ] 更新了 routing.json
 - [ ] 更新了 tool-index
+- [ ] 更新了 capability-graph
 - [ ] 更新了 bootstrap-manifest
 - [ ] 更新了子 skill 文档
+- [ ] 新增/更新了 TraceCard
+- [ ] 通过 promotion gate
 - [ ] 新增了 pitfalls 记录
 - [ ] 无需更新
 ```
@@ -811,8 +831,8 @@ powershell -File "<你的 skill 根目录>\scripts\refresh-tool-index.ps1"
 
 | 检查项 | 更新条件 | 目标文件 |
 |--------|---------|---------|
-| 路由矩阵 | 发现了新的场景类型或路由路径 | `routing.md` |
-| 工具索引 | 发现了新工具或现有工具路径变化 | 执行 `refresh-tool-index.ps1` |
+| 路由矩阵 | 新场景或新路径通过 promotion gate | `routing.md` + `routing.json` |
+| 工具索引 | 发现了新工具或现有工具路径变化 | 执行 `refresh-tool-index.ps1` 刷新 `tool-index.*` 和 `capability-graph.json` |
 | Bootstrap manifest | 发现了新的可自动安装的工具 | `scripts/bootstrap-manifest.json` |
 | 子 skill 文档 | 发现了某个 skill 的工作流需要补充 | 对应 `SKILL.md` |
 | 反模式/陷阱 | 发现了容易踩的坑 | 对应 skill 目录下新建或追加 `pitfalls.md` |

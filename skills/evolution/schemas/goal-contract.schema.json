@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://reverse-skill-private.local/schemas/goal-contract.schema.json",
+  "title": "GoalContract",
+  "type": "object",
+  "required": ["schema_version", "goal_id", "task_summary", "authorization_scope", "inputs", "desired_outputs", "success_oracles"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "goal_id": { "type": "string", "minLength": 3 },
+    "created_at": { "type": "string" },
+    "owner": { "type": "string" },
+    "task_summary": { "type": "string", "minLength": 1 },
+    "authorization_scope": {
+      "type": "object",
+      "required": ["kind", "boundary"],
+      "properties": {
+        "kind": { "enum": ["ctf", "own_asset", "lab_fixture", "bug_bounty", "engagement", "unknown"] },
+        "boundary": { "type": "string" },
+        "notes": { "type": "string" }
+      }
+    },
+    "inputs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "path_or_ref"],
+        "properties": {
+          "id": { "type": "string" },
+          "kind": { "type": "string" },
+          "path_or_ref": { "type": "string" },
+          "sha256": { "type": "string" }
+        }
+      }
+    },
+    "desired_outputs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["kind", "required", "acceptance"],
+        "properties": {
+          "kind": { "type": "string" },
+          "required": { "type": "boolean" },
+          "acceptance": { "type": "string" }
+        }
+      }
+    },
+    "success_oracles": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "expected"],
+        "properties": {
+          "id": { "type": "string" },
+          "kind": { "type": "string" },
+          "command": { "type": "string" },
+          "expected": { "type": "string" }
+        }
+      }
+    },
+    "budgets": { "type": "object" },
+    "stop_conditions": { "type": "array", "items": { "type": "string" } },
+    "route": { "type": "object" }
+  }
+}

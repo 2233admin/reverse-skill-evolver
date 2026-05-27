@@ -8,7 +8,9 @@ flowchart TD
     Detect -->|是| ReadRouting[读取 SKILL.md + routing.md]
     Detect -->|否| Normal([正常对话])
     
-    ReadRouting --> RouteMatch{路由矩阵匹配?}
+    ReadRouting --> Goal[建立 GOAL 契约<br/>范围+产物+oracle]
+    Goal --> CapGraph[读取 capability-graph<br/>工具/MCP/服务事实]
+    CapGraph --> RouteMatch{路由矩阵匹配?}
     RouteMatch -->|未命中| ProposeNew[提议新增 skill<br/>按 CONTRIBUTING.md]
     RouteMatch -->|命中| CheckJournal[检查 field-journal<br/>是否有同类经验]
     
@@ -29,7 +31,11 @@ flowchart TD
     TaskDone -->|是| GenReport[调用 docs-generator<br/>生成报告 + 图表]
     
     GenReport --> WriteJournal[回写 field-journal<br/>经验沉淀]
-    WriteJournal --> UpdateIndex[更新索引/路由/manifest]
+    WriteJournal --> TraceCard[写入 TraceCard<br/>步骤级证据+oracle]
+    TraceCard --> Promote{通过 promotion gate?}
+    Promote -->|是| UpdateIndex[更新索引/路由/manifest]
+    Promote -->|否| Candidate[进入 candidate/forensic<br/>不改 stable 路由]
+    Candidate --> Output
     UpdateIndex --> Output([输出最终结果])
 ```
 
@@ -40,6 +46,8 @@ flowchart LR
     subgraph 路由层
         SKILL[SKILL.md<br/>总控入口]
         Routing[routing.md<br/>路由矩阵]
+        RoutingJson[routing.json<br/>机读路由]
+        Evolution[evolution<br/>GOAL+TraceCard+Promotion]
     end
 
     subgraph 逆向分析
@@ -71,6 +79,7 @@ flowchart LR
         Bootstrap[bootstrap-reverse.ps1<br/>按需自举]
         Discovery[ToolDiscovery.ps1<br/>工具发现]
         ToolIndex[tool-index<br/>状态索引]
+        CapGraph[capability-graph<br/>会话能力图谱]
     end
 
     subgraph 输出层
@@ -83,7 +92,9 @@ flowchart LR
         CTF[CTF-Sandbox-Orchestrator<br/>40+ 子技能]
     end
 
-    SKILL --> Routing
+    SKILL --> Evolution
+    Evolution --> RoutingJson
+    RoutingJson --> Routing
     Routing --> APK & IDA & R2 & RE & BinDiff & PatchDiff
     Routing --> Pentest & JS & Browser & Pwn & Firmware & EDR
     Routing --> CTF
@@ -98,10 +109,13 @@ flowchart LR
     JS -->|浏览器操作| Browser
     
     Bootstrap --> Discovery --> ToolIndex
+    Discovery --> CapGraph
+    CapGraph --> Evolution
     
     APK & IDA & R2 & Pentest & JS -->|任务完成| Docs
     Docs --> Diagram
     Docs --> Journal
+    Journal --> Evolution
 ```
 
 ## Bootstrap 自举流程
@@ -152,19 +166,24 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    Task([完成任务]) --> WriteLog[写入 field-journal<br/>踩坑+解决方案+代码]
-    WriteLog --> UpdateIdx[更新 _index.md<br/>按场景分类]
-    UpdateIdx --> CheckUpdate{需要更新系统?}
+    Task([完成任务]) --> Goal[GOAL 契约<br/>成功 oracle]
+    Goal --> Trace[TraceCard<br/>步骤+证据+失败归因]
+    Trace --> Tier{记忆分层}
+    Tier -->|oracle 通过| Validated[validated<br/>可参与路由]
+    Tier -->|证据不足| Candidate[candidate<br/>只提示]
+    Tier -->|失败/异常| Forensic[forensic<br/>只分析]
+    Validated --> Gate{promotion gate}
+    Candidate --> Gate
     
-    CheckUpdate -->|路由缺失| FixRoute[更新 routing.md]
-    CheckUpdate -->|工具变化| FixTool[刷新 tool-index]
-    CheckUpdate -->|新工具| FixManifest[更新 bootstrap-manifest]
-    CheckUpdate -->|无需更新| Done([完成])
+    Gate -->|通过| FixRoute[更新 routing.md + routing.json]
+    Gate -->|工具变化| FixTool[刷新 tool-index + capability-graph]
+    Gate -->|新工具| FixManifest[更新 bootstrap-manifest]
+    Gate -->|未通过| Hold[保留 candidate/forensic<br/>不改 stable]
     
-    FixRoute & FixTool & FixManifest --> Done
+    FixRoute & FixTool & FixManifest & Hold --> Done([完成])
 
-    NewTask([下次同类任务]) --> ReadIdx[读取 _index.md]
-    ReadIdx --> Reuse[复用已有经验<br/>避免重复踩坑]
+    NewTask([下次同类任务]) --> ReadIdx[读取 _index.md + validated]
+    ReadIdx --> Reuse[复用已验证经验<br/>避免重复踩坑]
 ```
 
 ## 多平台支持架构

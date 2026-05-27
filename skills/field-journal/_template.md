@@ -6,6 +6,16 @@
 ## 目标概述
 <!-- 一句话说明在干什么 -->
 
+## GOAL 契约
+<!-- 对应 evolution/goal.template.yaml。至少写清：输入、授权边界、目标产物、成功 oracle、停止条件 -->
+
+- GOAL ID:
+- 授权边界:
+- 输入制品:
+- 目标产物:
+- 成功 oracle:
+- 停止条件:
+
 ## 完整执行链路
 <!-- 从拿到目标到产出结果的完整步骤，包括走过的弯路 -->
 
@@ -31,15 +41,46 @@
 ## 对本包的改进建议
 <!-- 路由是否准确？bootstrap 是否缺失？文档是否需要补充？新工具是否需要加入 manifest？ -->
 
+## TraceCard 摘要
+<!-- 对应 evolution/trace-card.template.yaml。记录步骤级路由、工具、证据、失败模式、oracle 结果 -->
+
+- Trace ID:
+- Macro route:
+- Micro route switches:
+- Oracle result:
+- Preserve:
+- Repair:
+- Prune:
+
+## 记忆层级
+<!-- validated / candidate / forensic 三选一。只有 validated 可参与未来自动路由 -->
+
+- [ ] validated：oracle 通过，回归或 fixture 检查通过，可复用
+- [ ] candidate：有潜力但证据不足，只能提示
+- [ ] forensic：失败/异常/疑似污染，只能分析
+
+## 晋级门禁
+<!-- 若本次要改 routing.md/routing.json/子 skill/bootstrap，必须填写 promotion record -->
+
+- 是否生成 promotion record:
+- Oracle 是否通过:
+- 回归检查:
+- 敏感信息扫描:
+- 回滚路径:
+
 ## 可复用的模式/脚本片段
 <!-- 如果产出了可复用的 hook 脚本、解密逻辑、绕过方案，贴在这里 -->
 
 ## 进化动作
 <!-- 本次回写后实际执行了哪些更新 -->
 - [ ] 更新了路由矩阵
+- [ ] 更新了 routing.json
 - [ ] 更新了 tool-index
+- [ ] 更新了 capability-graph
 - [ ] 更新了 bootstrap-manifest
 - [ ] 更新了子 skill 文档
+- [ ] 新增/更新了 TraceCard
+- [ ] 通过 promotion gate
 - [ ] 新增了 pitfalls 记录
 - [ ] 无需更新
 

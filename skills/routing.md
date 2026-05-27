@@ -4,16 +4,30 @@ Route tasks to the most appropriate skill module by target type, user intent, an
 
 ## CRITICAL: Routing Execution Protocol
 
+0. **MUST** define the GOAL first for non-trivial tasks: input, authorization boundary, desired output, success oracle, budget, and stop conditions. Use `evolution/goal.template.yaml`.
 1. **MUST** complete routing BEFORE executing. Do NOT "do first, route later".
-2. **MUST** match ALL three dimensions (target type + user intent + toolchain) before entering a skill.
-3. If route not matched → propose new skill, do NOT force-fit.
-4. Cross-module tasks → combine skills per "Path Crossing" section.
-5. After routing, read the target skill's SKILL.md BEFORE taking action.
+2. **MUST** match ALL four dimensions (target type + user intent + toolchain/capability graph + success oracle) before entering a skill.
+3. **MUST** read `routing.json` for machine-readable route candidates, then use this file for human context and edge cases.
+4. If route not matched → propose new skill, do NOT force-fit.
+5. Cross-module tasks → combine skills per "Path Crossing" section.
+6. After routing, read the target skill's SKILL.md BEFORE taking action.
+7. During execution, record material route switches in a TraceCard; stable route updates require the promotion gate.
+
+## Machine-Readable Routing Mirror
+
+`routing.json` is the structured mirror for agents and scripts. It contains:
+
+- `macro_routes`: target kinds, intent keywords, primary skill, required capabilities, fallback edges, and success oracles.
+- `micro_route_rules`: step-level route switching rules for repeated failures, missing tools, stale evidence, and missing oracles.
+- `evolution_protocol`: required pre-route and post-route artifacts.
+
+When `routing.md` and `routing.json` disagree, use `routing.md` for safety/intent context, but update `routing.json` before claiming the routing package is current.
 
 ## By Target Type
 
 | Target Type | Recommended Entry | Alternative |
 |-------------|------------------|-------------|
+| Self-evolving route / unclear multi-step goal | `evolution/` — GOAL + capability graph + TraceCard + promotion gate | Then dispatch to the concrete child skill |
 | APK / Android app | `apk-reverse/` — jadx decompile + apktool unpack | If core is in .so → `ida-reverse/` or `radare2/` |
 | Binary exe/dll/so/elf | `ida-reverse/` — IDA Pro decompile | `radare2/` — CLI analysis, or `reverse-engineering/tools.md` — GDB/Unicorn |
 | JavaScript / Web frontend | `js-reverse/` — 5-stage workflow | anything-analyzer MCP browser tools, or jshookmcp CDP/Hook |
@@ -21,7 +35,7 @@ Route tasks to the most appropriate skill module by target type, user intent, an
 | Firmware / IoT | `reverse-engineering/platforms.md` — binwalk/ARM/MIPS | `reverse-engineering/tools.md` — Ghidra headless |
 | WASM / Python bytecode / .NET | `reverse-engineering/languages.md` | Check specific language section |
 | macOS / iOS | `reverse-engineering/platforms.md` — Mach-O/ObjC/Swift | `mobile-reverse/` for iOS-specific |
-| Game (Unity/Unreal) | `game-security/` — engine reverse, anti-cheat, IL2CPP/Mono | `ida-reverse/` deep analysis |
+| Game (Unity/Unreal) | `reverse-engineering/languages-platforms.md` + `ida-reverse/` — engine/native reverse, IL2CPP/Mono triage | `radare2/` CLI analysis |
 | Memory dump / PCAP | `reverse-engineering/platforms.md` | `reverse-engineering/patterns*.md` |
 | Malware / virus sample | `reverse-engineering/` — YARA/sandbox/behavior analysis | `ida-reverse/` deep analysis |
 | Cryptography / encryption algorithms | `reverse-engineering/patterns*.md` — crypto patterns | `js-reverse/` (if frontend crypto) |
@@ -44,6 +58,8 @@ Route tasks to the most appropriate skill module by target type, user intent, an
 
 | User Says | Route To |
 |-----------|----------|
+| "make the skill self-evolve / improve routing / learn from runs" | `evolution/SKILL.md` — GOAL + TraceCard + promotion gate |
+| "from this goal, choose the complete path / stop the AI from drifting" | `evolution/SKILL.md` first, then child route |
 | "decompile / IDA analyze" | `ida-reverse/SKILL.md` — IDA MCP workflow |
 | "recover source / disassemble" | `reverse-engineering/SKILL.md` + `ida-reverse/` |
 | "Frida hook / dynamic inject" | `reverse-engineering/tools-dynamic.md` — Frida section |
@@ -64,10 +80,10 @@ Route tasks to the most appropriate skill module by target type, user intent, an
 | "open webpage / browser automation / fill form" | `browser-automation/SKILL.md` — Playwright |
 | "crawl page / screenshot / auto login" | `browser-automation/SKILL.md` |
 | "desktop automation / Windows automation" | `browser-automation/SKILL.md` — OpenReverse |
-| "game reverse / anti-cheat / hack analysis" | `game-security/SKILL.md` |
-| "Unity / IL2CPP / Mono" | `game-security/SKILL.md` — Unity game reverse |
-| "Unreal Engine / UE reverse" | `game-security/SKILL.md` — UE game reverse |
-| "Cheat Engine / memory scan" | `game-security/SKILL.md` — memory analysis |
+| "game reverse / anti-cheat / hack analysis" | `reverse-engineering/languages-platforms.md` + `ida-reverse/SKILL.md` |
+| "Unity / IL2CPP / Mono" | `reverse-engineering/languages-platforms.md` + `ida-reverse/SKILL.md` |
+| "Unreal Engine / UE reverse" | `reverse-engineering/languages-platforms.md` + `ida-reverse/SKILL.md` |
+| "Cheat Engine / memory scan" | `reverse-engineering/tools-dynamic.md` — memory/dynamic analysis |
 | "symbol migration / cross-version compare" | `binary-diff/SKILL.md` — LLM batch migration |
 | "missing PDB / old version symbols" | `binary-diff/SKILL.md` — cross-version symbol migration |
 | "bindiff / function offset migration" | `binary-diff/SKILL.md` — binary diff |
@@ -138,6 +154,9 @@ Route tasks to the most appropriate skill module by target type, user intent, an
 
 | Tool | Related Module |
 |------|---------------|
+| capability-graph.json | `evolution/` — session-level tool/service facts and smoke status |
+| routing.json | `evolution/` + `routing.md` — machine-readable route candidates and fallback edges |
+| TraceCard | `evolution/` — step-level evidence, route switches, oracle status |
 | IDA Pro (idapro_*) | `ida-reverse/` — MCP HTTP server + 72 tools |
 | radare2 (r2/rabin2/rasm2) | `radare2/` — CLI + recon.ps1 |
 | jadx / apktool | `apk-reverse/` — decode.ps1 / manifest-summary.ps1 |
@@ -150,8 +169,8 @@ Route tasks to the most appropriate skill module by target type, user intent, an
 | jshookmcp | `js-reverse/` enhancement MCP for browser/CDP/Hook/Network/SourceMap/AST |
 | agent-browser / Playwright | `browser-automation/` — browser automation |
 | OpenReverse (UIA/CUA) | `browser-automation/` — Windows desktop automation |
-| Cheat Engine / x64dbg / ReClass | `game-security/` — game memory analysis |
-| IL2CPP Dumper / dnSpy | `game-security/` — Unity/Mono game reverse |
+| Cheat Engine / x64dbg / ReClass | `reverse-engineering/tools-dynamic.md` — memory and dynamic analysis |
+| IL2CPP Dumper / dnSpy | `reverse-engineering/languages-platforms.md` — Unity/Mono reverse |
 | LLM symbol migration / BinDiff alternative | `binary-diff/` — cross-version batch migration |
 | Nmap / Masscan | `pentest-tools/` — port scan, service identification |
 | Nuclei / ZAP / Nikto | `pentest-tools/` — vulnerability scanning |
@@ -170,7 +189,7 @@ Route tasks to the most appropriate skill module by target type, user intent, an
 | Trivy / Syft / Gitleaks / OSV-Scanner | `supply-chain-security/` — supply chain scanning |
 | Objection / Frida iOS / class-dump | `mobile-reverse/` — iOS dynamic analysis |
 
-Check `tool-index.md` for actual tool availability, paths, and versions. NEVER guess paths.
+Check `capability-graph.json` first, then `tool-index.md`, for actual tool availability, paths, versions, MCP registration, service health, and smoke status. If neither generated file exists, run `scripts/refresh-tool-index.ps1`. NEVER guess paths.
 
 ---
 

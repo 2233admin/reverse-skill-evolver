@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # refresh-tool-index.sh — Kali Linux 版工具索引刷新
 # 等价于 Windows 版的 refresh-tool-index.ps1
-# 输出: skills/tool-index.md + skills/tool-index.json
+# 输出: skills/tool-index.md + skills/tool-index.json + skills/capability-graph.json
 
 set -euo pipefail
 
@@ -10,6 +10,7 @@ source "$SCRIPT_DIR/lib/tool-discovery.sh"
 
 OUTPUT_MD="${1:-${SKILL_ROOT}/tool-index.md}"
 OUTPUT_JSON="${2:-${SKILL_ROOT}/tool-index.json}"
+OUTPUT_CAPABILITY_GRAPH="${3:-${SKILL_ROOT}/capability-graph.json}"
 
 GENERATED_AT=$(date '+%Y-%m-%d %H:%M:%S %z')
 
@@ -160,12 +161,41 @@ if command -v jq &>/dev/null; then
             routing_entry: ["SKILL.md", "routing.md"],
             tools: $tools
         }' > "$OUTPUT_JSON"
+
+    jq -n \
+        --arg generated_at "$GENERATED_AT" \
+        --arg platform "kali-linux" \
+        --argjson tools "$json_tools" \
+        '{
+            schema_version: 1,
+            generated_at: $generated_at,
+            platform: { os: $platform, shell: "bash" },
+            routing_entry: ["SKILL.md", "routing.json", "routing.md"],
+            nodes: ($tools | map(. + {
+                kind: "tool",
+                owning_skill: .skill,
+                smoke_status: (if .available then (if (.version // "") != "" then "pass" else "available_no_version" end) else "missing" end)
+            })),
+            memory_policy: {
+                validated: "may influence future routing",
+                candidate: "advisory only",
+                forensic: "analysis only"
+            },
+            promotion_gate: {
+                requires_oracle_pass: true,
+                requires_regression_check: true,
+                requires_sensitive_data_scan: true,
+                requires_rollback: true
+            }
+        }' > "$OUTPUT_CAPABILITY_GRAPH"
 else
     # 无 jq 时生成简易 JSON
     echo "{\"generated_at\": \"$GENERATED_AT\", \"platform\": \"kali-linux\", \"note\": \"install jq for full JSON output\"}" > "$OUTPUT_JSON"
+    echo "{\"schema_version\": 1, \"generated_at\": \"$GENERATED_AT\", \"platform\": {\"os\": \"kali-linux\", \"shell\": \"bash\"}, \"note\": \"install jq for full capability graph\"}" > "$OUTPUT_CAPABILITY_GRAPH"
 fi
 
 echo "✅ 工具索引已刷新"
 echo "  markdown=$OUTPUT_MD"
 echo "  json=$OUTPUT_JSON"
+echo "  capability_graph=$OUTPUT_CAPABILITY_GRAPH"
 echo "  tools=${#TOOL_CATALOG[@]}"

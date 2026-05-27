@@ -1,7 +1,8 @@
 ﻿[CmdletBinding()]
 param(
     [string]$OutputMarkdown,
-    [string]$OutputJson
+    [string]$OutputJson,
+    [string]$OutputCapabilityGraph
 )
 
 Set-StrictMode -Version Latest
@@ -15,6 +16,9 @@ if ([string]::IsNullOrWhiteSpace($OutputMarkdown)) {
 }
 if ([string]::IsNullOrWhiteSpace($OutputJson)) {
     $OutputJson = Join-Path $PSScriptRoot '..\tool-index.json'
+}
+if ([string]::IsNullOrWhiteSpace($OutputCapabilityGraph)) {
+    $OutputCapabilityGraph = Join-Path $PSScriptRoot '..\capability-graph.json'
 }
 
 . (Join-Path $PSScriptRoot 'lib\ToolDiscovery.ps1')
@@ -46,7 +50,7 @@ $scriptRefs = @{
     'nmap' = @('pentest-tools/SKILL.md')
 }
 
-$reports = Get-ReverseToolReport
+$reports = @(Get-ReverseToolReport)
 $generatedAt = Get-Date -Format 'yyyy-MM-dd HH:mm:ss K'
 
 $markdownLines = @(
@@ -148,7 +152,82 @@ $jsonPayload = [pscustomobject]@{
 
 $jsonPayload | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $OutputJson -Encoding utf8
 
+# --- Capability graph ---
+$toolNodes = foreach ($report in $reports) {
+    $smokeStatus = 'missing'
+    if ($report.Available -and -not [string]::IsNullOrWhiteSpace([string]$report.Version)) {
+        $smokeStatus = 'pass'
+    }
+    elseif ($report.Available) {
+        $smokeStatus = 'available_no_version'
+    }
+
+    [pscustomobject]@{
+        id = $report.Name
+        kind = 'tool'
+        owning_skill = $report.Skill
+        purpose = $report.Purpose
+        available = [bool]$report.Available
+        resolved_path = $report.ResolvedPath
+        version = $report.Version
+        source = $report.Source
+        bootstrap_kind = $report.BootstrapKind
+        can_auto_install = [bool]$report.CanAutoInstall
+        mcp_registered = [bool]$report.McpRegistered
+        service_online = [bool]$report.ServiceOnline
+        smoke_status = $smokeStatus
+        script_refs = @($scriptRefs[$report.Name])
+    }
+}
+
+$serviceNodes = foreach ($cap in $capabilityRows) {
+    $serviceStatus = 'not_applicable'
+    if ($cap.mcp_registered -or $cap.service_online) {
+        $serviceStatus = 'pass'
+    }
+    elseif ($cap.bootstrap_kind -eq 'local-http-mcp' -or $cap.bootstrap_kind -eq 'npm-mcp') {
+        $serviceStatus = 'not_online'
+    }
+
+    [pscustomobject]@{
+        id = $cap.name
+        kind = 'capability'
+        tool_available = [bool]$cap.tool_available
+        mcp_registered = [bool]$cap.mcp_registered
+        service_online = [bool]$cap.service_online
+        can_auto_install = [bool]$cap.can_auto_install
+        bootstrap_kind = $cap.bootstrap_kind
+        smoke_status = $serviceStatus
+    }
+}
+
+$capabilityGraph = [pscustomobject]@{
+    schema_version = 1
+    generated_at = $generatedAt
+    platform = [pscustomobject]@{
+        os = [System.Environment]::OSVersion.Platform.ToString()
+        version = [System.Environment]::OSVersion.VersionString
+        shell = 'powershell'
+    }
+    routing_entry = @('SKILL.md', 'routing.json', 'routing.md')
+    nodes = @($toolNodes) + @($serviceNodes)
+    memory_policy = [pscustomobject]@{
+        validated = 'may influence future routing'
+        candidate = 'advisory only'
+        forensic = 'analysis only'
+    }
+    promotion_gate = [pscustomobject]@{
+        requires_oracle_pass = $true
+        requires_regression_check = $true
+        requires_sensitive_data_scan = $true
+        requires_rollback = $true
+    }
+}
+
+$capabilityGraph | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $OutputCapabilityGraph -Encoding utf8
+
 "markdown=$OutputMarkdown"
 "json=$OutputJson"
+"capability_graph=$OutputCapabilityGraph"
 "tools=$($reports.Count)"
 

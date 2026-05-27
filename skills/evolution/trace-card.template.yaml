@@ -1,0 +1,42 @@
+schema_version: 1
+trace_id: "<goal-id>-trace"
+goal_id: "<goal-id>"
+started_at: "<iso8601>"
+completed_at: "<iso8601>"
+
+route:
+  macro_route: "<skill-name>"
+  selected_by: "routing_json|routing_md|manual_override"
+  alternatives_considered:
+    - route: "<skill-name>"
+      reason_rejected: "<why not>"
+
+steps:
+  - step_id: 1
+    prefix_summary: "<what is known before the step>"
+    decision: "<next action>"
+    route_or_tool: "<skill/tool>"
+    command_or_action: "<reproducible command or MCP action>"
+    evidence_observed: "<facts produced>"
+    cost:
+      tool_calls: 1
+      elapsed_seconds: 0
+    outcome: "progress|blocked|failed|oracle_passed|oracle_failed"
+    failure_mode: "<optional>"
+    next_edge: "<continue|fallback skill|stop>"
+
+oracle_results:
+  - oracle_id: "oracle-1"
+    status: "pass|fail|not_run"
+    evidence: "<path, command output summary, or report section>"
+
+learning:
+  preserve:
+    - "<successful action worth keeping>"
+  repair:
+    - "<failure mode and fix>"
+  prune:
+    - "<expensive action with no contribution>"
+
+memory_tier: "validated|candidate|forensic"
+promotion_candidate: false

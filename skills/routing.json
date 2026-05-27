@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "routing_entry": ["SKILL.md", "routing.md", "routing.json"],
+  "evolution_protocol": {
+    "pre_route": ["goal_contract", "capability_graph"],
+    "route_levels": ["macro_route", "micro_route"],
+    "post_route": ["trace_card", "success_oracle", "promotion_gate"],
+    "stable_change_requires": ["oracle_passed", "regression_checked", "sensitive_data_scan_passed", "rollback_documented"]
+  },
+  "macro_routes": [
+    {
+      "id": "apk-android",
+      "target_kinds": ["apk", "android", "xapk", "dex", "smali"],
+      "intent_keywords": ["decompile", "repack", "smali", "frida", "ssl pinning", "signature bypass", "root detection"],
+      "primary_skill": "apk-reverse/SKILL.md",
+      "requires_capabilities": ["jadx", "apktool"],
+      "fallback_edges": [
+        { "when": "native_validation_detected", "goto": "ida-reverse/SKILL.md" },
+        { "when": "cli_only_or_ida_missing", "goto": "radare2/SKILL.md" },
+        { "when": "dynamic_verification_needed", "goto": "reverse-engineering/tools-dynamic.md" }
+      ],
+      "success_oracles": ["decoded_artifact_exists", "target_function_labeled", "replay_or_bypass_verified"]
+    },
+    {
+      "id": "js-browser-signature",
+      "target_kinds": ["js_bundle", "web_frontend", "browser_runtime", "sourcemap"],
+      "intent_keywords": ["signature", "encrypted params", "js reverse", "request replay", "websocket"],
+      "primary_skill": "js-reverse/SKILL.md",
+      "requires_capabilities": ["node", "npx"],
+      "fallback_edges": [
+        { "when": "runtime_observation_needed", "goto": "browser-automation/SKILL.md" },
+        { "when": "hook_or_cdp_needed", "goto": "jshookmcp" }
+      ],
+      "success_oracles": ["entry_function_identified", "local_replay_matches_browser"]
+    },
+    {
+      "id": "native-binary",
+      "target_kinds": ["elf", "pe", "dll", "so", "macho", "stripped_binary"],
+      "intent_keywords": ["ida", "disassemble", "decompile", "function map", "strings", "xref"],
+      "primary_skill": "ida-reverse/SKILL.md",
+      "requires_capabilities": ["idapro"],
+      "fallback_edges": [
+        { "when": "idapro_unavailable", "goto": "radare2/SKILL.md" },
+        { "when": "ghidra_available_and_ida_missing", "goto": "reverse-engineering/SKILL.md" },
+        { "when": "exploitability_needed", "goto": "pwn-chain/SKILL.md" }
+      ],
+      "success_oracles": ["target_function_labeled", "control_flow_evidence_recorded"]
+    },
+    {
+      "id": "patch-diff",
+      "target_kinds": ["two_versions", "vendor_patch", "nday", "cve_reproduction"],
+      "intent_keywords": ["patch diff", "bindiff", "ghidriff", "symbol migration", "root cause"],
+      "primary_skill": "binary-diff/SKILL.md",
+      "requires_capabilities": ["radiff2"],
+      "fallback_edges": [
+        { "when": "exploit_path_requested", "goto": "patch-diff-exploit/SKILL.md" },
+        { "when": "native_decompile_needed", "goto": "ida-reverse/SKILL.md" }
+      ],
+      "success_oracles": ["changed_function_identified", "root_cause_explained"]
+    },
+    {
+      "id": "protocol-pcap",
+      "target_kinds": ["pcap", "custom_protocol", "packet_capture", "websocket_capture"],
+      "intent_keywords": ["pcap", "protocol reverse", "packet analysis", "replay", "parser"],
+      "primary_skill": "reverse-engineering/platforms.md",
+      "requires_capabilities": ["python"],
+      "fallback_edges": [
+        { "when": "browser_origin_protocol", "goto": "js-reverse/SKILL.md" },
+        { "when": "ctf_fixture", "goto": "../CTF-Sandbox-Orchestrator/competition-pcap-protocol/SKILL.md" }
+      ],
+      "success_oracles": ["fields_extracted", "message_sequence_replayed_or_documented"]
+    },
+    {
+      "id": "active-security-assessment",
+      "target_kinds": ["web_app", "api", "cloud", "network", "source_tree"],
+      "intent_keywords": ["pentest", "api security", "bug bounty", "src", "nuclei", "burp", "graphql", "jwt"],
+      "primary_skill": "pentest-tools/SKILL.md",
+      "requires_capabilities": [],
+      "fallback_edges": [
+        { "when": "api_specific", "goto": "api-security/SKILL.md" },
+        { "when": "llm_agent_surface", "goto": "llm-security/SKILL.md" },
+        { "when": "end_to_end_attack_chain", "goto": "attack-chain/SKILL.md" }
+      ],
+      "success_oracles": ["scope_respected", "finding_reproduced", "evidence_recorded"]
+    }
+  ],
+  "micro_route_rules": [
+    {
+      "when": "same_tool_same_params_failed_twice",
+      "action": "switch_edge_and_record_failure"
+    },
+    {
+      "when": "capability_graph_required_tool_missing",
+      "action": "bootstrap_or_choose_fallback"
+    },
+    {
+      "when": "oracle_not_defined",
+      "action": "stop_and_define_goal_or_downgrade_to_candidate"
+    },
+    {
+      "when": "trace_contains_no_new_evidence_for_two_steps",
+      "action": "change_static_dynamic_or_tool_family"
+    }
+  ]
+}

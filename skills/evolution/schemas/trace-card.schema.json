@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://reverse-skill-private.local/schemas/trace-card.schema.json",
+  "title": "TraceCard",
+  "type": "object",
+  "required": ["schema_version", "trace_id", "goal_id", "route", "steps", "oracle_results", "memory_tier"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "trace_id": { "type": "string" },
+    "goal_id": { "type": "string" },
+    "started_at": { "type": "string" },
+    "completed_at": { "type": "string" },
+    "route": {
+      "type": "object",
+      "required": ["macro_route"],
+      "properties": {
+        "macro_route": { "type": "string" },
+        "selected_by": { "type": "string" },
+        "alternatives_considered": { "type": "array" }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["step_id", "prefix_summary", "decision", "outcome"],
+        "properties": {
+          "step_id": { "type": "integer", "minimum": 1 },
+          "prefix_summary": { "type": "string" },
+          "decision": { "type": "string" },
+          "route_or_tool": { "type": "string" },
+          "command_or_action": { "type": "string" },
+          "evidence_observed": { "type": "string" },
+          "cost": { "type": "object" },
+          "outcome": { "enum": ["progress", "blocked", "failed", "oracle_passed", "oracle_failed"] },
+          "failure_mode": { "type": "string" },
+          "next_edge": { "type": "string" }
+        }
+      }
+    },
+    "oracle_results": { "type": "array" },
+    "learning": { "type": "object" },
+    "memory_tier": { "enum": ["validated", "candidate", "forensic"] },
+    "promotion_candidate": { "type": "boolean" }
+  }
+}

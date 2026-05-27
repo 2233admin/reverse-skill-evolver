@@ -1,0 +1,42 @@
+schema_version: 1
+goal_id: "<date>-<short-task-slug>"
+created_at: "<iso8601>"
+owner: "agent"
+task_summary: "<one sentence>"
+
+authorization_scope:
+  kind: "ctf|own_asset|lab_fixture|bug_bounty|engagement|unknown"
+  boundary: "<target range or fixture name>"
+  notes: "<constraints, approvals, or stop points>"
+
+inputs:
+  - id: "artifact-1"
+    kind: "apk|ipa|elf|pe|so|pcap|js_bundle|url|source_tree|fixture"
+    path_or_ref: "<path or URL>"
+    sha256: "<optional>"
+
+desired_outputs:
+  - kind: "function_map|decoded_algorithm|replay_script|bypass|poc|report|diagram|patch"
+    required: true
+    acceptance: "<what the user can inspect or run>"
+
+success_oracles:
+  - id: "oracle-1"
+    kind: "command|script|manual_check|service_response|unit_test|fixture_verifier"
+    command: "<optional reproducible command>"
+    expected: "<observable pass condition>"
+
+budgets:
+  max_tool_calls: 30
+  max_minutes: 60
+  escalation_policy: "use stronger tools only after evidence or two failed cheaper paths"
+
+stop_conditions:
+  - "authorization boundary unclear"
+  - "high-severity real target finding needs user instruction"
+  - "oracle cannot be constructed from available evidence"
+
+route:
+  macro_route: "<skill-name>"
+  fallback_edges: []
+  confidence: "low|medium|high"

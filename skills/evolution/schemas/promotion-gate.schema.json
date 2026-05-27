@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://reverse-skill-private.local/schemas/promotion-gate.schema.json",
+  "title": "PromotionGateRecord",
+  "type": "object",
+  "required": ["schema_version", "candidate_id", "source_trace", "proposed_change", "evidence", "decision"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "candidate_id": { "type": "string" },
+    "source_trace": { "type": "string" },
+    "proposed_change": {
+      "type": "object",
+      "required": ["type", "target_path", "summary"],
+      "properties": {
+        "type": { "enum": ["routing", "skill_doc", "tool_index", "bootstrap_manifest", "reference"] },
+        "target_path": { "type": "string" },
+        "summary": { "type": "string" }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["oracle_passed", "regression_checked", "sensitive_data_scan"],
+      "properties": {
+        "oracle_passed": { "type": "boolean" },
+        "regression_checked": { "type": "boolean" },
+        "benchmark": { "type": "string" },
+        "success_delta": { "type": "number" },
+        "cost_delta": { "type": "number" },
+        "sensitive_data_scan": { "enum": ["pass", "fail", "not_run"] }
+      }
+    },
+    "requirements": { "type": "object" },
+    "decision": {
+      "type": "object",
+      "required": ["status", "reason"],
+      "properties": {
+        "status": { "enum": ["candidate", "promoted", "rejected", "deprecated"] },
+        "reviewer": { "type": "string" },
+        "reason": { "type": "string" },
+        "rollback": { "type": "string" }
+      }
+    }
+  }
+}

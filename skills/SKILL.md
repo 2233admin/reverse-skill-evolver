@@ -6,11 +6,12 @@
 
 读完本文件后，不允许只回复“已读/已理解”。必须按顺序执行：
 
-1. `NOW`：读取 `routing.md`，按“目标类型 + 用户意图 + 工具链”三轴完成路由判定。
-2. `NOW`：读取目标子模块 `SKILL.md`，提取第一步可执行动作。
-3. `NEXT`：若涉及本机工具，读取 `tool-index.md` 校验路径与可用性；禁止凭经验猜路径。
-4. `THEN`：若缺工具，调用 `scripts/bootstrap-reverse.ps1` 自动补齐后继续任务。
-5. `ACT`：执行任务，不要停留在“等待用户下一条确认”状态。
+1. `NOW`：读取 `evolution/SKILL.md`，为当前任务建立最小 GOAL（目标、范围、成功 oracle、停止条件）。
+2. `NOW`：读取 `routing.json`（机读）和 `routing.md`（人读），按“目标类型 + 用户意图 + 工具链 + 成功 oracle”完成路由判定。
+3. `NOW`：读取目标子模块 `SKILL.md`，提取第一步可执行动作。
+4. `NEXT`：若涉及本机工具，优先读取 `capability-graph.json`，必要时读取 `tool-index.md`；两个生成文件都不存在时先运行 `scripts/refresh-tool-index.ps1`；禁止凭经验猜路径。
+5. `THEN`：若缺工具，调用 `scripts/bootstrap-reverse.ps1` 自动补齐后继续任务，并刷新 `capability-graph.json`。
+6. `ACT`：执行任务，记录 TraceCard，不要停留在“等待用户下一条确认”状态。
 
 如果路由无法命中，必须先联网补充方法论并提议新增 skill，禁止硬塞到不匹配模块。
 
@@ -24,6 +25,7 @@
 
 | 模块 | 目录 | 适用场景 |
 |------|------|---------|
+| **自进化路由内核** | `evolution/` | GOAL 契约、Capability Graph、步骤级 TraceCard、候选经验晋级门禁 |
 | **通用逆向** | `reverse-engineering/` | GDB / Frida / angr / Unicorn / Qiling / 反分析对抗 / 全语言平台逆向 / CTF 模式库 |
 | **APK 逆向** | `apk-reverse/` | Android APK 解包、jadx 反编译、smali 修改、Frida Hook、重打包签名安装 |
 | **IDA Pro 逆向** | `ida-reverse/` | IDA Pro MCP HTTP 服务器（72 个工具）：反编译、反汇编、数据流追踪、交叉引用 |
@@ -50,9 +52,11 @@
 
 遇到逆向、CTF、抓包、前端签名、APK 改包、二进制分析类任务时，先按这个顺序进入：
 
-1. 先读 `routing.md`
-2. 再进入对应子模块的 `SKILL.md`
-3. 需要确认本机工具路径时，再读 `tool-index.md`
+1. 先读 `evolution/SKILL.md`，建立 GOAL 与成功 oracle
+2. 再读 `routing.json`，用它做结构化候选路由
+3. 同步读取 `routing.md`，确认人读上下文和跨模块路径
+4. 再进入对应子模块的 `SKILL.md`
+5. 需要确认本机工具路径时，先读 `capability-graph.json`，再读 `tool-index.md`；都不存在时先刷新索引
 
 ## 工作思路
 
@@ -105,7 +109,17 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "<skill-root>\scripts\bootst
 
 每次完成逆向/渗透任务后，必须回写经验到 `field-journal/` 目录。详见 `RULES.md` 的"任务完成后的硬性 Checklist"。
 
+新规则：经验不能直接改 stable 路由。先由 `evolution/` 生成 TraceCard 和 promotion record：
+
+- `validated/`：oracle 通过、可复用、可参与未来路由。
+- `candidate/`：有潜力但未回归，只能提示，不能支配控制流。
+- `forensic/`：失败、异常、疑似污染或证据不足，只能用于分析。
+
+只有通过 `evolution/promotion-record.template.yaml` 所列门禁后，才允许更新 `routing.md`、`routing.json`、子 skill 或 bootstrap manifest。
+
 - 模板：`field-journal/_template.md`
+- TraceCard：`evolution/trace-card.template.yaml`
+- 晋级记录：`evolution/promotion-record.template.yaml`
 - 索引：`field-journal/_index.md`
 - 先例：`field-journal/precedent-auth.md` → `precedent-reverse.md` → `precedent-pentest.md`
 - 新任务开始前先查索引和先例，复用已有经验

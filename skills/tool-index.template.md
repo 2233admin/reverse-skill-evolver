@@ -1,11 +1,12 @@
 ﻿# Reverse Engineering Tool Index
 
-> **This file is a TEMPLATE.** Run `refresh-tool-index.ps1` (Windows) or `refresh-tool-index.sh` (Linux) to generate the actual `tool-index.md` with your machine's real paths and versions.
+> **This file is a TEMPLATE.** Run `refresh-tool-index.ps1` (Windows) or `refresh-tool-index.sh` (Linux) to generate the actual `tool-index.md`, `tool-index.json`, and `capability-graph.json` with your machine's real paths, versions, MCP/service state, and smoke status.
 >
 > - Scan time: (auto-generated)
 > - Routing entry: `SKILL.md` → `routing.md` → corresponding sub-skill
 > - Note: For MCP servers like jshookmcp, `yes` only means the local machine has the runtime (node/npx), NOT that it's registered and enabled in your AI client.
 > - **IMPORTANT**: All paths MUST be complete absolute paths (e.g., `D:\wangluo\jadx\bin\jadx.bat`). Never write just the tool name. Include version, full path, and verification command. This is the shared registry that ALL CLI clients rely on.
+> - `capability-graph.json` is the session-level graph used by `evolution/SKILL.md` before routing. It includes tool nodes, MCP/service status, memory policy, and promotion-gate requirements.
 
 ## Tool Availability Table
 
@@ -71,4 +72,4 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "<SKILL_ROOT>/skills/scripts
 bash <SKILL_ROOT>/kali/scripts/refresh-tool-index.sh
 ```
 
-After running, this template is replaced by `tool-index.md` with your machine's actual paths, versions, and availability status.
+After running, this template is replaced by `tool-index.md` with your machine's actual paths, versions, and availability status. The same scan also emits `tool-index.json` and `capability-graph.json`.

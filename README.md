@@ -59,9 +59,12 @@ At present, it is recommended to understand the whole package as two layers:
 ├── CTF-Sandbox-Orchestrator\     # Full CTF competition stack (40+ sub-skills)
 └── skills\                       # Main skills directory
     ├── SKILL.md                  # Main controller entry point
+    ├── evolution\                # GOAL contracts, capability graph, TraceCards, promotion gates
     ├── routing.md                # Scenario → skill dispatching (routing matrix)
+    ├── routing.json              # Machine-readable routing mirror
     ├── CONTRIBUTING.md           # Guide for adding new skills
     ├── tool-index.md             # Tool index (auto-generated)
+    ├── capability-graph.json     # Session-level tool/MCP/service health graph (auto-generated)
     ├── scripts\                 # Tool-index refresh and shared scripts
     ├── field-journal\           # Auto-evolving experience logs
     ├── apk-reverse\             # APK reverse engineering
@@ -136,9 +139,10 @@ If you change drive letters, usernames, or tool installation directories, adjust
 2. Go to `skills\SKILL.md`
 3. When handling a task, read files in this order:
    1. `SKILL.md`
-   2. `routing.md`
-   3. The `SKILL.md` in the corresponding subdirectory
-   4. Read `tool-index.md` only when you need to confirm local tools
+   2. `evolution\SKILL.md`
+   3. `routing.json` + `routing.md`
+   4. The `SKILL.md` in the corresponding subdirectory
+   5. Read `capability-graph.json` / `tool-index.md` only when you need to confirm local tools
 
 ### 3.2 If You Want Any Code CLI to Automatically Use This Routing
 
@@ -147,7 +151,7 @@ You need at least:
 - A code CLI that supports custom rules / system prompts / project instructions / hooks
 - A way to inject “read the routing file first for reverse-engineering tasks" into the model context
 - If direct external capabilities are needed, configure MCP or an equivalent tool bridge
-- This package’s `SKILL.md`, `routing.md`, and `tool-index.md`
+- This package’s `SKILL.md`, `evolution\SKILL.md`, `routing.json`, `routing.md`, `capability-graph.json`, and `tool-index.md`
 
 If you already have Claude hooks, Codex CLI project instructions, Cursor Rules, Cline custom instructions, or Windsurf Rules, update any old paths inside them to the current installation path.
 
@@ -206,8 +210,11 @@ The following tables are grouped by “required / commonly used / optional enhan
 | Module | Directory | Main Purpose |
 |---|---|---|
 | Main controller entry | `SKILL.md` | Read the global map first, then decide which sub-skill to enter |
+| Self-evolution control plane | `evolution\` | GOAL contracts, capability graph, step-level TraceCards, and promotion gates |
 | Routing table | `routing.md` | Dispatch by target type, user intent, and toolchain |
+| Machine routing mirror | `routing.json` | Structured routes, fallback edges, required capabilities, and success oracles |
 | Tool index | `tool-index.md` | Check whether local tools exist, where they are, and which scripts call them |
+| Capability graph | `capability-graph.json` | Session-level tool path, version, MCP registration, service health, and smoke status |
 | APK reverse engineering | `apk-reverse\` | Unpack, jadx, smali, repackaging, Frida, native dispatch |
 | IDA Pro | `ida-reverse\` | Deep binary RE and `idapro_*` workflows |
 | JS / Web | `js-reverse\` | Frontend signatures, request chains, environment simulation, SourceMap / AST / Hook |
@@ -259,8 +266,10 @@ After success, check:
 
 - `skills\tool-index.md`
 - `skills\tool-index.json`
+- `skills\capability-graph.json`
 
 > Important: `yes/no` in `tool-index.md` only represents the scan result on the current machine. It does not guarantee the same status on your machine.
+> Use `capability-graph.json` for current session facts such as MCP registration, service ports, smoke status, and promotion-gate policy.
 
 ## 6.2 IDA Pro Chain
 
@@ -426,10 +435,13 @@ Whether you use Claude Code, Codex CLI, Cursor, Cline, Windsurf, or another code
 
 ### Minimum Prompt Requirements
 
-No matter whether you use hooks, RULES.md, Rules, workspace instructions, system prompts, or other project-level instructions, at minimum tell the AI about these three entry files:
+No matter whether you use hooks, RULES.md, Rules, workspace instructions, system prompts, or other project-level instructions, at minimum tell the AI about these entry files:
 
 - `skills\SKILL.md`
+- `skills\evolution\SKILL.md`
+- `skills\routing.json`
 - `skills\routing.md`
+- `skills\capability-graph.json`
 - `skills\tool-index.md`
 
 The minimum requirement is that the AI knows:
@@ -515,7 +527,10 @@ If you have configured Claude with:
 After migrating the package, update all old paths pointing to:
 
 - `SKILL.md`
+- `evolution\SKILL.md`
+- `routing.json`
 - `routing.md`
+- `capability-graph.json`
 - `tool-index.md`
 - `refresh-tool-index.ps1`
 
@@ -632,7 +647,7 @@ If you plan to distribute this package to others, include:
 2. An example `mcp.json` with paths already adjusted
 3. An example Claude hook with paths already adjusted
 4. A “first installation checklist"
-5. A freshly scanned `tool-index.md`
+5. A freshly scanned `tool-index.md` and `capability-graph.json`
 
 The ideal distribution form is:
 
@@ -644,13 +659,14 @@ The ideal distribution form is:
 
 ## 12. Most Important Files in This Package
 
-If you only read five files, read these first:
+If you only read the core files, read these first:
 
 1. `<package root>\README.md`
 2. `<SKILL_ROOT>\RULES.md` — global routing rules; any AI will auto-configure after reading it
 3. `<SKILL_ROOT>\SKILL.md` — main controller entry point
-4. `<SKILL_ROOT>\routing.md` — scenario → skill dispatch
-5. `<SKILL_ROOT>\tool-index.md` — local tool status
+4. `<SKILL_ROOT>\evolution\SKILL.md` — GOAL, capability graph, TraceCard, promotion gate
+5. `<SKILL_ROOT>\routing.json` + `<SKILL_ROOT>\routing.md` — scenario → skill dispatch
+6. `<SKILL_ROOT>\capability-graph.json` + `<SKILL_ROOT>\tool-index.md` — local capability/tool status
 
 If the AI does not work, only confirms without executing, or outputs “I cannot assist with penetration testing against a specific real site," make it read these:
 
@@ -796,9 +812,13 @@ Each write-back must contain the following structure. The template file is at `f
 ## Evolution Actions
 <!-- Actual updates performed after this write-back -->
 - [ ] Updated routing matrix
+- [ ] Updated routing.json
 - [ ] Updated tool index
+- [ ] Updated capability graph
 - [ ] Updated bootstrap manifest
 - [ ] Updated sub-skill documentation
+- [ ] Added/updated TraceCard
+- [ ] Passed promotion gate
 - [ ] Added pitfall record
 - [ ] No update needed
 ```
@@ -809,8 +829,8 @@ After writing a log, the AI should also check whether the following files need t
 
 | Check Item | Update Condition | Target File |
 |------------|------------------|-------------|
-| Routing matrix | A new scenario type or routing path was discovered | `routing.md` |
-| Tool index | A new tool was discovered or an existing tool path changed | Run `refresh-tool-index.ps1` |
+| Routing matrix | A new scenario type or routing path passed promotion | `routing.md` + `routing.json` |
+| Tool index | A new tool was discovered or an existing tool path changed | Run `refresh-tool-index.ps1` to refresh `tool-index.*` and `capability-graph.json` |
 | Bootstrap manifest | A new auto-installable tool was discovered | `scripts/bootstrap-manifest.json` |
 | Sub-skill documentation | A workflow in a skill needs supplementation | Corresponding `SKILL.md` |
 | Anti-patterns / pitfalls | An easily repeated pitfall was found | Create or append `pitfalls.md` in the corresponding skill directory |
