@@ -69,6 +69,7 @@ AI社区：https://linux.do
     ├── capability-graph.json     # 会话级工具/MCP/服务健康图谱（自动生成）
     ├── scripts\                 # 工具索引刷新与共享脚本
     ├── field-journal\           # 自动进化经验日志
+    ├── api-security\            # API 安全测试（REST/GraphQL/WebSocket/SOAP）
     ├── apk-reverse\             # APK 逆向
     ├── attack-chain\            # 多阶段攻击链编排
     ├── binary-diff\             # 跨版本符号迁移
@@ -77,13 +78,18 @@ AI社区：https://linux.do
     ├── docs-generator\          # 技术文档/报告生成
     ├── edr-bypass-re\           # EDR 绕过逆向（红队投递）
     ├── firmware-pentest\        # 固件渗透链（OWASP FSTM）
+    ├── ghidra-reverse\          # Ghidra 逆向（GhydraMCP，免费 IDA 替代，本仓库尚未实战验证）
     ├── ida-reverse\             # IDA Pro 逆向
     ├── js-reverse\              # 前端 JS / 浏览器链路逆向
+    ├── llm-security\            # LLM/AI 安全测试（OWASP LLM Top 10 + Agentic AI Top 10）
+    ├── malware-analysis\        # 恶意软件分析（YARA/Sigma/沙箱/IOC 提取）
+    ├── mobile-reverse\          # 移动端逆向（Android+iOS，Frida/Objection/MSTG）
     ├── patch-diff-exploit\      # N-day 补丁差分→利用
     ├── pentest-tools\           # 渗透测试工具链
     ├── pwn-chain\               # RE→可用 exploit（栈/堆/内核）
     ├── radare2\                 # radare2 CLI 逆向
-    └── reverse-engineering\     # 通用逆向方法论
+    ├── reverse-engineering\     # 通用逆向方法论
+    └── supply-chain-security\   # 软件供应链安全（SBOM/SCA/CI-CD）
 ```
 
 如果你同时使用 CTF 资料库，建议把它放在本包根目录下（当前默认结构）：

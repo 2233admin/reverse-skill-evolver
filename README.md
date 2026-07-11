@@ -69,6 +69,7 @@ At present, it is recommended to understand the whole package as two layers:
     ├── capability-graph.json     # Session-level tool/MCP/service health graph (auto-generated)
     ├── scripts\                 # Tool-index refresh and shared scripts
     ├── field-journal\           # Auto-evolving experience logs
+    ├── api-security\            # API security testing (REST/GraphQL/WebSocket/SOAP)
     ├── apk-reverse\             # APK reverse engineering
     ├── attack-chain\            # Multi-stage attack-chain orchestration
     ├── binary-diff\             # Cross-version symbol migration
@@ -77,13 +78,18 @@ At present, it is recommended to understand the whole package as two layers:
     ├── docs-generator\          # Technical document/report generation
     ├── edr-bypass-re\           # EDR bypass reverse engineering (red-team delivery)
     ├── firmware-pentest\        # Firmware penetration-testing chain (OWASP FSTM)
+    ├── ghidra-reverse\          # Ghidra reverse engineering (GhydraMCP, free IDA alternative, not yet battle-tested here)
     ├── ida-reverse\             # IDA Pro reverse engineering
     ├── js-reverse\              # Frontend JS / browser-chain reverse engineering
+    ├── llm-security\            # LLM/AI security testing (OWASP LLM Top 10 + Agentic AI Top 10)
+    ├── malware-analysis\        # Malware analysis (YARA/Sigma/sandbox/IOC extraction)
+    ├── mobile-reverse\          # Mobile reverse engineering (Android + iOS, Frida/Objection/MSTG)
     ├── patch-diff-exploit\      # N-day patch diff → exploitation
     ├── pentest-tools\           # Penetration-testing toolchain
     ├── pwn-chain\               # RE → usable exploit (stack / heap / kernel)
     ├── radare2\                 # radare2 CLI reverse engineering
-    └── reverse-engineering\     # General reverse-engineering methodology
+    ├── reverse-engineering\     # General reverse-engineering methodology
+    └── supply-chain-security\   # Software supply-chain security (SBOM/SCA/CI-CD)
 ```
 
 If you also use the CTF knowledge base, it is recommended to place it under the root of this package (the current default structure):
