@@ -54,6 +54,36 @@ description: 在使用 js-reverse-mcp 做前端 JavaScript 逆向时使用，适
 - 建议入口：仍然按 `Observe → Capture → Rebuild` 执行，只是在 `Observe/Capture` 阶段优先调用 jshookmcp 的浏览器与 Hook 能力
 - 与 anything-analyzer 关系：两者都能做浏览器/网络侧取证；anything-analyzer 更偏抓包与 HTTP 分析，jshookmcp 更偏 JS 运行时、CDP、Hook 和源码理解
 
+### Chrome DevTools MCP 插件（`mcp__plugin_ecc_chrome-devtools__*`）—— 另一套 CDP 工具面
+
+当前环境里还注册了一套独立的 CDP 工具面，来自 Chrome DevTools MCP 插件（`ecc` 插件命名空间），
+和 `js-reverse_*`/`jshookmcp` 是**平行关系**，不是替代关系，也不改变上面两节已有的映射。
+
+常用工具：`evaluate_script`、`list_network_requests`、`get_network_request`、
+`list_console_messages`、`get_console_message`、`navigate_page`、`new_page`、`select_page`、
+`list_pages`、`close_page`、`click`、`hover`、`drag`、`fill`、`fill_form`、`press_key`、
+`upload_file`、`handle_dialog`、`take_screenshot`、`take_snapshot`、`take_heapsnapshot`、
+`resize_page`、`emulate`、`wait_for`、`performance_start_trace`、`performance_stop_trace`、
+`performance_analyze_insight`、`lighthouse_audit`。全部带 `mcp__plugin_ecc_chrome-devtools__` 前缀。
+
+何时优先用它：
+
+- 当前客户端里 `js-reverse_*`/`jshookmcp` 未注册或不可用，但 Chrome DevTools MCP 插件已启用时
+- 任务只需要标准 CDP 能力（脚本求值、网络请求列表、页面导航、截图），不需要 jshookmcp 的
+  Hook/SourceMap/AST 增强能力时
+
+实测记录：这套工具面是 2026-07-11 一次真实私有 API 逆向会话（CDP 抓包 + 前端源码交叉验证 + 实测
+校准方法论）里实际使用并跑通的工具面。方法论细节和踩坑记录见
+`../field-journal/candidate/2026-07-11_private-api-cdp-source-cross-reference.md`。
+
+同一条目提炼出两条通用原则，补充记录在此（来自单次会话，candidate 层级，仅供参考，不覆盖上面
+已有的工具映射和五阶段工作流）：
+
+- **实测优先于书面/推断规格**：目标前端源码（如表格列定义 JS）给出的字段语义/响应结构只是假设，
+  必须用真实探测（live probe）逐项 DIFF 校准，偏差以实测为准
+- **按列名而非位置解析**：响应里的字段要按列名建索引取值，不要假设固定顺序/固定下标，尤其在存
+  在多个结果集时，按预期标记列名选中目标结果集，不按数组下标选
+
 ## 核心原则
 
 - `Observe-first`

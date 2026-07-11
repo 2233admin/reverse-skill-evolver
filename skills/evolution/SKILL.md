@@ -104,3 +104,17 @@ Use `promotion-record.template.yaml`. If evidence is incomplete, keep the entry 
 - [ ] TraceCard includes evidence, not just narration.
 - [ ] Field-journal tier is selected.
 - [ ] Stable routing changes passed the promotion gate.
+
+## Fleet Sync
+
+This repo can run on more than one machine in the operator's fleet. Session-local artifacts --
+`skills/field-journal/candidate/*.md`, `skills/field-journal/validated/*.md`,
+`skills/capability-graph.json`, `skills/tool-index.md` -- only exist on whichever machine
+produced them until manually synced.
+
+Run `skills/scripts/fleet-sync.ps1 -RemotePath <remote-repo-path> -Direction Pull|Push` after a
+session adds new `candidate/` entries and you are about to switch machines, or periodically to
+keep both machines' capability graphs roughly aligned. The script only copies files that do not
+already exist on the destination by filename (collision-safe additive merge) -- it never
+overwrites and never deletes on either side. Filename collisions are reported, not resolved
+automatically; resolve by hand and re-run.

@@ -41,7 +41,7 @@
     },
     "ghidra": {
       "url": "http://localhost:8765/mcp",
-      "_comment": "Ghidra MCP。apt install ghidra + GhidraMCP 插件。免费 IDA 替代。"
+      "_comment": "Ghidra MCP（GhydraMCP, https://github.com/starsong-consulting/GhydraMCP）。apt install ghidra + GhydraMCP 插件。官方默认走 stdio 桥接+8192 起端口，非此处 8765 HTTP url，端口未核实，见 skills/ghidra-reverse/SKILL.md。免费 IDA 替代。"
     }
   }
 }
