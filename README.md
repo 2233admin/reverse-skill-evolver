@@ -62,6 +62,7 @@ At present, it is recommended to understand the whole package as two layers:
 └── skills\                       # Main skills directory
     ├── SKILL.md                  # Main controller entry point
     ├── evolution\                # GOAL contracts, capability graph, TraceCards, promotion gates
+    ├── overnight-run\            # Unattended overnight run contract (OVERNIGHT.md v2) + scaffolding
     ├── routing.md                # Scenario → skill dispatching (routing matrix)
     ├── routing.json              # Machine-readable routing mirror
     ├── CONTRIBUTING.md           # Guide for adding new skills
@@ -219,6 +220,7 @@ The following tables are grouped by “required / commonly used / optional enhan
 |---|---|---|
 | Main controller entry | `SKILL.md` | Read the global map first, then decide which sub-skill to enter |
 | Self-evolution control plane | `evolution\` | GOAL contracts, capability graph, step-level TraceCards, and promotion gates |
+| Unattended overnight run | `overnight-run\` | Fill slots → validate → scaffold (.night/ + night branch + pre-commit) → run to DEADLINE → morning review |
 | Routing table | `routing.md` | Dispatch by target type, user intent, and toolchain |
 | Machine routing mirror | `routing.json` | Structured routes, fallback edges, required capabilities, and success oracles |
 | Tool index | `tool-index.md` | Check whether local tools exist, where they are, and which scripts call them |

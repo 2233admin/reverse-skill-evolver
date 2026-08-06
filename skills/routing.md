@@ -28,6 +28,7 @@ When `routing.md` and `routing.json` disagree, use `routing.md` for safety/inten
 | Target Type | Recommended Entry | Alternative |
 |-------------|------------------|-------------|
 | Self-evolving route / unclear multi-step goal | `evolution/` — GOAL + capability graph + TraceCard + promotion gate | Then dispatch to the concrete child skill |
+| Unattended overnight run / 无人值守过夜任务 | `overnight-run/` — OVERNIGHT.md v2 contract: fill slots → validate → scaffold (.night/ + night branch + pre-commit) → run to DEADLINE → morning review | Phase 0-3 closed loop; experience returns via promotion gate |
 | APK / Android app | `apk-reverse/` — jadx decompile + apktool unpack | If core is in .so → `ida-reverse/` or `radare2/` |
 | Binary exe/dll/so/elf | `ida-reverse/` — IDA Pro decompile | `radare2/` — CLI analysis, or `reverse-engineering/tools.md` — GDB/Unicorn |
 | JavaScript / Web frontend | `js-reverse/` — 5-stage workflow | anything-analyzer MCP browser tools, or jshookmcp CDP/Hook |
@@ -60,6 +61,7 @@ When `routing.md` and `routing.json` disagree, use `routing.md` for safety/inten
 | User Says | Route To |
 |-----------|----------|
 | "make the skill self-evolve / improve routing / learn from runs" | `evolution/SKILL.md` — GOAL + TraceCard + promotion gate |
+| "过夜跑 / 整夜自动化 / overnight / unattended / 无人值守 / 早上看结果" | `overnight-run/SKILL.md` — fill slots → validate-slots → new-overnight scaffold → run to DEADLINE → morning review REPORT.md |
 | "from this goal, choose the complete path / stop the AI from drifting" | `evolution/SKILL.md` first, then child route |
 | "decompile / IDA analyze" | `ida-reverse/SKILL.md` — IDA MCP workflow |
 | "recover source / disassemble" | `reverse-engineering/SKILL.md` + `ida-reverse/` |

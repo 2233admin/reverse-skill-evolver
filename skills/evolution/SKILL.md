@@ -105,6 +105,10 @@ Use `promotion-record.template.yaml`. If evidence is incomplete, keep the entry 
 - [ ] Field-journal tier is selected.
 - [ ] Stable routing changes passed the promotion gate.
 
+## 无人值守模式（Overnight）
+
+本控制面的 Phase 0-3 全闭环无人值守运行由 `overnight-run/` 提供：slot 填表 ↔ `goal.template.yaml`，`.night/REPORT.md` ↔ TraceCard，Phase 结局 ↔ 记忆分层，早上 review ↔ promotion gate。详见 `overnight-run/SKILL.md`。Overnight 产出的经验必须经 promotion gate 回流 `field-journal/{validated,candidate,forensic}/` 后才允许改 stable 路由。
+
 ## Fleet Sync
 
 This repo can run on more than one machine in the operator's fleet. Session-local artifacts --

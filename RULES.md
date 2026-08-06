@@ -101,6 +101,7 @@ Read in order:
 2. `skills/evolution/SKILL.md` — GOAL contract, capability graph, TraceCard, promotion gate
 3. `skills/routing.json` + `skills/routing.md` — Routing matrix, 4-dimension matching (target type / user intent / toolchain / success oracle)
 4. `skills/capability-graph.json` + `skills/tool-index.md` — Local capability and tool availability status
+5. `skills/overnight-run/SKILL.md` — Unattended overnight runs (only when the task is an overnight/unattended deadline run; NOT the default path)
 
 ---
 

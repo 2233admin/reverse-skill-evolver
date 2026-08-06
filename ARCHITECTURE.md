@@ -186,6 +186,10 @@ flowchart LR
     ReadIdx --> Reuse[复用已验证经验<br/>避免重复踩坑]
 ```
 
+## Overnight 无人值守模式
+
+`overnight-run/` 把 evolution 闭环以无人值守方式跑到绝对 DEADLINE：slot 填表（OVERNIGHT.md v2）→ validate-slots 冒烟 → new-overnight 脚手架（`.night/` 五文件 + `night` 分支 + pre-commit 红线）→ 投 agent → 早上 review REPORT.md。经验经 promotion gate 回流 field-journal 分层。详见 `skills/overnight-run/SKILL.md`。
+
 ## 多平台支持架构
 
 ```mermaid

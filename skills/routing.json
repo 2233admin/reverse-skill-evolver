@@ -95,6 +95,17 @@
         { "when": "end_to_end_attack_chain", "goto": "attack-chain/SKILL.md" }
       ],
       "success_oracles": ["scope_respected", "finding_reproduced", "evidence_recorded"]
+    },
+    {
+      "id": "unattended-overnight-run",
+      "target_kinds": ["overnight_run", "unattended_task", "deadline_run"],
+      "intent_keywords": ["overnight", "过夜", "整夜", "unattended", "无人值守", "deadline", "早上看结果"],
+      "primary_skill": "overnight-run/SKILL.md",
+      "requires_capabilities": [],
+      "fallback_edges": [
+        { "when": "evolution_loop_needed", "goto": "evolution/SKILL.md" }
+      ],
+      "success_oracles": ["slots_validated", "night_branch_exists", "report_readable"]
     }
   ],
   "micro_route_rules": [

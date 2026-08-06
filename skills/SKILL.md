@@ -26,6 +26,7 @@
 | 模块 | 目录 | 适用场景 |
 |------|------|---------|
 | **自进化路由内核** | `evolution/` | GOAL 契约、Capability Graph、步骤级 TraceCard、候选经验晋级门禁 |
+| **无人值守过夜运行** | `overnight-run/` | 无人值守跑到绝对 DEADLINE：slot 填表 → validate 冒烟 → 脚手架（.night/ + night 分支 + pre-commit 红线）→ 增量报告 → 经验回流（OVERNIGHT.md v2 契约） |
 | **通用逆向** | `reverse-engineering/` | GDB / Frida / angr / Unicorn / Qiling / 反分析对抗 / 全语言平台逆向 / CTF 模式库 |
 | **APK 逆向** | `apk-reverse/` | Android APK 解包、jadx 反编译、smali 修改、Frida Hook、重打包签名安装 |
 | **IDA Pro 逆向** | `ida-reverse/` | IDA Pro MCP HTTP 服务器（72 个工具）：反编译、反汇编、数据流追踪、交叉引用 |

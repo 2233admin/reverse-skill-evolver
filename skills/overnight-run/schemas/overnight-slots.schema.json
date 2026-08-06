@@ -1,0 +1,94 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Overnight Slots",
+  "description": "Canonical slot type definition for skills/overnight-run/OVERNIGHT.md. Slots are normally filled inline in the markdown; this schema is the canonical type contract and the target shape if slots are serialized to JSON for tooling.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "DEADLINE",
+    "TEST_CMD",
+    "LINT_CMD",
+    "LOC_CMD",
+    "ISSUE_LIST",
+    "TARGET_MODULE",
+    "SPEC_FILE",
+    "ALLOWED_COMPONENTS",
+    "BANNED_PATTERNS",
+    "SCOPE_PREFIX"
+  ],
+  "properties": {
+    "DEADLINE": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Absolute ISO-8601 timestamp; triggers section 4.4 stop rule"
+    },
+    "TEST_CMD": {
+      "type": "string",
+      "description": "Test command; run twice (cheap runs three times) in Phase 0, FLAKY set defined only then"
+    },
+    "LINT_CMD": {
+      "type": "string",
+      "description": "Red-line check command; installed into the pre-commit hook in Phase 0 step 7"
+    },
+    "LOC_CMD": {
+      "type": "string",
+      "description": "Source line count command (non-test, non-comment)"
+    },
+    "BENCH_CMD": {
+      "type": ["string", "null"],
+      "description": "Benchmark command; null when the repo has no performance surface (delete the bench section then)"
+    },
+    "PERF_METRICS": {
+      "type": ["string", "array", "null"],
+      "items": { "type": "string" },
+      "description": "Metric names to take medians over (5 runs)"
+    },
+    "PERF_TOLERANCE": {
+      "type": ["string", "null"],
+      "description": "Allowed median degradation, e.g. '2%'"
+    },
+    "ISSUE_LIST": {
+      "type": ["string", "array"],
+      "items": { "type": "string" },
+      "description": "Phase 1 issue list; triage with a fixed small budget each before fixing"
+    },
+    "TARGET_MODULE": {
+      "type": "string",
+      "description": "Phase 2 target module path"
+    },
+    "SPEC_FILE": {
+      "type": "string",
+      "description": "Phase 2 spec source; the single source of truth for shape"
+    },
+    "ALLOWED_COMPONENTS": {
+      "type": ["string", "array"],
+      "items": { "type": "string" },
+      "description": "Whitelist of allowed components; anything else is wrong even if inlined or moved"
+    },
+    "BANNED_PATTERNS": {
+      "type": ["string", "array"],
+      "items": { "type": "string" },
+      "description": "Syntax red lines; enforced by the pre-commit hook with no exceptions"
+    },
+    "QUARANTINE_BUDGET": {
+      "type": ["integer", "string"],
+      "description": "Max quarantined tests; 0 is the expectation, not the quota"
+    },
+    "MAX_PASSES": {
+      "type": ["integer", "string"],
+      "description": "Consecutive non-converging passes before Phase 2 ends as over-budget"
+    },
+    "PHASE2_BUDGET": {
+      "type": ["integer", "string"],
+      "description": "Phase 2 time cap"
+    },
+    "ESCAPE_HATCHES": {
+      "type": ["string", "null"],
+      "description": "Language escape-hatch syntax; leave empty/null when none exist"
+    },
+    "SCOPE_PREFIX": {
+      "type": "string",
+      "description": "Commit message prefix for this run"
+    }
+  }
+}
