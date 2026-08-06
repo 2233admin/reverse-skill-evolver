@@ -120,6 +120,30 @@ $repo = git rev-parse --show-toplevel
 # night-marker gate: only enforce inside a repo that actually has an overnight run.
 # If core.hooksPath is shared (global override), this keeps other repos untouched.
 if (-not (Test-Path -LiteralPath (Join-Path $repo '.night'))) { exit 0 }
+# Chain upstream hooks from the ORIGINAL core.hooksPath (e.g. ECC secrets scan).
+# We override repo-local core.hooksPath for the overnight hook, so we must re-run
+# the upstream hook ourselves or security gates would silently disappear.
+$upstreamHooks = '<UPSTREAM_HOOKS>'
+$upstreamHook = ''
+if ($upstreamHooks) {
+    $upstreamHook = Join-Path $upstreamHooks 'pre-commit'
+    if (-not (Test-Path -LiteralPath $upstreamHook)) { $upstreamHook = '' }
+}
+if ($upstreamHook -and (Test-Path -LiteralPath $upstreamHook)) {
+    Write-Host '[HOOK] running upstream pre-commit (security gates)' -ForegroundColor Yellow
+    # upstream hooks are typically bash scripts (e.g. ECC secrets scan); run via bash.
+    $bashExe = (Get-Command bash -ErrorAction SilentlyContinue).Source
+    if (-not $bashExe) { $bashExe = 'C:\Program Files\Git\bin\bash.exe' }
+    if (Test-Path -LiteralPath $bashExe) {
+        & $bashExe $upstreamHook
+    } else {
+        & $upstreamHook
+    }
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host '[HOOK] BLOCKED: upstream hook failed' -ForegroundColor Red
+        exit 1
+    }
+}
 $baseline = '<BASELINE>'
 $target = '<TARGET>'
 $patterns = @(<PATTERNS>)
@@ -153,7 +177,7 @@ if ($lint) {
 exit 0
 '@
 $patternsJoined = ($BannedPatterns | ForEach-Object { "'" + ($_ -replace "'", "''") + "'" }) -join ', '
-$psContent = $psContent.Replace('<BASELINE>', $BaselineFile).Replace('<TARGET>', $TargetModule).Replace('<PATTERNS>', $patternsJoined).Replace('<LINT>', $LintCmd.Replace("'", "''"))
+$psContent = $psContent.Replace('<UPSTREAM_HOOKS>', $existingHooksPath).Replace('<BASELINE>', $BaselineFile).Replace('<TARGET>', $TargetModule).Replace('<PATTERNS>', $patternsJoined).Replace('<LINT>', $LintCmd.Replace("'", "''"))
 Set-Content -LiteralPath $hookPs -Value $psContent -Encoding UTF8
 
 $sh = @"
