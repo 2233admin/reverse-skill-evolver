@@ -82,6 +82,17 @@ foreach ($name in $files.Keys) {
     if (-not (Test-Path -LiteralPath $p)) { Set-Content -LiteralPath $p -Value $files[$name] -Encoding UTF8 }
 }
 
+# gitignore the working area except the sealed BASELINE.md, so `git add -A` in a
+# Phase 1/2/3 commit can never accidentally track REPORT/BLOCKERS/QUARANTINE/FINDINGS.
+$gi = Join-Path $RepoRoot '.gitignore'
+if (-not (Test-Path -LiteralPath $gi)) { Set-Content -LiteralPath $gi -Value '' -Encoding UTF8 }
+$giContent = Get-Content -LiteralPath $gi -Raw -Encoding UTF8
+if ($giContent -notmatch '\.night/') {
+    $giAdd = "`n# Overnight run working area (only BASELINE.md is sealed into git)`n.night/`n!.night/BASELINE.md`n"
+    Add-Content -LiteralPath $gi -Value $giAdd -Encoding UTF8
+    Write-Host '[OK] .gitignore now excludes .night/ (keeps BASELINE.md tracked)' -ForegroundColor Green
+}
+
 # night branch
 $nightBranch = 'night'
 $hasNight = git -C $RepoRoot rev-parse --verify --quiet "refs/heads/$nightBranch"
