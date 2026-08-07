@@ -57,10 +57,12 @@ if (-not $RepoRoot) {
 }
 $RepoRoot = (Resolve-Path -LiteralPath $RepoRoot).Path
 
-# working tree must be clean so BASE is well-defined
-$dirty = git -C $RepoRoot status --porcelain
+# working tree must be clean so BASE is well-defined, EXCEPT .night/ which is
+# the run's own working area (may be pre-seeded, e.g. by triage/baseline prep).
+$dirty = git -C $RepoRoot status --porcelain | Where-Object { $_ -notmatch '^\?\? \.night/' }
 if ($dirty) {
     Write-Host '[FAIL] working tree is dirty; commit or stash before scaffolding (BASE must be clean)' -ForegroundColor Red
+    $dirty | ForEach-Object { Write-Host "  $_" -ForegroundColor Yellow }
     exit 1
 }
 
