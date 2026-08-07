@@ -99,10 +99,15 @@ if (-not $hasNight) {
 # without touching global config or other repos.
 $gitDir = git -C $RepoRoot rev-parse --git-dir
 if (-not [IO.Path]::IsPathRooted($gitDir)) { $gitDir = Join-Path $RepoRoot $gitDir }
-$existingHooksPath = git -C $RepoRoot config --get core.hooksPath
+# Read upstream hooks from GLOBAL/SYSTEM config only -- NOT local. On a re-run the
+# local value is already our own .git/overnight-hooks; injecting that would make the
+# generated hook chain itself (infinite recursion).
+$existingHooksPath = git -C $RepoRoot config --global --get core.hooksPath
+if (-not $existingHooksPath) { $existingHooksPath = git -C $RepoRoot config --system --get core.hooksPath }
+if (-not $existingHooksPath) { $existingHooksPath = '' }
 $hooksPathRel = '.git/overnight-hooks'
 if ($existingHooksPath -and ($existingHooksPath -ne $hooksPathRel)) {
-    Write-Host "[INFO] overriding local core.hooksPath '$existingHooksPath' -> '$hooksPathRel' (repo-local; global config untouched)" -ForegroundColor Yellow
+    Write-Host "[INFO] upstream core.hooksPath '$existingHooksPath' will be chained (global/system; local config untouched)" -ForegroundColor Yellow
 }
 git -C $RepoRoot config core.hooksPath $hooksPathRel
 $hookDir = Join-Path $RepoRoot $hooksPathRel
@@ -152,11 +157,27 @@ $patterns = @(<PATTERNS>)
 $lint = '<LINT>'
 $fail = $false
 
-# 1. baseline freeze: reject any commit touching BASELINE.md
+# 1. baseline freeze: allow the FIRST commit (sealing) of BASELINE.md, but reject any
+#    subsequent modification of the already-tracked file. Unconditional rejection would
+#    deadlock Phase 0 step 6 (the sealing commit itself could never land).
 $staged = git -C $repo diff --cached --name-only
 if ($staged -contains $baseline) {
-    Write-Host '[HOOK] BLOCKED: BASELINE.md is sealed' -ForegroundColor Red
-    $fail = $true
+    # "Already tracked" must mean "present in HEAD", not present in the index: on the
+    # FIRST (sealing) commit the file is already staged (thus in the index) but not in
+    # HEAD, and must be allowed. cat-file -t exits 0 if HEAD has the path; with
+    # $ErrorActionPreference='Stop' native stderr becomes a terminating error, so wrap
+    # in a try/catch and treat a thrown error as "not in HEAD".
+    $baselineInHead = $false
+    try {
+        git -C $repo cat-file -t "HEAD:$baseline" 2>$null | Out-Null
+        $baselineInHead = ($LASTEXITCODE -eq 0)
+    } catch {
+        $baselineInHead = $false
+    }
+    if ($baselineInHead) {
+        Write-Host '[HOOK] BLOCKED: BASELINE.md is sealed (already in HEAD; no further edits allowed)' -ForegroundColor Red
+        $fail = $true
+    }
 }
 
 # 2. banned patterns over staged content
