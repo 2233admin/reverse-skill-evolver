@@ -65,3 +65,21 @@ MUST NOT 用于：需要中途人工决策的任务、含外部写操作（推�
 - [ ] `night` 分支存在，BASE 已记录，工作树在封存后未再碰 `BASELINE.md`
 - [ ] pre-commit hook 已安装并实测拦截 BASELINE.md 触碰与 banned patterns
 - [ ] 运行产出已按 mapping 分类进 field-journal 分层，stable 路由在 promotion gate 前未被改动
+
+## Pitfalls（2026-08-07 tdxcli-rs 首轮真实运行发现）
+
+1. **执行载体必须是长驻 agent**：delegate_task 的 leaf 子 agent 有 ~50 次 tool-call 硬上限，几分钟截断，跑不满 DEADLINE（首轮实证：Phase 0 验证完、候选全复核、零 commit 被截断）。正确执行者 = 本会话主 agent / cron job。若必须 delegate，把 Phase 0 commit 放最前。
+2. **封存死锁**：hook 若"无条件拒绝 BASELINE.md 提交"，会把首次封存也拦掉 → 基线永远无法封存。判定必须用"文件是否已在 HEAD"（`git cat-file -t HEAD:<path>` + try/catch），而非"是否在 index"。
+3. **PS stderr 陷阱**：`$ErrorActionPreference='Stop'` 下原生 stderr 抛 NativeCommandError 终止 hook；必须 try/catch 包裹并视异常为"不存在"。
+4. **upstream hook 自递归**：读 local core.hooksPath 作上游时，二次运行读到自己的 `.git/overnight-hooks` → 自递归。上游必须只读 global/system 级。
+5. **全局 core.hooksPath 遮蔽**：必须仓库局部 hooksPath + 链式调用上游（ECC secrets 扫描等），否则安全门静默消失。
+6. **残留 `.git/config.lock`**：会让 `git config` 静默失败 → hooksPath 没写入 → hook 没跑但脚本仍报 OK。删空锁后 `git config --local --get core.hooksPath` 确认 + 故意 tamper 验证。
+
+## 验证命令（真实环境全绿）
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File skills/overnight-run/scripts/new-overnight.ps1 "-BannedPatterns" "reset --hard,force-push,rebase" -TargetModule "crates"
+# 首次封存应通过：git add .night/BASELINE.md && git commit -m "seal"
+# 封存后修改应拦截：echo x >> .night/BASELINE.md && git add && git commit  # -> BLOCKED
+# banned pattern 应拦截：echo "git reset --hard HEAD" > evil.rs && git add && git commit  # -> BLOCKED
+```
