@@ -1,119 +1,45 @@
-# [日期] [项目简称]
+# 通用模式晋级候选：[模式名称]
 
-## 场景分类
-<!-- APK逆向 / JS签名 / 二进制分析 / 渗透测试 / CTF / 抓包分析 / 其他 -->
+> 本模板只用于目标无关、脱敏、可由 fixture 或回归测试复现的通用模式。项目日志、目标身份/路径、源码或二进制事实、凭据、IDB 和 session trace 禁止写入本仓库。
 
-## 目标概述
-<!-- 一句话说明在干什么 -->
+## 抽象问题形状
 
-## GOAL 契约
-<!-- 对应 evolution/goal.template.yaml。至少写清：输入、授权边界、目标产物、成功 oracle、停止条件 -->
+- 适用 target kind：
+- 通用触发条件：
+- 非目标专属的失败模式：
+- 明确不适用范围：
 
-- GOAL ID:
-- 授权边界:
-- 输入制品:
-- 目标产物:
-- 成功 oracle:
-- 停止条件:
+## 最小方法
 
-## 完整执行链路
-<!-- 从拿到目标到产出结果的完整步骤，包括走过的弯路 -->
+1. `<step one>`
+2. `<step two>`
+3. `<step three>`
 
-1. ...
-2. ...
-3. ...
+## 可复现证据
 
-## 踩坑记录
+- 离线 fixture：
+- 回归测试与精确命令：
+- 期望 success oracle：
+- 工具/协议版本边界：
 
-| 问题 | 原因 | 解决方案 | 耗时 |
-|------|------|---------|------|
-| ... | ... | ... | ... |
+## 脱敏与来源检查
 
-## 工具链发现
-<!-- 用到了哪些工具，哪些好用，哪些有坑，版本兼容性问题 -->
+- [ ] 不含项目名、目标名、域名、IP、本机路径或凭据
+- [ ] 不含目标源码/二进制事实、IDB、截图或运行 trace
+- [ ] 方法可由合成 fixture 或公开规范独立解释
+- [ ] `anonymization.md` 检查通过
 
-## 关键代码/命令
+## 进化分层
 
-```
-<!-- 贴实际用到的关键命令、hook 脚本、解密逻辑 -->
-```
+- [ ] `candidate`：证据不足，只能提示
+- [ ] `validated`：oracle 与回归通过，可进入 promotion review
+- [ ] `forensic`：失败/异常分析，不参与控制流
 
-## 对本包的改进建议
-<!-- 路由是否准确？bootstrap 是否缺失？文档是否需要补充？新工具是否需要加入 manifest？ -->
+## Promotion record
 
-## TraceCard 摘要
-<!-- 对应 evolution/trace-card.template.yaml。记录步骤级路由、工具、证据、失败模式、oracle 结果 -->
+- 关联 regression：
+- 关联 oracle：
+- review 结论：
+- rollback 条件：
 
-- Trace ID:
-- Macro route:
-- Micro route switches:
-- Oracle result:
-- Preserve:
-- Repair:
-- Prune:
-
-## 记忆层级
-<!-- validated / candidate / forensic 三选一。只有 validated 可参与未来自动路由 -->
-
-- [ ] validated：oracle 通过，回归或 fixture 检查通过，可复用
-- [ ] candidate：有潜力但证据不足，只能提示
-- [ ] forensic：失败/异常/疑似污染，只能分析
-
-## 晋级门禁
-<!-- 若本次要改 routing.md/routing.json/子 skill/bootstrap，必须填写 promotion record -->
-
-- 是否生成 promotion record:
-- Oracle 是否通过:
-- 回归检查:
-- 敏感信息扫描:
-- 回滚路径:
-
-## 可复用的模式/脚本片段
-<!-- 如果产出了可复用的 hook 脚本、解密逻辑、绕过方案，贴在这里 -->
-
-## 进化动作
-<!-- 本次回写后实际执行了哪些更新 -->
-- [ ] 更新了路由矩阵
-- [ ] 更新了 routing.json
-- [ ] 更新了 tool-index
-- [ ] 更新了 capability-graph
-- [ ] 更新了 bootstrap-manifest
-- [ ] 更新了子 skill 文档
-- [ ] 新增/更新了 TraceCard
-- [ ] 通过 promotion gate
-- [ ] 新增了 pitfalls 记录
-- [ ] 无需更新
-
-## 环境信息
-<!-- 记录当时的关键环境 -->
-- OS:
-- 工具版本:
-- 目标平台/版本:
-
-## 脱敏要求
-
-> **本文件可能随仓库同步到远程，必须脱敏。完整规范见 [`anonymization.md`](anonymization.md)（占位符总表 + 自动检测脚本）。**
-
-- 目标域名/IP：用 `{target_domain}` / `{target_ip}` 替代（详见 `anonymization.md`）
-- 真实 URL 路径：保留结构，替换域名
-- Token/Cookie/密码/JWT/API key：用 `{token}` / `{password}` / `{api_key}` 占位
-- 用户名/手机号/邮箱：用 `{username}` / `{phone}` / `{user_email}` 占位
-- 内部 IP/端口：内网 IP 段保留前两段（`10.0.x.x`）
-- 漏洞 payload：可保留技术内容，但替换目标特征参数（如 `?id={user_id}`）
-
-提交前对照 `anonymization.md` 末尾的 **Field-Journal 必查项 checklist** 跑一遍正则扫描。
-
-如果是私有仓库且确认不会公开，可以放宽以上限制，但仍建议脱敏。
-
-## 索引同步（提交前最后一步）
-
-写完本日志后，必须同步更新 `_index.md`：
-
-1. 在「按场景分类」对应小节新增一行（含日期、关键词）
-2. 在「高频成功模式（按技术）」对应技术下追加本文件名
-3. 在「实体倒排（按目标特征）」对应实体下追加本文件名
-4. 更新「累计统计」的总数与"最近更新"日期
-
----
-<!-- [进化统计] 本包累计完成项目: N | 本次新增模式: X | 本次修复工具链问题: Y -->
-<!-- [社区贡献] 完成后询问用户是否 PR 到主仓库。流程见 CONTRIBUTE-BACK.md -->
+只有显式 promotion gate 通过后，才能更新 `routing.json`、`routing.md`、child skill、AIGX 或 capability manifest。不得自动更新 `_index.md` 或创建项目日志。

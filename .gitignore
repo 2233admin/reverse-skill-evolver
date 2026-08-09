@@ -34,6 +34,7 @@ Desktop.ini
 skills/tool-index.md
 skills/tool-index.json
 skills/capability-graph.json
+skills/generated/
 
 # 编译产物
 *.exe

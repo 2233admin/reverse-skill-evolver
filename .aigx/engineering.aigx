@@ -1,0 +1,8 @@
+<aigx-engineering>
+  <rule id="ENG-python-primary">New cross-platform pipeline behavior MUST be implemented in Python; PowerShell remains a compatibility surface.</rule>
+  <rule id="ENG-fail-closed">Missing genomes, invalid genomes, unresolved edit boundaries, missing contracts, and unavailable required tools MUST block execution explicitly.</rule>
+  <rule id="ENG-readonly-default">Planning, discovery, routing, and preflight operations MUST be read-only unless the caller supplies a documented apply or execute flag.</rule>
+  <rule id="ENG-regression-first">Stable routing changes MUST have focused regression tests and a reproducible end-to-end oracle.</rule>
+  <rule id="ENG-preserve-dirty">Source repositories with uncommitted changes MUST be preserved; isolated labs use committed baselines and exclude dirty changes.</rule>
+  <rule id="ENG-no-credentials">Contracts, logs, genomes, and reports MUST NOT contain credentials or secret-bearing fields.</rule>
+</aigx-engineering>

@@ -1,6 +1,6 @@
 # Field-Journal 脱敏规范
 
-> 写 field-journal、提交 PR、分享 payload、对外发报告时**必须脱敏**。下面这套占位符规范借鉴自 PentAGI 多 agent 系统的 anonymization 协议，目标是：**保留可复用价值的同时，不暴露真实目标**。
+> 脱敏是报告与通用模式晋级的必要检查，但不是把目标证据写入本包的许可。项目日志、源码/二进制事实、路径、凭据和 session trace 即使替换了标识符，也必须留在外部 runtime；field-journal 只接收可由合成 fixture 或公开规范独立解释的通用模式。
 
 ## 占位符总表
 
@@ -170,7 +170,7 @@ CTF 题目题面、靶机 hostname、flag 格式**通常不算敏感**（靶机�
 
 ## 自动检测脚本
 
-写 field-journal 后跑一遍下面的正则，找出漏脱敏：
+提议通用模式晋级前跑一遍下面的正则，找出漏脱敏：
 
 ```powershell
 # Windows PowerShell

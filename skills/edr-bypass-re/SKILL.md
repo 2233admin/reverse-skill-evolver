@@ -196,7 +196,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "&lt;SKILL_ROOT&gt;\skills\s
 
 - `pentest-tools/network-attack-defense.md` — 内网横向时如何与本 skill 联动
 - `malware-analysis/` — 反向视角，看检测方怎么写规则
-- `field-journal/` — 每次实战后回写经验
+- `field-journal/` — 仅接收经过脱敏、回归与 promotion review 的通用模式；实战证据留在外部 runtime
 
 **下游交付**：
 

@@ -42,4 +42,4 @@ powershell -NoProfile -ExecutionPolicy Bypass -File skills/overnight-run/scripts
 2. `git log --oneline -- .night/BASELINE.md`：应只有一行（基线封存证明）
 3. Phase 2 映射表（规格步骤 ↔ 代码构造，一一对应）；`QUARANTINE.md` 摘要（本示例预期为 0 条）
 4. 每个 commit 独立、格式合规（§5）
-5. 通过 oracles 的经验 → `field-journal/validated/` + `evolution/promotion-record.template.yaml`；未过 → `candidate/` 或 `forensic/`
+5. 目标运行证据保持外置；通过 oracle 且能由合成 fixture 复现的通用抽象 → promotion review，未通过不得写入 field-journal

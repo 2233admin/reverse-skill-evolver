@@ -39,6 +39,11 @@ $scriptRefs = @{
     'rahash2' = @('radare2/SKILL.md')
     'rax2' = @('radare2/SKILL.md')
     'python' = @('apk-reverse/scripts/frida-run.ps1')
+    'sentrux' = @('evolution/SKILL.md')
+    'git-ida' = @('ida-reverse/SKILL.md', 'ida-reverse/scripts/teams_preflight.py', 'ida-reverse/scripts/teams_collaboration.py')
+    'git' = @('ida-reverse/SKILL.md', 'ida-reverse/scripts/teams_worktree_lab.py')
+    'xcmd' = @('scripts/cli_search.py')
+    'rg' = @('scripts/cli_search.py')
     'pip' = @()
     'node' = @('js-reverse/SKILL.md')
     'npx' = @('js-reverse/SKILL.md')
@@ -81,7 +86,7 @@ $markdownContent = ($markdownLines -join [Environment]::NewLine) + [Environment]
 $markdownContent | Set-Content -LiteralPath $OutputMarkdown -Encoding utf8
 
 # --- Capability status view ---
-$capabilityNames = @('jadx', 'apktool', 'frida', 'idalib-mcp', 'jshookmcp', 'anything-analyzer', 'idapro', 'r2', 'adb', 'agent-browser', 'ghidra-mcp', 'seclists', 'proxycat', 'burpsuite-mcp', 'nmap')
+$capabilityNames = @('jadx', 'apktool', 'frida', 'idalib-mcp', 'jshookmcp', 'anything-analyzer', 'idapro', 'r2', 'adb', 'agent-browser', 'ghidra-mcp', 'seclists', 'proxycat', 'burpsuite-mcp', 'nmap', 'sentrux', 'git-ida', 'git', 'xcmd', 'rg')
 $capabilityRows = @()
 foreach ($capName in $capabilityNames) {
     $state = Get-ReverseCapabilityState -Name $capName

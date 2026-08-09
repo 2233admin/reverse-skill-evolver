@@ -4,6 +4,8 @@ Route tasks to the most appropriate skill module by target type, user intent, an
 
 ## CRITICAL: Routing Execution Protocol
 
+Before step 0, any task carrying `--project-path` MUST pass the official AIGX validator. Pass each known edit target with `--aigx-target`; missing genomes, failed lint, and unresolved boundaries are blocking conditions.
+
 0. **MUST** define the GOAL first for non-trivial tasks: input, authorization boundary, desired output, success oracle, budget, and stop conditions. Use `evolution/goal.template.yaml`.
 1. **MUST** complete routing BEFORE executing. Do NOT "do first, route later".
 2. **MUST** match ALL four dimensions (target type + user intent + toolchain/capability graph + success oracle) before entering a skill.
@@ -22,6 +24,25 @@ Route tasks to the most appropriate skill module by target type, user intent, an
 - `evolution_protocol`: required pre-route and post-route artifacts.
 
 When `routing.md` and `routing.json` disagree, use `routing.md` for safety/intent context, but update `routing.json` before claiming the routing package is current.
+
+## Executable task router
+
+Every incoming task should pass through the deterministic router before a child skill is opened:
+
+```powershell
+python "<SKILL_ROOT>\scripts\route_task.py" --task "<task>" --input-path "<artifact>" --pretty
+```
+
+The JSON result is authoritative:
+
+- `ready`: the route and preflight checks pass; execute the returned controlled entrypoint or begin the selected skill's first action.
+- `blocked`: a required capability, authorization scope, or service contract is missing; resolve that condition or use the reported fallback.
+- `no_route`: the task is not represented; propose a new route instead of force-fitting it.
+- `invalid`: the task contract is incomplete or malformed.
+
+Use `--execute` only when the task explicitly permits running an existing entrypoint. The router probes required MCP `tools/list` contracts, so an open TCP port by itself does not count as service readiness.
+
+For a source or application project, also pass `--project-path "<project-root>"` and each known edit with `--aigx-target "<repo-relative-file>"`. The resulting `project_intelligence` first contains mandatory AIGX lint/boundary evidence, then accepts only a published Code Intel run for that same project as authoritative and includes the live Sentrux observation. A same-project legacy snapshot is advisory; another project's output can contribute only a candidate pattern, never a current structural fact or gate verdict.
 
 ## By Target Type
 
@@ -63,7 +84,12 @@ When `routing.md` and `routing.json` disagree, use `routing.md` for safety/inten
 | "make the skill self-evolve / improve routing / learn from runs" | `evolution/SKILL.md` — GOAL + TraceCard + promotion gate |
 | "过夜跑 / 整夜自动化 / overnight / unattended / 无人值守 / 早上看结果" | `overnight-run/SKILL.md` — fill slots → validate-slots → new-overnight scaffold → run to DEADLINE → morning review REPORT.md |
 | "from this goal, choose the complete path / stop the AI from drifting" | `evolution/SKILL.md` first, then child route |
-| "decompile / IDA analyze" | `ida-reverse/SKILL.md` — IDA MCP workflow |
+| "decompile / IDA analyze" | `ida-reverse/SKILL.md` — IDA MCP workflow; establish the native 9.4 language/type baseline first |
+| "Pathfinder / call path / reachability / Xrefs Graph" | `ida-reverse/SKILL.md` — use MCP xref→call graph→data-flow evidence; GUI widgets require `mode=gui` |
+| "Rust / Swift / Go binary" | `ida-reverse/SKILL.md` — prefer IDA 9.4 native language recovery; plugins are verified enhancements only |
+| "Dyld Shared Cache / DSC" | `ida-reverse/SKILL.md` — dedicated 9.4 GUI workflow; never claim a headless MCP equivalent |
+| "IDA Teams / git-ida / collaboration" | `ida-reverse/SKILL.md` — `--repo-path` 做只读预检，外置 `--teams-contract` 做边界检查；脏源码先用外置 `--teams-worktree-contract` 生成隔离 lab，GUI 语义合并仍是单独 smoke |
+| "xcmd / ripgrep / 搜索代码" | `reverse-engineering/SKILL.md` — `cli_search.py` 只读搜索；先健康检查 `x rg`，包装器异常时记录原因并自动改用原生 `rg` |
 | "recover source / disassemble" | `reverse-engineering/SKILL.md` + `ida-reverse/` |
 | "Frida hook / dynamic inject" | `reverse-engineering/tools-dynamic.md` — Frida section |
 | "radare2 / r2 analyze" | `radare2/SKILL.md` — CLI workflow |
@@ -146,6 +172,8 @@ When `routing.md` and `routing.json` disagree, use `routing.md` for safety/inten
 | "N-day / patch diff / CVE reproduction" | `binary-diff/SKILL.md` — ghidriff/Diaphora/DeepDiff |
 | "pwn / stack overflow / ROP / ret2libc" | `reverse-engineering/patterns-ctf*.md` + pwntools |
 | "Agent not working / AI lazy / skip steps" | `llm-security/references/agent-obedience-engineering.md` |
+| "precedent / operation history / prior method" | `field-journal/precedent-reverse.md` or `field-journal/precedent-pentest.md` — generic methodology only; never authorization |
+| "authorization / allowed / scope / legal boundary" | `scripts/route_task.py` — explicit current-session `authorization_scope`; missing scope remains blocked |
 | "MSF stuck / orphan process / MSF protocol" | `pentest-tools/references/msf-protocol.md` |
 | "anonymize / placeholder / writeup desensitize" | `field-journal/anonymization.md` |
 | "Hydra / online brute force" | `pentest-tools/SKILL.md` — online password attack |

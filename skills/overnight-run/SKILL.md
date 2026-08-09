@@ -13,7 +13,7 @@ description: Unattended overnight autonomous run contract for reverse-skill-evol
 2. `NOW`: 运行 `scripts/validate-slots.ps1 -TemplatePath <已填模板副本>` 冒烟 slot 质量；失败 → 回去补填，**不带病出发**。
 3. `NEXT`: 运行 `scripts/new-overnight.ps1`（需传 `-LintCmd` / `-BannedPatterns` / `-TargetModule`）脚手架 `.night/` 五文件 + `night` 分支 + pre-commit hook（基线封存、红线、lint 从"每轮自觉执行"变为"物理上无法提交"）。
 4. `ACT`: 把已填模板**整份**作为唯一指令来源投给 agent，独立运行至 `{{DEADLINE}}`。运行期间不得打断。
-5. `END`: 早上 review：先读 `.night/REPORT.md`（§7 阅读顺序），再按 `references/evolver-mapping.md` 把通过 oracles 的经验经 promotion gate 回流 `field-journal/validated|candidate|forensic`；**未过 gate 不得改 stable 路由**。
+5. `END`: 早上 review：先读外部 `.night/REPORT.md`（§7 阅读顺序）。目标证据不入包；只有目标无关、脱敏且有 fixture/回归的通用抽象，才按 `references/evolver-mapping.md` 进入 promotion gate；**未过 gate 不得写 field-journal 或改 stable 路由**。
 
 ## 何时使用（触发）
 
@@ -45,7 +45,7 @@ MUST NOT 用于：需要中途人工决策的任务、含外部写操作（推�
 | `.night/REPORT.md` 增量书写 | TraceCard 的步骤级证据 + 失败归因 |
 | Phase 结局 | 记忆分层：oracle 通过 → `validated/`；有潜力未回归 → `candidate/`；失败/异常 → `forensic/` |
 | 早上 review + promotion gate | `evolution/promotion-record.template.yaml`；未过 gate 不得改 `routing.md` / `routing.json` / 子 skill / manifest |
-| `.night/` 产物 | 机器本地工作区，**不参与** `fleet-sync.ps1`；回流到 field-journal 的条目才随 fleet 同步 |
+| `.night/` 产物 | 仓库外机器本地工作区，**不参与** `fleet-sync.ps1`；仅经 gate 的目标无关通用模式可另行进入 field-journal |
 
 详细映射见 `references/evolver-mapping.md`；一份可直接照抄的填充示例见 `references/example-filled.md`（对 reverse-skill-evolver 自身跑一夜的 dogfood）。
 
@@ -64,9 +64,9 @@ MUST NOT 用于：需要中途人工决策的任务、含外部写操作（推�
 - [ ] `.night/` 五文件存在，`REPORT.md` 骨架含 §7 全部九节
 - [ ] `night` 分支存在，BASE 已记录，工作树在封存后未再碰 `BASELINE.md`
 - [ ] pre-commit hook 已安装并实测拦截 BASELINE.md 触碰与 banned patterns
-- [ ] 运行产出已按 mapping 分类进 field-journal 分层，stable 路由在 promotion gate 前未被改动
+- [ ] 目标运行证据保持外置；仅有目标无关、脱敏、回归通过的通用模式进入 field-journal，stable 路由在 promotion gate 前未被改动
 
-## Pitfalls（2026-08-07 tdxcli-rs 首轮真实运行发现）
+## Pitfalls（Rust workspace 首轮真实运行发现）
 
 1. **执行载体必须是长驻 agent**：delegate_task 的 leaf 子 agent 有 ~50 次 tool-call 硬上限，几分钟截断，跑不满 DEADLINE（首轮实证：Phase 0 验证完、候选全复核、零 commit 被截断）。正确执行者 = 本会话主 agent / cron job。若必须 delegate，把 Phase 0 commit 放最前。
 2. **封存死锁**：hook 若"无条件拒绝 BASELINE.md 提交"，会把首次封存也拦掉 → 基线永远无法封存。判定必须用"文件是否已在 HEAD"（`git cat-file -t HEAD:<path>` + try/catch），而非"是否在 index"。

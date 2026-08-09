@@ -167,6 +167,52 @@ function Get-ReverseToolCatalog {
             )
         }
         [pscustomobject]@{
+            Name = 'sentrux'
+            Skill = 'evolution'
+            Purpose = '架构质量观测、规则检查与结构回归门禁'
+            VersionArgs = @('--version')
+            Fallbacks = @(
+                [pscustomobject]@{ Type = 'command'; Value = 'sentrux' }
+            )
+        }
+        [pscustomobject]@{
+            Name = 'git-ida'
+            Skill = 'ida-reverse'
+            Purpose = 'IDA 9.4 Teams Git 后端：IDB 存储、分支、差异与合并预检'
+            VersionArgs = @('version')
+            Fallbacks = @(
+                [pscustomobject]@{ Type = 'command'; Value = 'git-ida' },
+                [pscustomobject]@{ Type = 'path'; Value = (Join-Path $env:ProgramFiles 'IDA Professional 9.4\tools\teams\git-ida.exe') }
+            )
+        }
+        [pscustomobject]@{
+            Name = 'git'
+            Skill = 'ida-reverse'
+            Purpose = '隔离 Teams 实验仓、分支与 worktree 的 Git 基线'
+            VersionArgs = @('--version')
+            Fallbacks = @(
+                [pscustomobject]@{ Type = 'command'; Value = 'git' }
+            )
+        }
+        [pscustomobject]@{
+            Name = 'xcmd'
+            Skill = 'reverse-engineering'
+            Purpose = 'x-cmd CLI 聚合与增强搜索；实际搜索健康度由 Python 入口单独验证'
+            VersionArgs = @('version')
+            Fallbacks = @(
+                [pscustomobject]@{ Type = 'command'; Value = 'x' }
+            )
+        }
+        [pscustomobject]@{
+            Name = 'rg'
+            Skill = 'reverse-engineering'
+            Purpose = '可脚本化的只读代码和工作区搜索；x-cmd 不健康时的稳定后备'
+            VersionArgs = @('--version')
+            Fallbacks = @(
+                [pscustomobject]@{ Type = 'command'; Value = 'rg' }
+            )
+        }
+        [pscustomobject]@{
             Name = 'pip'
             Skill = 'reverse-engineering'
             Purpose = 'Python 包管理'

@@ -1,0 +1,8 @@
+<aigx-context>
+  <rule id="CTX-aigx-canonical">The applicable AIGX genome is the sole canonical source for project rules and per-file boundaries.</rule>
+  <rule id="CTX-project-gate">Every route carrying project_path MUST pass the official AIGX validator before it can become ready.</rule>
+  <rule id="CTX-edit-boundary">Every explicit non-genome edit target MUST resolve to a files.aigx entry before execution; genome edits are covered by official lint.</rule>
+  <rule id="CTX-runtime-separation">Session roles, worktrees, mutable evidence, and convergence state belong to external runtime contracts rather than the genome.</rule>
+  <rule id="CTX-no-target-data">The generic repository MUST NOT persist another project's name, path, source, binary facts, credentials, or analysis evidence.</rule>
+  <rule id="CTX-official-semantics">Integrations MUST delegate validation and resolution to the official AIGX CLI without extending or weakening its format semantics.</rule>
+</aigx-context>

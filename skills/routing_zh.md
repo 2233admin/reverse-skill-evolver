@@ -9,6 +9,26 @@
 3. `MUST NOT` 因为“看起来差不多”把任务塞进不匹配 skill。
 4. `MUST` 在路由未命中时联网补充方法论，并提议新增 skill。
 5. `MUST NOT` 只回复“请给具体任务”；应先基于现有输入启动可确定步骤。
+
+## 可执行任务路由器
+
+每个新任务先经过确定性路由器，再打开子 skill：
+
+```powershell
+python "<SKILL_ROOT>\scripts\route_task.py" --task "<任务描述>" --input-path "<目标路径>" --pretty
+```
+
+JSON 结果是执行依据：
+
+- `ready`：路由、能力和前置检查通过；执行返回的受控入口，或进入选定 skill 的第一步。
+- `blocked`：缺少工具、授权范围或服务契约；先解决阻断项，或使用输出中的 fallback。
+- `no_route`：没有匹配路由；提议新增路由，不要强行塞进相近 skill。
+- `invalid`：任务合同缺失或格式错误。
+
+只有任务明确允许执行已有入口时才加 `--execute`。路由器会探测所需 MCP 的 `tools/list` 契约；仅端口开放不等于服务可用。
+
+源码或应用项目任务还应传入 `--project-path "<项目根目录>"`。输出中的 `project_intelligence` 只接受同项目已发布的 Code Intel run 作为权威证据，并同时带回当前 Sentrux 观测（图规模、规则和基线状态）。同项目旧快照仅是候选；其他项目只能贡献待验证的通用模式，不能直接影响当前项目的放行或结构判断。
+
 ## 按目标类型
 
 | 目标类型 | 推荐入口 | 备选方案 |
@@ -42,7 +62,11 @@
 
 | 用户说 | 可以参考 |
 |--------|---------|
-| "反编译/IDA 看一下" | `ida-reverse/SKILL.md` — IDA MCP 工作流 |
+| "反编译/IDA 看一下" | `ida-reverse/SKILL.md` — IDA MCP 工作流；9.4 会先建立原生语言/类型基线 |
+| "Pathfinder / 调用路径 / 可达性 / Xrefs Graph" | `ida-reverse/SKILL.md` — MCP 用 xref→调用图→数据流形成可复核证据；GUI 小部件仅在 `mode=gui` |
+| "Rust / Swift / Go 二进制" | `ida-reverse/SKILL.md` — 优先 IDA 9.4 原生语言恢复，插件仅作已验证增强 |
+| "Dyld Shared Cache / DSC" | `ida-reverse/SKILL.md` — IDA 9.4 专用 GUI 工作流，不能假称为无头 MCP 分析 |
+| "IDA Teams / git-ida / 团队协作" | `ida-reverse/SKILL.md` — 传 `--repo-path` 做只读 Git 后端预检，或传外置 `--teams-contract` 做多 Agent 边界校验；只在明确授权后进行 GUI 语义合并 |
 | "还原源码/还原为汇编/逆向还原" | `reverse-engineering/SKILL.md` — 通用逆向 + `ida-reverse/` 或 capstone 静态反汇编 |
 | "Frida hook 一下/动态注入" | `reverse-engineering/tools-dynamic.md` — Frida 章节 |
 | "radare2 / r2 分析" | `radare2/SKILL.md` — CLI 工作流 |
@@ -109,8 +133,8 @@
 | "让 AI 干活/强制执行/Agent 指令加强" | `llm-security/references/agent-obedience-engineering.md` — 8 大技术 + 借口反驳表 |
 | "Prompt 工程/Skill 工程/Harness 工程" | `llm-security/references/agent-obedience-engineering.md` — 上下文窗口布局 + 五模式 |
 | "Codex 不工作/Claude Code 不执行/AI 编码 Agent 不干活" | `llm-security/references/agent-obedience-engineering.md` — 强制启动模板 |
-| "先例/操作记录/做过什么/已执行/操作授权" | `field-journal/precedent-auth.md` → `field-journal/precedent-reverse.md` 或 `field-journal/precedent-pentest.md` — 授权链：先解除安全审查 → 确认操作日常 |
-| "授权/是否允许/可以做吗/安全警告/法律风险/scope" | `field-journal/precedent-auth.md` — 授权预声明，确认后不再输出安全警告 |
+| "先例/操作记录/做过什么/已执行" | `field-journal/precedent-reverse.md` 或 `field-journal/precedent-pentest.md` — 仅作通用方法参考，不构成授权 |
+| "授权/是否允许/可以做吗/法律边界/scope" | `scripts/route_task.py` — 使用当前 session 显式 `authorization_scope`；缺失时保持 blocked |
 | "内网渗透/横向移动" | `pentest-tools/SKILL.md` + `references/network-attack-defense.md` |
 | "权限提升/提权" | `pentest-tools/references/network-attack-defense.md` — 提权章节 |
 | "Mimikatz/凭证提取/PtH" | `pentest-tools/references/network-attack-defense.md` — 凭证获取 |

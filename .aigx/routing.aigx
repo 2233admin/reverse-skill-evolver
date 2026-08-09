@@ -1,0 +1,8 @@
+<aigx-routing>
+  <rule id="ROUTE-deterministic-entry">Incoming tasks MUST pass through route_task.py before a child skill is executed.</rule>
+  <rule id="ROUTE-aigx-first">For project-aware tasks, AIGX validation precedes Code Intel, Sentrux, skill routing, and controlled dispatch.</rule>
+  <rule id="ROUTE-blocked-no-execute">A blocked route MUST NOT execute its dispatch command or substitute an unrelated fallback.</rule>
+  <rule id="ROUTE-capability-evidence">Capability readiness MUST come from live discovery or a current capability graph rather than guessed paths or historical snapshots.</rule>
+  <rule id="ROUTE-project-facts-local">Cross-project memory may provide generic patterns only; current structural facts MUST come from the active project's own evidence.</rule>
+  <rule id="ROUTE-oracle-required">A route is complete only when its named success oracles have observable evidence.</rule>
+</aigx-routing>

@@ -27,7 +27,7 @@
 **共享的部分**（不需要改动）：
 - 所有 `SKILL.md`、`routing.md`
 - 所有 `references/` 知识库
-- `field-journal/` 自进化机制
+- `field-journal/` 通用先例与经 gate 晋级的目标无关模式
 - `CTF-Sandbox-Orchestrator/` 全部
 - `docs-generator/`、`diagram-generator/`
 
@@ -172,7 +172,7 @@ bash kali/scripts/bootstrap-reverse.sh idapro --start-services
 
 ### 2.5 让 AI 客户端自动路由
 
-告诉你的 AI 客户端读取 `kali/RULES-kali.md`，它会自动完成全局注入。
+告诉 AI 客户端在当前项目中读取 `.aigx/protocol.aigx` 与 `RULES.md`，再调用 `skills/scripts/route_task.py`。这不会写入客户端全局配置。
 
 ---
 
@@ -285,4 +285,4 @@ bash kali/scripts/bootstrap-reverse.sh r2
 
 ### Q: 我想同时在 Windows 和 Kali 上用这套系统
 
-没问题。`skills/` 目录通过 Git 同步，`field-journal/` 的经验两边共享。只是执行脚本时 Windows 用 `skills/scripts/*.ps1`，Kali 用 `kali/scripts/*.sh`。
+没问题。`skills/` 目录通过 Git 同步，但只同步通用先例与经 gate 晋级的目标无关模式；目标 trace 与运行证据始终留在外部 runtime。执行脚本时 Windows 用 `skills/scripts/*.ps1`，Kali 用 `kali/scripts/*.sh`。

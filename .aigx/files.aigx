@@ -1,0 +1,306 @@
+<aigx-files>
+  <file path="AGENTS.md" domain="bootstrap">
+    <role>Provide the tool-agnostic one-paragraph bridge into the canonical genome.</role>
+    <gotcha pri="CRIT">Do not duplicate project rules here; duplicated prose will drift from AIGX.</gotcha>
+    <check>CTX-aigx-canonical CTX-edit-boundary</check>
+  </file>
+  <file path="RULES.md" domain="bootstrap">
+    <role>Provide the legacy-compatible startup sequence for clients that open RULES.md.</role>
+    <gotcha pri="CRIT">This file is a bridge, not a second source of truth.</gotcha>
+    <check>CTX-aigx-canonical ROUTE-aigx-first</check>
+  </file>
+  <file path="README.md" domain="distribution">
+    <role>Explain installation and the public capability surface.</role>
+    <gotcha>Keep machine-specific and target-project data out of distribution documentation.</gotcha>
+    <check>CTX-no-target-data CTX-aigx-canonical</check>
+  </file>
+  <file path="README_zh.md" domain="distribution">
+    <role>Explain the Chinese installation and public capability surface.</role>
+    <gotcha>Keep the AIGX contract semantically aligned with README.md.</gotcha>
+    <check>CTX-no-target-data CTX-aigx-canonical</check>
+  </file>
+  <file path="skills/SKILL.md" domain="routing">
+    <role>Describe the master skill surface after the AIGX gate has passed.</role>
+    <gotcha pri="CRIT">Never route project work before mandatory AIGX context is ready.</gotcha>
+    <check>ROUTE-aigx-first ROUTE-blocked-no-execute</check>
+  </file>
+  <file path="skills/evolution/SKILL.md" domain="evolution">
+    <role>Define goal, trace, oracle, and promotion behavior above the context plane.</role>
+    <gotcha>Runtime learning must not mutate AIGX without regression and promotion evidence.</gotcha>
+    <check>CTX-runtime-separation ENG-regression-first ROUTE-oracle-required</check>
+  </file>
+  <file path="skills/evolution/aigx-context-plane.promotion.yaml" domain="evolution">
+    <role>Record the regression, tool, anonymization, and rollback evidence for promoting the mandatory AIGX gate.</role>
+    <gotcha pri="CRIT">Promotion evidence must remain generic and contain no target project identity, path, or analysis data.</gotcha>
+    <check>CTX-no-target-data ENG-regression-first ROUTE-oracle-required</check>
+  </file>
+  <file path="skills/routing.json" domain="routing">
+    <role>Store deterministic route candidates and tool stages.</role>
+    <gotcha>It selects workflows but does not supersede AIGX project constraints.</gotcha>
+    <check>ROUTE-deterministic-entry ROUTE-aigx-first</check>
+  </file>
+  <file path="skills/routing.md" domain="routing">
+    <role>Explain routing behavior and fallback edges for humans and agents.</role>
+    <gotcha>Human-readable guidance must agree with route_task.py fail-closed behavior.</gotcha>
+    <check>ROUTE-blocked-no-execute ROUTE-capability-evidence</check>
+  </file>
+  <file path="skills/scripts/aigx_context.py" domain="context">
+    <role>Invoke the official validator and resolve mandatory project edit boundaries.</role>
+    <forbid pri="CRIT">Never persist a registry of target project identities or paths.</forbid>
+    <gotcha pri="CRIT">A missing boundary is a block, not a warning or fallback condition.</gotcha>
+    <check>CTX-project-gate CTX-edit-boundary CTX-no-target-data CTX-official-semantics ENG-fail-closed</check>
+  </file>
+  <file path="skills/scripts/route_task.py" domain="routing">
+    <role>Build a deterministic checked plan and controlled dispatch command.</role>
+    <gotcha pri="CRIT">A project route cannot become ready unless its AIGX preflight is ready.</gotcha>
+    <check>ROUTE-deterministic-entry ROUTE-aigx-first ROUTE-blocked-no-execute ENG-fail-closed</check>
+  </file>
+  <file path="skills/scripts/test_aigx_context.py" domain="testing">
+    <role>Lock fail-closed genome and boundary behavior.</role>
+    <gotcha>Cover missing and escaping targets as well as the passing path.</gotcha>
+    <check>ENG-regression-first ENG-fail-closed</check>
+  </file>
+  <file path="skills/scripts/test_route_task.py" domain="testing">
+    <role>Lock deterministic routing, preflight, and dispatch behavior.</role>
+    <gotcha>Project-aware test cases must assert the AIGX gate explicitly.</gotcha>
+    <check>ENG-regression-first ROUTE-aigx-first</check>
+  </file>
+  <file path="skills/scripts/bootstrap-manifest.json" domain="bootstrap">
+    <role>Declare reproducible external capability installation metadata.</role>
+    <gotcha pri="CRIT">Mandatory context validation must pin the official AIGX package rather than an unversioned lookalike.</gotcha>
+    <check>CTX-official-semantics ROUTE-capability-evidence ENG-regression-first</check>
+  </file>
+  <file path="skills/ida-reverse/scripts/teams_worktree_lab.py" domain="collaboration">
+    <role>Create isolated control clones and participant worktrees from committed baselines.</role>
+    <gotcha pri="CRIT">Never include dirty source changes or create the lab inside the source repository.</gotcha>
+    <check>ENG-preserve-dirty ENG-readonly-default ENG-no-credentials CTX-runtime-separation</check>
+  </file>
+  <file path="skills/scripts/validate_ida_plugins.py" domain="discovery">
+    <role>Validate installed IDA plugin manifests, entrypoints, declared IDA versions, and Python runtime compatibility without loading plugins.</role>
+    <gotcha pri="CRIT">Static compatibility is evidence for preflight only; never report it as a successful GUI action smoke.</gotcha>
+    <check>CTX-no-target-data ENG-readonly-default ENG-fail-closed ROUTE-capability-evidence</check>
+  </file>
+  <file path="skills/scripts/test_validate_ida_plugins.py" domain="testing">
+    <role>Lock fail-closed IDA plugin manifest, entrypoint, version, and removed-Python-API checks.</role>
+    <gotcha>Use only synthetic plugin trees and never embed a target installation path or plugin payload.</gotcha>
+    <check>CTX-no-target-data ENG-regression-first ENG-fail-closed</check>
+  </file>
+  <file path="skills/scripts/refresh_ida_capabilities.py" domain="discovery">
+    <role>Build the read-only machine capability graph for IDA, plugins, runtimes, and workflow gates.</role>
+    <gotcha pri="CRIT">Installed, statically compatible, runtime-loaded, and action-verified are distinct states.</gotcha>
+    <check>CTX-no-target-data ENG-readonly-default ROUTE-capability-evidence ROUTE-oracle-required</check>
+  </file>
+  <file path="skills/ida-reverse/SKILL.md" domain="routing">
+    <role>Define the evidence-gated IDA analysis and collaboration workflow.</role>
+    <gotcha pri="CRIT">Route plugin work through manifest/runtime validation before any GUI action, while preserving GUI verification as a separate gate.</gotcha>
+    <check>CTX-no-target-data ROUTE-capability-evidence ROUTE-oracle-required ENG-readonly-default</check>
+  </file>
+  <file path="skills/routing_zh.md" domain="routing">
+    <role>Explain deterministic routing and safety gates in Chinese.</role>
+    <gotcha pri="CRIT">Human guidance must never weaken authorization_scope or blocked-route behavior.</gotcha>
+    <check>ROUTE-blocked-no-execute ENG-fail-closed CTX-aigx-canonical</check>
+  </file>
+  <file path="skills/field-journal/precedent-auth.md" domain="authorization">
+    <role>Explain how current-session authorization is supplied to security routes.</role>
+    <forbid pri="CRIT">Never infer authorization from package installation, target mention, or a precedent file.</forbid>
+    <gotcha pri="CRIT">Missing authorization_scope is a blocker, not an invitation to suppress safety checks.</gotcha>
+    <check>CTX-runtime-separation ENG-fail-closed ROUTE-blocked-no-execute</check>
+  </file>
+  <file path="skills/field-journal/precedent-reverse.md" domain="precedent">
+    <role>Provide generic reverse-engineering methodology references.</role>
+    <gotcha pri="CRIT">Operational precedent is not authorization for a current target.</gotcha>
+    <check>CTX-no-target-data CTX-runtime-separation ENG-readonly-default</check>
+  </file>
+  <file path="skills/field-journal/precedent-pentest.md" domain="precedent">
+    <role>Provide generic penetration-testing methodology references.</role>
+    <gotcha pri="CRIT">Operational precedent is not authorization for a current target.</gotcha>
+    <check>CTX-no-target-data CTX-runtime-separation ENG-readonly-default</check>
+  </file>
+  <file path="skills/field-journal/_index.md" domain="evolution">
+    <role>Index package-owned generic precedents and promoted patterns.</role>
+    <gotcha pri="CRIT">Do not index target projects, session evidence, or authorization claims.</gotcha>
+    <check>CTX-no-target-data CTX-runtime-separation</check>
+  </file>
+  <file path="skills/llm-security/references/agent-obedience-engineering.md" domain="bootstrap">
+    <role>Provide agent-execution methodology without overriding project context or authorization.</role>
+    <forbid pri="CRIT">Never instruct clients to mutate global configuration or bypass current-session authorization.</forbid>
+    <gotcha pri="CRIT">AIGX protocol, RULES bootstrap, and route_task remain the canonical entry chain.</gotcha>
+    <check>CTX-aigx-canonical CTX-runtime-separation ROUTE-blocked-no-execute</check>
+  </file>
+  <file path="RULES_zh.md" domain="bootstrap">
+    <role>Provide the Chinese compatibility bootstrap into the canonical AIGX route.</role>
+    <forbid pri="CRIT">Never duplicate the genome or write project rules into global client configuration.</forbid>
+    <check>CTX-aigx-canonical ROUTE-aigx-first</check>
+  </file>
+  <file path="README-kali.md" domain="distribution">
+    <role>Explain Kali installation and the AIGX-first startup path.</role>
+    <gotcha pri="CRIT">Installation guidance must not mutate global client configuration.</gotcha>
+    <check>CTX-aigx-canonical CTX-no-target-data</check>
+  </file>
+  <file path="kali/README-kali.md" domain="distribution">
+    <role>Explain the Kali-specific tool surface without redefining routing.</role>
+    <gotcha pri="CRIT">Kali setup must enter through the repository AIGX and deterministic router.</gotcha>
+    <check>CTX-aigx-canonical ROUTE-aigx-first</check>
+  </file>
+  <file path="kali/RULES-kali.md" domain="bootstrap">
+    <role>Provide a Kali compatibility bootstrap into the canonical AIGX route.</role>
+    <forbid pri="CRIT">Never copy routing rules into global client configuration.</forbid>
+    <check>CTX-aigx-canonical ROUTE-aigx-first ROUTE-blocked-no-execute</check>
+  </file>
+  <file path="ARCHITECTURE.md" domain="distribution">
+    <role>Describe the cross-platform package architecture and canonical execution sequence.</role>
+    <gotcha>Architecture diagrams must agree with the AIGX-first router.</gotcha>
+    <check>CTX-aigx-canonical ROUTE-deterministic-entry</check>
+  </file>
+  <file path="skills/CONTRIBUTING.md" domain="distribution">
+    <role>Explain how contributors extend skills, routing, and capability evidence.</role>
+    <gotcha>Contributor guidance must update canonical route data and tests rather than bootstrap files.</gotcha>
+    <check>CTX-aigx-canonical ENG-regression-first</check>
+  </file>
+  <file path="skills/field-journal/_template.md" domain="evolution">
+    <role>Template a target-free generic pattern promotion candidate.</role>
+    <forbid pri="CRIT">Never template per-project logs, target identity, authorization, or runtime evidence into the package.</forbid>
+    <check>CTX-no-target-data CTX-runtime-separation ENG-regression-first</check>
+  </file>
+  <file path="skills/field-journal/CONTRIBUTE-BACK.md" domain="evolution">
+    <role>Explain explicit reviewed contribution of generic target-free patterns.</role>
+    <gotcha pri="CRIT">No automatic write-back, push, PR, or merge is permitted.</gotcha>
+    <check>CTX-no-target-data CTX-runtime-separation ENG-regression-first</check>
+  </file>
+  <file path="skills/docs-generator/SKILL.md" domain="reporting">
+    <role>Generate task reports while keeping target evidence outside the generic package.</role>
+    <check>CTX-no-target-data CTX-runtime-separation</check>
+  </file>
+  <file path="skills/firmware-pentest/SKILL.md" domain="routing">
+    <role>Define authorized firmware analysis workflows and evidence boundaries.</role>
+    <gotcha>Target-specific chip, SDK, and analysis facts remain external runtime evidence.</gotcha>
+    <check>CTX-no-target-data CTX-runtime-separation ROUTE-blocked-no-execute</check>
+  </file>
+  <file path="skills/edr-bypass-re/SKILL.md" domain="routing">
+    <role>Define authorized defensive bypass research workflows and evidence boundaries.</role>
+    <gotcha>Target-specific operational evidence remains external runtime data.</gotcha>
+    <check>CTX-no-target-data CTX-runtime-separation ROUTE-blocked-no-execute</check>
+  </file>
+  <file path="skills/patch-diff-exploit/references/patch-tuesday-workflow.md" domain="reference">
+    <role>Provide a patch-diff workflow without persisting target evidence in the package.</role>
+    <check>CTX-no-target-data CTX-runtime-separation</check>
+  </file>
+  <file path="skills/pentest-tools/references/automation-loop-pattern.md" domain="reference">
+    <role>Describe an evidence-driven pentest loop with external runtime state.</role>
+    <check>CTX-no-target-data CTX-runtime-separation ROUTE-blocked-no-execute</check>
+  </file>
+  <file path="skills/pentest-tools/references/msf-protocol.md" domain="reference">
+    <role>Document MSF process control and generic regression lessons.</role>
+    <check>CTX-no-target-data CTX-runtime-separation</check>
+  </file>
+  <file path="skills/pentest-tools/references/pentest-ai-agents-matrix.md" domain="reference">
+    <role>Compare agent architectures without redefining package persistence policy.</role>
+    <check>CTX-no-target-data CTX-runtime-separation</check>
+  </file>
+  <file path="skills/overnight-run/SKILL.md" domain="evolution">
+    <role>Define unattended execution while keeping mutable and target-specific evidence external.</role>
+    <gotcha pri="CRIT">Only target-free generic abstractions may enter package field-journal tiers.</gotcha>
+    <check>CTX-no-target-data CTX-runtime-separation ENG-regression-first</check>
+  </file>
+  <file path="skills/overnight-run/references/evolver-mapping.md" domain="evolution">
+    <role>Map external overnight evidence to target-free promotion candidates.</role>
+    <check>CTX-no-target-data CTX-runtime-separation ENG-regression-first</check>
+  </file>
+  <file path="skills/overnight-run/references/example-filled.md" domain="evolution">
+    <role>Provide a repository-self dogfood fixture without target project data.</role>
+    <check>CTX-no-target-data ENG-regression-first</check>
+  </file>
+  <file path="skills/field-journal/anonymization.md" domain="evolution">
+    <role>Define leak checks for generic promotion candidates.</role>
+    <gotcha pri="CRIT">Anonymization is necessary but never sufficient to admit target-derived evidence.</gotcha>
+    <check>CTX-no-target-data CTX-runtime-separation</check>
+  </file>
+  <file path="skills/pentest-tools/references/ai-pentesting-landscape-2026.md" domain="reference">
+    <role>Summarize external agent patterns without changing local persistence policy.</role>
+    <check>CTX-no-target-data CTX-runtime-separation</check>
+  </file>
+  <file path="skills/field-journal/validated/README.md" domain="evolution">
+    <role>Define validated generic memory without target-derived provenance.</role>
+    <check>CTX-no-target-data CTX-runtime-separation ENG-regression-first</check>
+  </file>
+  <file path=".gitignore" domain="distribution">
+    <role>Keep generated host capability evidence and caches out of version control.</role>
+    <check>CTX-no-target-data CTX-runtime-separation</check>
+  </file>
+  <file path="skills/ida-reverse/scripts/open.ps1" domain="execution">
+    <role>Open IDA or idalib through validated portable paths and artifact inputs.</role>
+    <check>ENG-fail-closed ENG-readonly-default ROUTE-capability-evidence</check>
+  </file>
+  <file path="skills/ida-reverse/scripts/start.ps1" domain="execution">
+    <role>Start validated IDA analysis services without mutating IDA configuration.</role>
+    <check>ENG-fail-closed ENG-readonly-default ROUTE-capability-evidence</check>
+  </file>
+  <file path="skills/reverse-engineering/SKILL.md" domain="routing">
+    <role>Define generic reverse-engineering routes and evidence requirements.</role>
+    <check>ROUTE-blocked-no-execute ROUTE-oracle-required ENG-readonly-default</check>
+  </file>
+  <file path="skills/scripts/lib/ToolDiscovery.ps1" domain="discovery">
+    <role>Discover portable tool capabilities without claiming unverified readiness.</role>
+    <check>ROUTE-capability-evidence ENG-readonly-default</check>
+  </file>
+  <file path="skills/scripts/refresh-tool-index.ps1" domain="discovery">
+    <role>Refresh host-local tool evidence while keeping generated paths untracked.</role>
+    <check>CTX-no-target-data CTX-runtime-separation ROUTE-capability-evidence</check>
+  </file>
+  <file path="skills/ida-reverse/references/ida-plugin-capabilities.json" domain="discovery">
+    <role>Declare stable plugin capability metadata without host installation results.</role>
+    <check>CTX-no-target-data ROUTE-capability-evidence</check>
+  </file>
+  <file path="skills/ida-reverse/references/teams-collaboration.contract.example.json" domain="collaboration">
+    <role>Provide a credential-free synthetic Teams collaboration contract.</role>
+    <check>CTX-no-target-data ENG-no-credentials ENG-preserve-dirty</check>
+  </file>
+  <file path="skills/ida-reverse/references/teams-worktree-lab.contract.example.json" domain="collaboration">
+    <role>Provide a synthetic contract for an external isolated worktree lab.</role>
+    <check>CTX-no-target-data ENG-no-credentials ENG-preserve-dirty</check>
+  </file>
+  <file path="skills/ida-reverse/scripts/open_idalib.py" domain="execution">
+    <role>Open a validated binary artifact with idalib and record bounded evidence.</role>
+    <check>ENG-fail-closed ENG-readonly-default ROUTE-oracle-required</check>
+  </file>
+  <file path="skills/ida-reverse/scripts/start_idalib_mcp.py" domain="execution">
+    <role>Start an idalib MCP entrypoint only after runtime and artifact validation.</role>
+    <check>ENG-fail-closed ROUTE-capability-evidence ROUTE-oracle-required</check>
+  </file>
+  <file path="skills/ida-reverse/scripts/teams_collaboration.py" domain="collaboration">
+    <role>Validate isolated Teams collaboration plans without modifying source repositories.</role>
+    <check>ENG-preserve-dirty ENG-readonly-default ENG-no-credentials</check>
+  </file>
+  <file path="skills/ida-reverse/scripts/teams_preflight.py" domain="collaboration">
+    <role>Run read-only git-ida readiness checks without initialization or remote writes.</role>
+    <check>ENG-readonly-default ENG-no-credentials ROUTE-capability-evidence</check>
+  </file>
+  <file path="skills/scripts/cli_search.py" domain="discovery">
+    <role>Provide bounded read-only source search with health-aware rg fallback.</role>
+    <check>ENG-readonly-default ENG-fail-closed</check>
+  </file>
+  <file path="skills/scripts/refresh-ida-capabilities.ps1" domain="discovery">
+    <role>Invoke the read-only IDA capability graph refresh wrapper.</role>
+    <check>CTX-no-target-data ROUTE-capability-evidence ENG-readonly-default</check>
+  </file>
+  <file path="skills/scripts/test_cli_search.py" domain="testing">
+    <role>Lock read-only CLI search behavior and missing-path failures.</role>
+    <check>ENG-regression-first ENG-fail-closed</check>
+  </file>
+  <file path="skills/scripts/test_teams_collaboration.py" domain="testing">
+    <role>Lock credential rejection, scope separation, and source preservation.</role>
+    <check>ENG-regression-first ENG-preserve-dirty ENG-no-credentials</check>
+  </file>
+  <file path="skills/scripts/test_teams_preflight.py" domain="testing">
+    <role>Lock read-only Teams readiness and remote credential redaction.</role>
+    <check>ENG-regression-first ENG-readonly-default ENG-no-credentials</check>
+  </file>
+  <file path="skills/scripts/test_teams_worktree_lab.py" domain="testing">
+    <role>Lock isolated lab creation without copying dirty source changes.</role>
+    <check>ENG-regression-first ENG-preserve-dirty ENG-no-credentials</check>
+  </file>
+  <file path="burp-mcp-full/README.md" domain="distribution">
+    <role>Document the Burp MCP interface using only synthetic target examples.</role>
+    <check>CTX-no-target-data ENG-no-credentials</check>
+  </file>
+</aigx-files>

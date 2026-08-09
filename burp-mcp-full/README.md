@@ -96,7 +96,7 @@ gradlew.bat jar
 ### 查看代理历史
 ```json
 POST http://127.0.0.1:9876
-{"tool": "proxy_history", "params": {"limit": 10, "url_filter": "personalblog"}}
+{"tool": "proxy_history", "params": {"limit": 10, "url_filter": "target.example.com"}}
 ```
 
 ### 发送请求

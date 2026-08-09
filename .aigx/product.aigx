@@ -1,0 +1,5 @@
+<aigx-product>
+  <purpose>Provide a portable reverse-engineering router that combines deterministic capability checks with isolated session, worktree, and evidence orchestration.</purpose>
+  <success>Every project-aware route first validates its project-owned AIGX genome and resolves binding edit boundaries without persisting target identity in this repository.</success>
+  <freshness>AIGX is the canonical context format from 2026-08-09 onward; RULES.md, AGENTS.md, and skill Markdown files may bootstrap or elaborate workflows but MUST NOT redefine genome rules.</freshness>
+</aigx-product>

@@ -5,6 +5,10 @@ description: Goal-contract, capability graph, TraceCard, and promotion-gate cont
 
 # Evolution Control Plane
 
+## Mandatory AIGX Context Plane
+
+AIGX is upstream of this control plane. Before GOAL, capability, routing, or promotion work touches a project, the official validator MUST accept that project's root `.aigx/` genome, and every explicit edit target MUST resolve through `files.aigx`. Evolution records session decisions and evidence; it MUST NOT duplicate project rules or store another project's identity in this generic repository.
+
 This skill turns the routing pack from "pick a static module" into a closed loop:
 
 `GOAL -> capability graph -> macro route -> micro route -> TraceCard -> oracle -> promotion gate`
@@ -18,6 +22,23 @@ It does not replace `apk-reverse`, `ida-reverse`, `js-reverse`, `pentest-tools`,
 3. `NEXT`: Use `../routing.json` for machine routing and `../routing.md` for human-readable fallback context.
 4. `ACT`: Route to the selected child skill and record each material decision in a TraceCard.
 5. `END`: Classify the result through the promotion gate before changing stable routing or skill docs.
+
+## Sentrux Architecture Gate
+
+For a source-project architecture task, invoke the router with `--project-path`. When its route is
+`architecture-governance`, the native `sentrux` CLI is required and the plan has two distinct
+operations:
+
+1. `sentrux check <project>` reads and enforces `.sentrux/rules.toml` when rules exist.
+2. `sentrux gate <project>` compares the project with an existing `.sentrux/baseline.json`.
+
+Neither operation creates policy. `sentrux gate --save <project>` writes a new baseline and is
+therefore an explicit operator-only action: never create or replace a baseline just to make a
+gate pass. Starting the optional MCP server (`sentrux mcp`) also requires explicit registration in
+the target MCP host; a runnable CLI alone is not an enabled MCP integration.
+
+If `check` reports that `rules.toml` is missing, `architecture-governance` is `blocked`: an
+unconfigured sensor may produce observations but cannot be represented as an architecture gate.
 
 ## Goal Contract
 
@@ -45,6 +66,10 @@ Required fields per tool or service:
 - service/MCP registration state when relevant
 - owning skill and bootstrap method
 - `last_checked`
+
+For Sentrux specifically, retain the CLI path/version, `check` result, `gate` result, and whether
+rules/baseline are `present`, `missing`, or `unknown`. A missing rule file or baseline is a
+configuration finding, not a successful architecture gate.
 
 If the graph says a required tool is missing, use the normal bootstrap path. Do not guess paths.
 
@@ -76,13 +101,13 @@ Record the decision in `trace-card.template.yaml` format.
 
 ## Memory Tiers
 
-Write field-journal output into one of three tiers:
+Only after external runtime evidence has been reduced to a target-free, anonymized, fixture-backed generic pattern, place that abstraction into one of three tiers:
 
 - `validated`: oracle passed, route worked, safe to retrieve for future routing.
 - `candidate`: promising but not regression-tested; may inform, must not control routing.
 - `forensic`: failed, ambiguous, sensitive, or adversarial; useful for analysis only.
 
-All memory entries MUST include provenance: source trace, tool versions, verification time, and applicable environment.
+All memory entries MUST include target-free provenance: synthetic/public fixture, tool versions, verification time, and applicable environment class. Never embed the source target, project path, binary/source facts, credentials, or runtime trace.
 
 ## Promotion Gate
 
@@ -102,23 +127,19 @@ Use `promotion-record.template.yaml`. If evidence is incomplete, keep the entry 
 - [ ] Capability graph was read or refreshed.
 - [ ] Macro route and any micro-route switches are recorded.
 - [ ] TraceCard includes evidence, not just narration.
-- [ ] Field-journal tier is selected.
+- [ ] Target evidence remains external; any generic abstraction has a selected field-journal tier.
 - [ ] Stable routing changes passed the promotion gate.
 
 ## 无人值守模式（Overnight）
 
-本控制面的 Phase 0-3 全闭环无人值守运行由 `overnight-run/` 提供：slot 填表 ↔ `goal.template.yaml`，`.night/REPORT.md` ↔ TraceCard，Phase 结局 ↔ 记忆分层，早上 review ↔ promotion gate。详见 `overnight-run/SKILL.md`。Overnight 产出的经验必须经 promotion gate 回流 `field-journal/{validated,candidate,forensic}/` 后才允许改 stable 路由。
+本控制面的 Phase 0-3 全闭环无人值守运行由 `overnight-run/` 提供：slot 填表 ↔ `goal.template.yaml`，外部 `.night/REPORT.md` ↔ TraceCard，早上 review ↔ promotion gate。详见 `overnight-run/SKILL.md`。目标证据始终外置；只有抽象为目标无关、脱敏且有 fixture/回归的通用模式，才可进入 `field-journal/{validated,candidate,forensic}/` 并申请修改 stable 路由。
 
 ## Fleet Sync
 
-This repo can run on more than one machine in the operator's fleet. Session-local artifacts --
-`skills/field-journal/candidate/*.md`, `skills/field-journal/validated/*.md`,
-`skills/capability-graph.json`, `skills/tool-index.md` -- only exist on whichever machine
-produced them until manually synced.
+This repo can run on more than one machine in the operator's fleet. Target-specific session artifacts remain outside this repository and are never fleet-synced. Only reviewed, target-free generic candidates plus machine capability evidence may use the explicit sync workflow.
 
-Run `skills/scripts/fleet-sync.ps1 -RemotePath <remote-repo-path> -Direction Pull|Push` after a
-session adds new `candidate/` entries and you are about to switch machines, or periodically to
-keep both machines' capability graphs roughly aligned. The script only copies files that do not
+Run `skills/scripts/fleet-sync.ps1 -RemotePath <remote-repo-path> -Direction Pull|Push` only after a
+generic candidate passes the anonymization and regression entry checks, or to align capability evidence. The script only copies files that do not
 already exist on the destination by filename (collision-safe additive merge) -- it never
 overwrites and never deletes on either side. Filename collisions are reported, not resolved
 automatically; resolve by hand and re-run.

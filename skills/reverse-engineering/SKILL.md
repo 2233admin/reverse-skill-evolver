@@ -14,6 +14,16 @@ Quick reference for RE challenges. For detailed techniques, see supporting files
 
 ## Prerequisites
 
+## Controlled Windows Workspace Search
+
+For source or workspace search, use the routed Python entrypoint rather than an ad-hoc PowerShell pipeline:
+
+```text
+python "skills/scripts/cli_search.py" --path "<workspace>" --query "<pattern>" --engine auto --pretty
+```
+
+It is read-only. Auto mode probes `x rg` first, records any wrapper diagnostic, and falls back to native `rg` for clean machine-readable output. Use `--engine xcmd` only when an explicit x-cmd invocation is required.
+
 **Python packages (all platforms):**
 ```bash
 pip install frida-tools angr qiling uncompyle6 capstone lief z3-solver

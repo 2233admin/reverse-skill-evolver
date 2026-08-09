@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "lab_repo_path": "C:\\path\\to\\private-ida-teams-lab",
+  "source_project_path": "C:\\path\\to\\private-source-project",
+  "target": {
+    "binary_path": "C:\\path\\to\\authorized-target.exe",
+    "idb_path": "analysis\\target.i64",
+    "evidence_dir": "evidence"
+  },
+  "participants": [
+    {
+      "id": "triage",
+      "role": "triage",
+      "branch": "teams/triage",
+      "scope": "read-only function map and task split"
+    },
+    {
+      "id": "static-analysis",
+      "role": "static_analyst",
+      "branch": "teams/static-analysis",
+      "scope": "assigned non-overlapping function range"
+    },
+    {
+      "id": "runtime-analysis",
+      "role": "runtime_analyst",
+      "branch": "teams/runtime-analysis",
+      "scope": "assigned runtime call path and evidence"
+    },
+    {
+      "id": "review",
+      "role": "reviewer",
+      "branch": "teams/review",
+      "scope": "read-only evidence and regression review"
+    },
+    {
+      "id": "integration",
+      "role": "integrator",
+      "branch": "teams/integration",
+      "scope": "semantic merge and handoff record"
+    }
+  ]
+}

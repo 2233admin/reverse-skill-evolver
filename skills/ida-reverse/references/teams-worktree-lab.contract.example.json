@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "source_repo_path": "C:\\path\\to\\private-source-repository",
+  "lab_root_path": "C:\\path\\to\\private-ida-teams-lab",
+  "base_ref": "HEAD",
+  "participants": [
+    {
+      "id": "static-analysis",
+      "role": "static_analyst",
+      "branch": "teams/static-analysis",
+      "scope": "assigned non-overlapping function range"
+    },
+    {
+      "id": "runtime-analysis",
+      "role": "runtime_analyst",
+      "branch": "teams/runtime-analysis",
+      "scope": "assigned runtime call path and evidence"
+    },
+    {
+      "id": "integration",
+      "role": "integrator",
+      "branch": "teams/integration",
+      "scope": "semantic merge and handoff record"
+    }
+  ]
+}

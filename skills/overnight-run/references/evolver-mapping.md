@@ -19,7 +19,7 @@
 | Overnight 机制 | evolution 对应 | 回流动作 |
 |---|---|---|
 | Phase 0 基线 + FLAKY 集 | capability-graph 的 smoke 状态 | 基线封存后不可改；FLAKY 集只在此刻确定，夜里摆动的测试按回归处理 |
-| Phase 1 修复（带复现脚本） | TraceCard 的失败归因 | 每条 issue 留复现脚本与把握度 → 可入 `candidate/` |
+| Phase 1 修复（带复现脚本） | TraceCard 的失败归因 | 目标复现留在外部 runtime；仅合成 fixture 可复现的通用抽象可提议 `candidate/` |
 | Phase 2 收敛→复核→达成 | promotion gate 的 oracle 前置 | 映射表原文进 REPORT.md；无子 agent 只能标"收敛待复核" |
 | Phase 3 对抗性随机游走 | FINDINGS（Smell / Root type / Change） | implemented 的表示变更才允许 merge；proposed 留人判断 |
 | 停机规则 | `stop_conditions` | deadline 前 45 分钟（建议值）停新尝试 |
@@ -38,4 +38,4 @@
 
 ## fleet-sync 边界
 
-`.night/` 是机器本地工作区，**不**随 `fleet-sync.ps1` 同步（脚本只同步 field-journal candidate/validated、capability-graph、tool-index）。过夜运行产生的经验必须先进 `field-journal/{validated,candidate,forensic}/`，再随 fleet-sync 既有清单同步到另一台机器。
+`.night/` 是仓库外机器本地工作区，**不**随 `fleet-sync.ps1` 同步。目标证据不得进入 field-journal；只有目标无关、脱敏且通过 fixture/回归与 promotion review 的通用模式，才可进入 `field-journal/{validated,candidate,forensic}/` 并显式同步。

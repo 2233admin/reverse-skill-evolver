@@ -150,7 +150,7 @@ For README, API endpoint, and file organization templates, see [references/templ
 - `radare2/` — CLI 分析完成后生成逆向报告
 - `js-reverse/` — JS 签名逆向完成后生成签名报告
 - `reverse-engineering/` — 通用逆向完成后生成逆向报告
-- `field-journal/` — 报告内容同时作为进化日志的数据来源
+- 目标报告保存在外部 runtime；只有脱敏、目标无关且有 fixture/回归证据的通用模式，才可另行提议进入 `field-journal/`
 
 **安全报告模板**: `references/security-report-templates.md`
 **通用文档模板**: `references/templates.md`

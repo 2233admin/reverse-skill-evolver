@@ -1,0 +1,7 @@
+<aigx-protocol version="1.1">
+  <read-first>Read this protocol, then load only the concern files touched by the task. For EACH file to edit, resolve its entry in .aigx/files.aigx before editing.</read-first>
+  <step n="1">Treat .aigx as the canonical project-context plane; legacy Markdown files are bootstraps or detailed workflow references.</step>
+  <step n="2">Run the official AIGX validator before project-aware routing and after editing genome files.</step>
+  <step n="3">For each indexed non-genome edit, obey every critical forbid, heed the single gotcha, and verify every check id.</step>
+  <step n="4">Keep session, worktree, credentials, target evidence, and private project identity outside this generic genome.</step>
+</aigx-protocol>

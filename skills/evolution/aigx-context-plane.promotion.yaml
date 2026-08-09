@@ -1,0 +1,31 @@
+schema_version: 1
+candidate_id: "2026-08-09-aigx-mandatory-context-plane"
+source_trace: "skills/scripts/test_aigx_context.py"
+proposed_change:
+  type: "routing"
+  target_path: "skills/scripts/route_task.py"
+  summary: "Require an official AIGX genome and resolved edit boundaries before project-aware routing."
+
+evidence:
+  oracle_passed: true
+  regression_checked: true
+  benchmark: "Python routing fixture suite and official AIGX lint"
+  success_delta: 1.0
+  cost_delta: 0.0
+  sensitive_data_scan: "pass"
+
+requirements:
+  tools:
+    - name: "aigx"
+      minimum_version: "1.2.0"
+      capability_graph_key: "aigx"
+    - name: "python"
+      minimum_version: "3"
+      capability_graph_key: "python"
+  environment: "Any supported local filesystem and Git workspace; mutable session state remains external."
+
+decision:
+  status: "promoted"
+  reviewer: "agent"
+  reason: "The official validator, fail-closed route fixtures, full script regression suite, and anonymization scan pass."
+  rollback: "Revert the AIGX preflight integration, its genome entries, and the pinned bootstrap capability as one change."

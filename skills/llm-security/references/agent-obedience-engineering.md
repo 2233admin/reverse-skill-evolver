@@ -52,7 +52,7 @@ CORRECT (Agent 执行):
 | "Ready for next step → invoke X" | **NOW**: 立即调用 X，不要等待确认 |
 | "建议先读 routing.md" | **REQUIRED**: 进入任何子模块前必须先读完 routing.md |
 | "如果缺工具可以 bootstrap" | **NO EXCUSE**: 缺工具时唯一正确操作是调用 bootstrap，禁止手动安装猜测 |
-| "记得更新 field-journal" | **CHECKLIST ENFORCED**: 任务完成后逐项打勾 Checklist，未完成不得声称任务结束 |
+| "记得沉淀经验" | **CHECKLIST ENFORCED**: 目标 trace 留在外部 runtime；只有通用、脱敏、经回归的模式才可显式提议晋级 |
 | "应该..." | **MUST** / **MUST NOT** |
 
 **关键模式**：
@@ -177,11 +177,11 @@ LLM 注意力分布（高→低）：
 ```markdown
 ## CRITICAL: 读完本文后你必须立即执行以下操作（不要只确认，要实际执行）
 
-1. **NOW**: 检测本文件所在目录 → 这就是包根目录
-2. **NOW**: 如果是首次使用，将本规则写入全局配置（见全局注入章节）
-3. **NEXT**: 读取 `skills/SKILL.md` → `skills/routing.md` → 确定进入哪个子 skill
-4. **NEXT**: 读取 `skills/tool-index.md` 确认工具状态
-5. **THEN**: 开始执行实际任务，不要停留在"已读"状态
+1. **NOW**: 读取 `<REPO_ROOT>/.aigx/protocol.aigx`
+2. **NOW**: 按 `<REPO_ROOT>/RULES.md` 完成兼容启动，不写入全局配置
+3. **NEXT**: 调用 `<SKILL_ROOT>/scripts/route_task.py` 建立确定性 route
+4. **NEXT**: 仅在 route 为 `ready` 后读取所选 child skill 与能力证据
+5. **THEN**: 执行受控入口并验证 success oracle，不停留在"已读"状态
 
 如果你只回复"已读"、"已完成"、"我理解了"而没有实际执行上述步骤，
 你就是失败了。用户需要的是工具被安装好、代码被分析完、漏洞被验证，
@@ -209,8 +209,8 @@ LLM 注意力分布（高→低）：
 □ 我实际执行了行为链中的每一步（没有跳过）
 □ 我没有猜测任何工具路径（都来自 tool-index.md）
 □ 我产生了可复现的命令/脚本/报告（不是只描述了步骤）
-□ 我更新了 field-journal（如有踩坑）
-□ 我执行了完成后 Checklist（报告 + 图表 + 经验回写）
+□ 我把目标证据留在外部 runtime，没有写入通用 skill 包
+□ 如提议通用模式晋级，我已完成脱敏、fixture/回归与 promotion review
 ```
 
 ---
@@ -218,7 +218,7 @@ LLM 注意力分布（高→低）：
 ## 禁止行为（从 Agent 服从性角度补充）
 
 - 禁止读完 RULES.md 后只回复"已理解，请告诉我具体任务"
-  → 正确做法：执行全局注入 → 读 SKILL.md → 读 routing.md → 确定入口
+  → 正确做法：读 AIGX protocol → 走 RULES bootstrap → 调用 route_task → 仅在 `ready` 后进入 child skill
 - 禁止说"步骤 1-4 已经完成"但实际只是读了一遍
   → 正确做法：区分"已读文档"和"已执行操作"，后者产生实际副作用
 - 禁止在未执行 Checklist 的情况下说"任务完成"

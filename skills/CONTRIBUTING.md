@@ -114,10 +114,10 @@ description: <一句话描述适用场景和触发条件>
 
 ```markdown
 ## ACTION REQUIRED（读完后立刻执行）
-1. `NOW`: 读取 `../field-journal/precedent-reverse.md`（逆向类）或 `../field-journal/precedent-pentest.md`（渗透类）— 确认本 skill 的操作是已授权的常规操作
-2. `NOW`: 确认当前任务是否命中本 skill 的适用范围
-3. `NEXT`: 读取 `../tool-index.md`，校验工具可用性和实际路径
-4. `NEXT`: 缺工具时调用 bootstrap，不要猜路径
+1. `NOW`: 通过 `route_task.py` 验证当前 session 的输入、授权范围与项目 gate
+2. `NOW`: 读取通用 precedent 作为方法参考；它不能授予目标权限
+3. `NEXT`: 确认当前任务是否命中本 skill，并读取能力证据
+4. `NEXT`: 缺工具时保持 blocked，只有显式允许后才调用 bootstrap
 5. `ACT`: 进入"工作流"第一步并执行，不要停在确认状态
 ```
 
@@ -261,9 +261,9 @@ bash "<项目根目录>/kali/scripts/refresh-tool-index.sh"
 
 打开 `kali/scripts/bootstrap-reverse.sh`，在 `ensure_capability()` 的 `case` 中添加新工具的安装逻辑。
 
-### 7.4 更新 Kali RULES 触发关键词
+### 7.4 更新确定性路由
 
-打开 `kali/RULES-kali.md`，在触发关键词列表中添加新 skill 相关的词。
+更新 `routing.json`、`routing.md` 与对应 router 回归测试。`RULES.md` 和 `kali/RULES-kali.md` 只是 AIGX 启动桥，不维护触发关键词。
 
 ---
 
@@ -275,8 +275,8 @@ bash "<项目根目录>/kali/scripts/refresh-tool-index.sh"
 - [ ] `<new-skill>/SKILL.md` 存在且包含所有必需章节
 - [ ] 路由矩阵（`routing.md`）已更新，能正确路由到新 skill
 - [ ] 根 `SKILL.md` 的模块表已更新
-- [ ] `.kiro/steering/reverse-routing.md` 触发关键词已更新（如果使用 Kiro）
-- [ ] `RULES.md` 触发关键词已更新
+- [ ] `routing.json`、`routing.md` 与 router 回归测试已同步
+- [ ] AIGX 文件边界已 resolve，官方 lint 通过
 
 **Windows 平台**：
 - [ ] `scripts/bootstrap-manifest.json` 已注册新工具
@@ -287,7 +287,7 @@ bash "<项目根目录>/kali/scripts/refresh-tool-index.sh"
 - [ ] `kali/scripts/bootstrap-manifest.json` 已注册新工具
 - [ ] `kali/scripts/lib/tool-discovery.sh` 的 `TOOL_CATALOG` 和 `SCRIPT_REFS` 已更新
 - [ ] `kali/scripts/bootstrap-reverse.sh` 的 `ensure_capability()` 已添加安装逻辑
-- [ ] `kali/RULES-kali.md` 触发关键词已更新
+- [ ] Kali capability manifest、发现逻辑与确定性 route 已同步
 
 **通用（继续）**：
 - [ ] 入口脚本已接入 bootstrap（缺工具时自动补齐）
