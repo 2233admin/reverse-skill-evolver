@@ -285,6 +285,14 @@ After success, check:
 
 The repository-level `reverse-skill.ps1` is the unified entry point. It is convenient for direct use and targets the same Streamable HTTP service as native Codex MCP registration:
 
+| Execution entry | Intended use | Boundary |
+|---|---|---|
+| Native MCP | Agent tool calls | Register `idapro` at the HTTP endpoint; the MCP host owns invocation UX |
+| `reverse-skill.ps1` CLI | Human use, diagnostics, automation | Stable command surface for registration, service lifecycle, discovery, and calls |
+| `McpHttpClient.ps1` library | Repository scripts | Reusable transport client behind the CLI; not a separate server |
+
+The skill files are the routing/control plane, not another execution transport. `start.ps1` and `open.ps1` are compatibility adapters into the CLI. PowerShell 5.1 or 7 is only the Windows script host.
+
 ```powershell
 .\reverse-skill.ps1 register
 .\reverse-skill.ps1 start
@@ -303,9 +311,19 @@ Common session operations:
 .\reverse-skill.ps1 close -Database "<session-id>"
 ```
 
+If a modern server returns `resultType: "input_required"`, retry the same tool with a new CLI invocation and echo the opaque state exactly:
+
+```powershell
+.\reverse-skill.ps1 call -Tool login -ArgumentsJson '{}' `
+  -InputResponsesJson '{"credentials":{"action":"accept","content":{"token":"..."}}}' `
+  -RequestState '<opaque-state>'
+```
+
 `skills\ida-reverse\scripts\open.ps1` remains as a compatibility entry point but now delegates to the unified CLI. System32 inputs are still copied to the user temporary directory first.
 
-The HTTP client initializes with the current stable MCP revision, `2025-11-25`, and accepts the version negotiated by the server. It handles JSON and SSE responses, `Mcp-Session-Id` sessions, and the `Mcp-Method` / `Mcp-Name` headers used by the newer draft. Tool counts are discovered dynamically with `tools/list` instead of being hard-coded.
+The HTTP client is dual-era. It first uses released MCP `2026-07-28`: `server/discover`, per-request `_meta`, mirrored `MCP-Protocol-Version` / `Mcp-Method` / `Mcp-Name` / `Mcp-Param-*` headers, request-scoped JSON or SSE responses, and explicit MRTR input responses. Modern mode has no protocol session. If the endpoint answers with a non-modern response, the client falls back to the legacy `initialize` / `notifications/initialized` lifecycle and accepts a negotiated `2025-11-25`, `2025-06-18`, or `2025-03-26` revision; only that path uses `Mcp-Session-Id`.
+
+`status` reports both `era` and `protocol_version`. In the 2026-08-11 verification environment, the `ida-pro-mcp 2.0.0` package still self-identifies as server version `1.0.0`, is correctly detected as legacy, and negotiates `2025-06-18`; the inspected upstream `main` also still implements that legacy transport. This is a server capability boundary, not a claimed end-to-end modern session. IDA database IDs remain explicit application handles in both eras. Tool definitions are discovered dynamically with `tools/list`; modern `ttlMs` / `cacheScope` hints are preserved and invalid `x-mcp-header` definitions are excluded.
 
 ## 6.3 anything-analyzer
 

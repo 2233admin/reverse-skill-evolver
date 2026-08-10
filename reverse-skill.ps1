@@ -10,6 +10,9 @@ Register, start, inspect, and call the IDA Pro Streamable HTTP MCP service.
 
 .EXAMPLE
 .\reverse-skill.ps1 call -Tool decompile -Database session-id -ArgumentsJson '{"addr":"0x140001000"}'
+
+.EXAMPLE
+.\reverse-skill.ps1 call -Tool login -InputResponsesJson '{"credentials":{"action":"accept","content":{"token":"..."}}}' -RequestState opaque-state
 #>
 #requires -Version 5
 
@@ -24,6 +27,8 @@ param(
     [string]$Path,
     [string]$Tool,
     [string]$ArgumentsJson = '{}',
+    [string]$InputResponsesJson,
+    [string]$RequestState,
     [string]$Database,
     [string]$PreferredSessionId,
     [ValidateSet('prefer_headless', 'force_headless', 'prefer_gui', 'force_gui')]
@@ -166,15 +171,15 @@ switch ($Command) {
     'start' {
         $startScript = Join-Path $PSScriptRoot 'skills\ida-reverse\scripts\start.ps1'
         & $startScript -Port ([uri]$Url).Port
-        if ($LASTEXITCODE -ne 0) {
-            exit $LASTEXITCODE
+        if (-not $?) {
+            exit 1
         }
         break
     }
     'refresh' {
         & (Join-Path $PSScriptRoot 'skills\scripts\refresh-tool-index.ps1')
-        if ($LASTEXITCODE -ne 0) {
-            exit $LASTEXITCODE
+        if (-not $?) {
+            exit 1
         }
         break
     }
@@ -196,9 +201,10 @@ switch ($Command) {
                 mcp = [pscustomobject]@{
                     url              = $Url
                     online           = $true
+                    era              = $client.Era
                     protocol_version = $client.ProtocolVersion
                     server           = $client.ServerInfo
-                    session_mode     = -not [string]::IsNullOrWhiteSpace($client.SessionId)
+                    protocol_session = -not [string]::IsNullOrWhiteSpace($client.SessionId)
                     tool_count       = @($toolList.tools).Count
                 }
                 codex = [pscustomobject]@{
@@ -281,7 +287,19 @@ switch ($Command) {
                     }
                     $arguments = $ArgumentsJson | ConvertFrom-Json
                     $arguments = Add-DatabaseArgument -Arguments $arguments -SessionId $Database
-                    $result = Invoke-McpTool -Client $client -Name $Tool -Arguments $arguments -TimeoutSeconds $TimeoutSeconds
+                    $callParams = @{
+                        Client         = $client
+                        Name           = $Tool
+                        Arguments      = $arguments
+                        TimeoutSeconds = $TimeoutSeconds
+                    }
+                    if (-not [string]::IsNullOrWhiteSpace($InputResponsesJson)) {
+                        $callParams.InputResponses = $InputResponsesJson | ConvertFrom-Json
+                    }
+                    if ($PSBoundParameters.ContainsKey('RequestState')) {
+                        $callParams.RequestState = $RequestState
+                    }
+                    $result = Invoke-McpTool @callParams
                     Write-ReverseResult (Get-ReverseToolOutput $result)
                 }
                 'close' {

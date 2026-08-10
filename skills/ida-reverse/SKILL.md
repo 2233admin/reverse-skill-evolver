@@ -17,7 +17,7 @@ description: |
 1. **原生 MCP 与 CLI 使用同一条真实链路**
    - Codex 注册名为 `idapro`，地址默认是 `http://127.0.0.1:13337/mcp`
    - 原生 MCP 适合代理直接调工具；仓库根 `reverse-skill.ps1` 适合登录安装、诊断和人工操作
-   - CLI 通过 `initialize` / `notifications/initialized` 建立连接，支持 JSON、SSE 和 `Mcp-Session-Id`，不再绕过 MCP 生命周期
+   - CLI 先按 `2026-07-28` 调用 `server/discover`；现代服务使用逐请求元数据，旧服务才降级到 `initialize` / `notifications/initialized` 和 `Mcp-Session-Id`
 
 2. **`C:\Windows\System32\` 文件无权限打开**
    - idalib 无法直接读取 System32 目录下的文件
@@ -37,8 +37,11 @@ description: |
    - PowerShell 只是 Windows 系统壳，负责启动 CLI 和传递参数；真正链路是 `idalib-mcp.exe → IDA`
 
 6. **协议版本必须协商，不能写死服务端版本**
-   - 客户端以稳定版 `2025-11-25` 初始化，并接受服务器返回的受支持版本
-   - 同时发送新草案使用的 `Mcp-Method` / `Mcp-Name` 头，保持向前兼容
+   - 客户端优先使用已发布版 `2026-07-28` 的逐请求 `_meta`，并镜像 `MCP-Protocol-Version` / `Mcp-Method` / `Mcp-Name` / `Mcp-Param-*` 头
+   - 遇到非现代响应才进入 legacy 初始化，接受 `2025-11-25`、`2025-06-18` 或 `2025-03-26`；`status` 必须明确显示 `era`
+   - 现代协议没有协议会话；IDA database ID 是应用层显式句柄，不等同于 `Mcp-Session-Id`
+   - MRTR 的 `requestState` 必须原样回传且重试使用新的 JSON-RPC id；CLI 用 `-InputResponsesJson` / `-RequestState` 显式完成该步骤
+   - 规范映射、双时代流程和本机验证见 [`references/mcp-2026-07-28-dual-era.md`](references/mcp-2026-07-28-dual-era.md)
 
 7. **健康服务不能为了“重启”被误杀**
    - `start.ps1` 先完成 MCP 初始化和 `tools/list` 健康检查

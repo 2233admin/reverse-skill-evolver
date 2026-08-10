@@ -284,6 +284,14 @@ powershell -File "<SKILL_ROOT>\scripts\refresh-tool-index.ps1"
 
 仓库根目录提供统一入口 `reverse-skill.ps1`。它既可供人手动调用，也与 Codex 原生 MCP 注册指向同一个 Streamable HTTP 服务：
 
+| 执行入口 | 用途 | 边界 |
+|---|---|---|
+| 原生 MCP | Agent 直接调用工具 | 把 `idapro` 注册到 HTTP 端点；调用交互由 MCP 宿主管理 |
+| `reverse-skill.ps1` CLI | 人工使用、诊断、自动化 | 注册、服务生命周期、发现和调用的稳定命令面 |
+| `McpHttpClient.ps1` 库 | 仓库内脚本复用 | CLI 后面的传输客户端，不是另一个服务器 |
+
+Skill 文件属于路由/控制平面，不是第四种执行传输；`start.ps1`、`open.ps1` 只是进入 CLI 的兼容适配器。PowerShell 5.1 或 7 只充当 Windows 脚本宿主。
+
 ```powershell
 .\reverse-skill.ps1 register
 .\reverse-skill.ps1 start
@@ -302,9 +310,19 @@ powershell -File "<SKILL_ROOT>\scripts\refresh-tool-index.ps1"
 .\reverse-skill.ps1 close -Database "<session-id>"
 ```
 
+若现代服务返回 `resultType: "input_required"`，用新的 CLI 调用重试同一工具，并原样回传不透明状态：
+
+```powershell
+.\reverse-skill.ps1 call -Tool login -ArgumentsJson '{}' `
+  -InputResponsesJson '{"credentials":{"action":"accept","content":{"token":"..."}}}' `
+  -RequestState '<opaque-state>'
+```
+
 `skills\ida-reverse\scripts\open.ps1` 继续保留为兼容入口，但内部已经委托给统一 CLI。System32 输入仍会先复制到用户临时目录。
 
-HTTP 客户端按当前稳定 MCP `2025-11-25` 发起初始化，并接受服务器协商到其支持的版本；支持 JSON 与 SSE 响应、`Mcp-Session-Id` 会话以及新草案使用的 `Mcp-Method` / `Mcp-Name` 请求头。工具数量通过 `tools/list` 动态发现，不再写死。
+HTTP 客户端是双时代实现。它先按已发布 MCP `2026-07-28` 调用 `server/discover`，每个请求携带 `_meta`，并镜像 `MCP-Protocol-Version` / `Mcp-Method` / `Mcp-Name` / `Mcp-Param-*` 请求头；支持请求级 JSON 或 SSE 响应和显式 MRTR 输入回传。现代模式没有协议会话。若端点返回非现代响应，客户端才降级到旧版 `initialize` / `notifications/initialized` 生命周期，并接受服务端协商到 `2025-11-25`、`2025-06-18` 或 `2025-03-26`；只有旧版路径使用 `Mcp-Session-Id`。
+
+`status` 会同时显示 `era` 和 `protocol_version`。在 2026-08-11 的验证环境中，Python 包是 `ida-pro-mcp 2.0.0`，服务端仍自报 `1.0.0`、使用 legacy 并协商到 `2025-06-18`；检查到的上游 `main` 也仍实现这套旧传输。这是服务端能力边界，不代表端到端已经运行现代协议。IDA database ID 在两个时代都只是显式应用句柄。工具定义继续由 `tools/list` 动态发现；现代响应中的 `ttlMs` / `cacheScope` 会被保留，非法 `x-mcp-header` 工具会被排除。
 
 ## 6.3 anything-analyzer
 
