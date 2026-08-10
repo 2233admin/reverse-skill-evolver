@@ -52,7 +52,12 @@ class TeamsWorktreeLabTests(unittest.TestCase):
         }
 
     def source_snapshot(self, source: Path) -> tuple[str, tuple[str, ...]]:
-        status = subprocess.run([self.git, "-C", str(source), "status", "--porcelain=v1"], capture_output=True, text=True, check=False)
+        status = subprocess.run(
+            [self.git, "--no-optional-locks", "-C", str(source), "status", "--porcelain=v1"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
         self.assertEqual(status.returncode, 0, status.stderr)
         metadata = tuple(
             sorted(

@@ -1,8 +1,9 @@
 """Tests for the mandatory AIGX project-context gate."""
 
+import os
+import sys
 import tempfile
 import unittest
-import sys
 from pathlib import Path
 from unittest.mock import patch
 
@@ -12,7 +13,7 @@ from aigx_context import _candidate_commands, inspect_project
 
 
 class AigxContextTests(unittest.TestCase):
-    @patch("aigx_context.os.name", "nt")
+    @unittest.skipUnless(os.name == "nt", "Windows path discovery requires Windows")
     @patch("aigx_context.site.getuserbase")
     def test_windows_user_site_candidates_do_not_duplicate_python_directory(self, getuserbase):
         getuserbase.return_value = r"C:\Users\agent\AppData\Roaming\Python"

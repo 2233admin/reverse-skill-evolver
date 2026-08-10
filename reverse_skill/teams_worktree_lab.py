@@ -49,7 +49,7 @@ def first_line(result: dict[str, Any]) -> str:
 
 
 def git_value(git: str, source: Path, *arguments: str) -> tuple[str, str]:
-    result = run([git, "-C", str(source), *arguments])
+    result = run([git, "--no-optional-locks", "-C", str(source), *arguments])
     if result["returncode"] != 0:
         return "", first_line(result)
     return str(result["stdout"]).strip(), ""
