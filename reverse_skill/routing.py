@@ -1846,7 +1846,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--aigx-command", help="explicit official aigx/aigx-lint executable")
     parser.add_argument("--search-path", help="workspace directory for controlled read-only search")
     parser.add_argument("--search-query", help="ripgrep-compatible search pattern")
-    parser.add_argument("--search-engine", choices=("auto", "xcmd", "rg"), help="prefer xcmd only when explicitly requested; auto records fallback")
+    parser.add_argument("--search-engine", choices=("auto", "xcmd", "rg", "python"), help="choose a read-only search engine; auto records fallback")
     parser.add_argument("--search-glob", action="append", help="optional ripgrep glob; may be repeated")
     parser.add_argument("--repo-path", help="target Git repository for the read-only IDA Teams Git-backend preflight")
     parser.add_argument("--teams-contract", help="external JSON contract for the read-only IDA Teams collaboration planner")

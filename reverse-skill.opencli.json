@@ -75,7 +75,7 @@
           { "name": "--aigx-command", "arguments": [{ "name": "FILE", "required": true }] },
           { "name": "--search-path", "arguments": [{ "name": "DIRECTORY", "required": true }] },
           { "name": "--search-query", "arguments": [{ "name": "PATTERN", "required": true }] },
-          { "name": "--search-engine", "arguments": [{ "name": "ENGINE", "required": true, "acceptedValues": ["auto", "xcmd", "rg"] }] },
+          { "name": "--search-engine", "arguments": [{ "name": "ENGINE", "required": true, "acceptedValues": ["auto", "xcmd", "rg", "python"] }] },
           { "name": "--search-glob", "arguments": [{ "name": "GLOB", "required": true }], "repeatable": true },
           { "name": "--repo-path", "arguments": [{ "name": "DIRECTORY", "required": true }] },
           { "name": "--teams-contract", "arguments": [{ "name": "FILE", "required": true }] },
@@ -93,7 +93,7 @@
         ],
         "options": [
           { "name": "--glob", "arguments": [{ "name": "GLOB", "required": true }], "repeatable": true },
-          { "name": "--engine", "arguments": [{ "name": "ENGINE", "required": true, "acceptedValues": ["auto", "xcmd", "rg"] }] },
+          { "name": "--engine", "arguments": [{ "name": "ENGINE", "required": true, "acceptedValues": ["auto", "xcmd", "rg", "python"] }] },
           { "name": "--max-results", "arguments": [{ "name": "COUNT", "required": true }] }
         ]
       },

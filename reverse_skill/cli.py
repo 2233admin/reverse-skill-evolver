@@ -292,7 +292,7 @@ def context_check(state: State, project_path: Path, targets: tuple[str, ...], ai
 @click.option("--aigx-command", type=click.Path(dir_okay=False, path_type=Path))
 @click.option("--search-path", type=click.Path(file_okay=False, path_type=Path))
 @click.option("--search-query")
-@click.option("--search-engine", type=click.Choice(["auto", "xcmd", "rg"]), default="auto")
+@click.option("--search-engine", type=click.Choice(["auto", "xcmd", "rg", "python"]), default="auto")
 @click.option("--search-glob", "search_globs", multiple=True)
 @click.option("--repo-path", type=click.Path(file_okay=False, path_type=Path))
 @click.option("--teams-contract", type=click.Path(dir_okay=False, path_type=Path))
@@ -381,7 +381,7 @@ def route_command(
 @click.argument("path", type=click.Path(exists=True, file_okay=False, resolve_path=True, path_type=Path))
 @click.argument("query")
 @click.option("--glob", "globs", multiple=True)
-@click.option("--engine", type=click.Choice(["auto", "xcmd", "rg"]), default="auto", show_default=True)
+@click.option("--engine", type=click.Choice(["auto", "xcmd", "rg", "python"]), default="auto", show_default=True)
 @click.option("--max-results", type=click.IntRange(min=1), default=100, show_default=True)
 @click.pass_obj
 def search_command(
@@ -672,6 +672,9 @@ def close(state: State, database: str, no_save: bool) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     arguments = list(sys.argv[1:] if argv is None else argv)
     json_output = "--json" in arguments
     command = next((arg for arg in arguments if arg in COMMAND_NAMES), "cli")

@@ -45,11 +45,12 @@ def test_context_command_fails_closed_without_a_genome(tmp_path: Path) -> None:
 
 def test_search_command_uses_machine_readable_python_surface(tmp_path: Path) -> None:
     (tmp_path / "sample.txt").write_text("alpha\nbeta\n", encoding="utf-8")
-    result = run_cli("--json", "search", str(tmp_path), "beta", "--engine", "rg")
+    result = run_cli("--json", "search", str(tmp_path), "beta", "--engine", "python")
     assert result.returncode == 0
     value = json.loads(result.stdout)
     assert value["command"] == "search"
     assert value["data"]["status"] == "observed"
+    assert value["data"]["engine"] == "python"
     assert value["data"]["writes_performed"] is False
 
 

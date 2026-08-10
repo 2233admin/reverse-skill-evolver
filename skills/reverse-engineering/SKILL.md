@@ -22,7 +22,7 @@ For source or workspace search, use the routed Python entrypoint rather than an 
 reverse-skill search "<workspace>" "<pattern>" --engine auto
 ```
 
-It is read-only. Auto mode uses native `rg` for clean machine-readable output. `xcmd` remains optional and is used only when explicitly selected.
+It is read-only. Auto mode prefers a healthy `xcmd`/`rg` path and falls back to the built-in Python search engine. Each engine remains explicitly selectable.
 
 **Python packages (all platforms):**
 ```bash

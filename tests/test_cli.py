@@ -1,13 +1,16 @@
 import json
+import os
 import subprocess
 import sys
 
 
-def run_cli(*args: str) -> subprocess.CompletedProcess[str]:
+def run_cli(*args: str, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [sys.executable, "-m", "reverse_skill", *args],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        env={**os.environ, **(env or {})},
         check=False,
     )
 
@@ -94,6 +97,22 @@ def test_route_does_not_treat_so_as_a_substring_of_source() -> None:
         "audit this Python source project",
         "--target-kind",
         "source_tree",
+    )
+
+    assert result.returncode in {0, 5}
+    value = json.loads(result.stdout)
+    assert value["command"] == "route"
+    assert value["data"]["route"]["base_id"] != "native-binary"
+
+
+def test_json_output_is_utf8_under_a_legacy_process_encoding() -> None:
+    result = run_cli(
+        "--json",
+        "route",
+        "audit this Python source project",
+        "--target-kind",
+        "source_tree",
+        env={"PYTHONIOENCODING": "cp1252"},
     )
 
     assert result.returncode in {0, 5}
