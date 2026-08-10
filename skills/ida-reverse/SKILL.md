@@ -5,7 +5,7 @@ description: |
 
   Ensure to use this skill when the user wants to analyze any binary file, regardless of whether they explicitly mention "IDA" or "reverse engineering". This includes requests like "看看这个exe", "分析这个dll", "帮我破解", "找一下密码", "这个软件怎么注册", etc.
 
-  Use the bundled scripts (scripts/start.ps1, scripts/open.ps1) for deterministic server management and file opening — do NOT write ad-hoc PowerShell commands for these operations.
+  Use the bundled scripts (scripts/start.ps1, scripts/open.ps1) for deterministic server management and file opening. PowerShell is only the Windows script host; it is not a reverse-engineering capability.
 ---
 
 # IDA Pro 逆向分析技能
@@ -51,7 +51,7 @@ description: |
 
 8. **带自动分析打开看起来像卡死**
    - `idalib_open(run_auto_analysis=true)` 可能长时间不回包，但后端实际上仍在继续打开和分析
-   - 之前用户侧看到的是“PowerShell 一直无输出”，容易误判成脚本卡死
+   - 之前用户侧看到的是“启动脚本一直无输出”，容易误判成分析卡死
    - **当前解决办法**：`open.ps1` 新增 `-TimeoutSeconds`，并改为后台请求 + 前台轮询 + 定时进度输出
    - 轮询到会话已就绪时会提前返回 `OK:文件名:session_id`，超时则返回 `ERR:open_timeout_xxs`
 
@@ -301,24 +301,21 @@ idapro_rename(batch={"func": [{"addr": "函数地址", "name": "有意义的名�
 | 工具 | 可自动安装 | 安装方式 | 说明 |
 |------|-----------|---------|------|
 | idalib-mcp | ✓ | pip install (from GitHub) | `start.ps1` 缺失时自动安装 |
-| IDA Pro 本体 | ✗ | 商业软件，需手动安装 | 设置 `IDADIR` 环境变量指向安装目录 |
+| IDA Pro 本体 | ✗ | 需手动安装 | 默认选择本机可用安装中的最高版本；显式 `-IdaDir` 才固定目录 |
 
 ### 安装步骤（已验证）
 
 ```cmd
-# 1. 设置 IDA 路径（替换为你的实际 IDA 安装目录）
-setx IDADIR "<你的IDA安装目录>"
-
-# 2. 从 GitHub 安装 ida-pro-mcp（PyPI 上的 ida-mcp 是另一个项目，不要装错！）
+# 1. 从 GitHub 安装 ida-pro-mcp（PyPI 上的 ida-mcp 是另一个项目，不要装错！）
 pip install git+https://github.com/mrexodia/ida-pro-mcp.git
 
-# 3. 安装 IDA 插件（选择 Streamable HTTP + Global + 全选客户端）
+# 2. 安装 IDA 插件（选择 Streamable HTTP + Global + 全选客户端）
 ida-pro-mcp --install
 
-# 4. 重启 IDA Pro，打开目标文件
+# 3. 重启 IDA Pro，打开目标文件
 # 插件自动监听 127.0.0.1:13337
 
-# 5. 验证
+# 4. 验证
 ida-pro-mcp --config
 ```
 
@@ -332,5 +329,5 @@ ida-pro-mcp --config
 
 ### 前置条件
 
-- IDA Pro 已安装且 `IDADIR` 环境变量已设置（或脚本内默认路径正确）
+- IDA Pro 已安装；入口脚本按版本选择本机最高的有效安装，旧 `IDADIR` 只作为候选，不再覆盖新版
 - Python 已安装（idalib-mcp 依赖 Python）

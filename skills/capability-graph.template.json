@@ -3,8 +3,7 @@
   "generated_at": "(auto-generated)",
   "platform": {
     "os": "(auto-generated)",
-    "version": "(auto-generated)",
-    "shell": "(auto-generated)"
+    "version": "(auto-generated)"
   },
   "routing_entry": ["SKILL.md", "routing.json", "routing.md"],
   "nodes": [

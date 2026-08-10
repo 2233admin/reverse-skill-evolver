@@ -207,7 +207,6 @@ $capabilityGraph = [pscustomobject]@{
     platform = [pscustomobject]@{
         os = [System.Environment]::OSVersion.Platform.ToString()
         version = [System.Environment]::OSVersion.VersionString
-        shell = 'powershell'
     }
     routing_entry = @('SKILL.md', 'routing.json', 'routing.md')
     nodes = @($toolNodes) + @($serviceNodes)

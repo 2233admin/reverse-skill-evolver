@@ -17,27 +17,22 @@ param(
     [string]$ServerPath
 )
 
-if ([string]::IsNullOrWhiteSpace($IdaDir)) {
-    if (-not [string]::IsNullOrWhiteSpace($env:IDADIR)) {
-        $IdaDir = $env:IDADIR
-    } else {
-        # Search common IDA installation paths
-        $idaCandidates = @(
-            'C:\Program Files\IDA Pro',
-            'C:\IDA Pro',
-            'D:\IDA',
-            (Join-Path $env:USERPROFILE 'Tools\IDA')
-        )
-        $foundIda = $idaCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
-        if ($foundIda) {
-            $IdaDir = $foundIda
-        } else {
-            Write-Output "ERR:IDADIR not set and IDA Pro not found. Set IDADIR environment variable."
-            exit 1
-        }
-    }
+$toolDiscovery = Join-Path $PSScriptRoot '..\..\scripts\lib\ToolDiscovery.ps1'
+. $toolDiscovery
+
+$ida = if ([string]::IsNullOrWhiteSpace($IdaDir)) {
+    Get-LatestIdaInstallation
 }
+else {
+    Get-LatestIdaInstallation -CandidatePaths @($IdaDir) -OnlyCandidatePaths
+}
+if ($null -eq $ida) {
+    Write-Output 'ERR:No usable IDA installation found (requires ida.exe/idat.exe and idalib.dll).'
+    exit 1
+}
+$IdaDir = $ida.InstallDir
 $env:IDADIR = $IdaDir
+Write-Output "INFO:IDA:$($ida.Version):$IdaDir"
 
 if ([string]::IsNullOrWhiteSpace($ServerPath)) {
     # Try both possible executable names (idalib-mcp is the HTTP server, ida-pro-mcp is the installer CLI)

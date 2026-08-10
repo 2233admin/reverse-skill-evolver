@@ -1064,35 +1064,26 @@ When automatic installation fails, the AI must tell the user in the following fo
 **Problem**: Port 13337 does not respond
 
 **Possible causes**:
-- IDA Pro is not installed or `IDADIR` is not set
+- IDA Pro is not installed, or no installation contains both `ida.exe`/`idat.exe` and `idalib.dll`
 - idalib-mcp is not installed
-- IDA license issue
+- The selected IDA installation cannot start or open the target IDB
 
 **Manual configuration steps**:
 
-1. Confirm IDA Pro is installed and note its installation directory
+1. Confirm IDA Pro is installed. The bundled scripts automatically select the highest usable version; a stale `IDADIR` is only a candidate and cannot override a newer installation.
 
-2. Set environment variable (replace with your real path):
-   ```powershell
-   [Environment]::SetEnvironmentVariable('IDADIR', '<your IDA installation directory>', 'User')
-   ```
-   Or CMD:
-   ```cmd
-   setx IDADIR "<your IDA installation directory>"
-   ```
-
-3. Install ida-pro-mcp (must be from GitHub, not PyPI):
+2. Install ida-pro-mcp (must be from GitHub, not PyPI):
    ```powershell
    pip install git+https://github.com/mrexodia/ida-pro-mcp.git
    ```
 
-4. Install the IDA plugin:
+3. Install the IDA plugin:
    ```powershell
    ida-pro-mcp --install
    ```
    Choose: Streamable HTTP → Global → select all clients
 
-5. Restart IDA Pro, open the target file, and the plugin will automatically listen on 13337
+4. Restart IDA Pro, open the target file, and the plugin will automatically listen on 13337
 
 **After startup succeeds, tell me and I will continue the current task.**
 ```
