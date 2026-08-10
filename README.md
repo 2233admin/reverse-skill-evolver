@@ -176,7 +176,8 @@ The following tables are grouped by “required / commonly used / optional enhan
 |---|---|---|---|---|---|
 | Claude Code | Recommended | https://github.com/anthropics/claude-code | Main AI client, best suited for this package | User’s own Claude environment | Follow official instructions; then connect this package path and MCP/hooks |
 | Node.js 22.12+ | Required for JS/MCP | https://nodejs.org/ | Runs `npx`, `jshookmcp`, and local JS reproduction | `C:\Program Files\nodejs\` | Confirm with `node -v` and `npx -v` |
-| Python 3.x | Commonly used | https://www.python.org/ | Runs Frida, helper scripts, and common `ida-mcp` distributions | `C:\Users\<user>\AppData\Local\Programs\Python\Python3xx\` | Confirm with `python --version` and `pip --version` |
+| Python 3.x | Commonly used | https://www.python.org/ | Runs `reverse-skill`, helper scripts, YARA, and common MCP distributions | `C:\Users\<user>\AppData\Local\Programs\Python\Python3xx\` | Confirm with `python --version` and `pip --version` |
+| uv | Required for isolated Python CLIs | https://docs.astral.sh/uv/ | Keeps Frida and similar CLI dependencies out of the shared Python environment | User tool directory | Confirm with `uv --version`; bootstrap installs it when absent |
 | Java / JDK | Required for APK | https://adoptium.net/ or https://www.oracle.com/java/ | Runs Java tools such as `jadx` and `apktool` | Default system JDK path is fine | Confirm with `java -version` |
 
 ### 4.2 APK / Android Reverse-Engineering Tools
@@ -192,7 +193,7 @@ The following tables are grouped by “required / commonly used / optional enhan
 
 | Component | Required? | Project URL | Purpose | Recommended Location | Installation |
 |---|---|---|---|---|---|
-| Frida / frida-tools | Common for dynamic hooking | https://frida.re/ | Java / native dynamic injection | Python Scripts directory | Usually `pip install frida-tools`; confirm `frida` and `frida-ps` work |
+| Frida / frida-tools | Common for dynamic hooking | https://frida.re/ | Java / native dynamic injection | Isolated `uv tool` environment | `uv tool install frida-tools`; confirm `frida` and `frida-ps` work |
 | anything-analyzer | Web/traffic enhancement | https://github.com/Mouseww/anything-analyzer | Browser automation, HTTP capture, AI analysis | Any code directory, e.g. `C:\work\anything-analyzer-main\` | Current package metadata indicates `pnpm`; common flow: `pnpm install` → `pnpm dev` |
 | jshookmcp | JS reverse-engineering enhancement | https://github.com/vmoranv/jshookmcp | Browser/CDP/Hook/Network/SourceMap/AST execution surface | No fixed directory; start with `npx` | Not a standalone bare tool; register and enable it in the MCP client first |
 
@@ -297,6 +298,7 @@ reverse-skill register
 reverse-skill start
 reverse-skill status
 reverse-skill tools
+reverse-skill integrations
 ```
 
 `register` writes the Codex configuration through `codex mcp add ... --url ...`, so a new task can use the native `idapro` MCP tools directly. `start` selects the newest valid local IDA installation, preserves an existing healthy service, and only cleans up stale processes when the service is unavailable.
@@ -309,6 +311,8 @@ reverse-skill sessions
 reverse-skill call decompile --database "<session-id>" --arguments-json '{"addr":"0x140001000"}'
 reverse-skill close "<session-id>"
 ```
+
+Optional companion-tool support is installed with `python -m pip install -e ".[ida-integrations]"`. The first complete bridge is YARA: `reverse-skill yara-scan sample.exe --rules triage.yar` returns rule/string/file-offset evidence, while `--database <session-id> --annotate` writes comments only for byte matches that are unique in the matching IDA database. `reverse-skill integrations` distinguishes implemented bridges from tools that are merely discoverable.
 
 If a modern server returns `resultType: "input_required"`, retry the same tool with a new CLI invocation and echo the opaque state exactly:
 

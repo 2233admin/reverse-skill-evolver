@@ -358,7 +358,7 @@ frida -U -f com.example.app -l hook.js
 |------|-----------|---------|------|
 | jadx | ✓ | GitHub Release ZIP | 自动下载解压到 `%USERPROFILE%\Tools\jadx\` |
 | apktool | ✓ | GitHub Release JAR + wrapper | 自动下载 jar 并生成 bat 到 `%USERPROFILE%\Tools\apktool\` |
-| frida / frida-ps | ✓ | pip install frida-tools | 需要 Python 已安装 |
+| frida / frida-ps | ✓ | `uv tool install frida-tools` | 与共享 Python 依赖隔离 |
 | adb | ✓ | winget / fallback path | 自动安装 Android Platform-Tools |
 | zipalign | ✗ | 需手动安装 Android Build-Tools | `sdkmanager "build-tools;35.0.0"` |
 | apksigner | ✗ | 需手动安装 Android Build-Tools | 同上 |
@@ -367,7 +367,7 @@ frida -U -f com.example.app -l hook.js
 
 - `scripts/decode.ps1`：缺 jadx 或 apktool 时自动调用 `bootstrap-reverse.ps1`
 - `scripts/rebuild-sign-install.ps1`：缺 adb 或 apktool 时自动调用 bootstrap
-- `scripts/frida-run.ps1`：当前仍为手动检查（frida 通常已通过 pip 安装）
+- `scripts/frida-run.ps1`：缺少 Frida 时通过统一 bootstrap 安装到独立 `uv tool` 环境
 
 ### 自举失败时
 

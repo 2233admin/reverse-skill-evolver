@@ -14,11 +14,25 @@ import click
 from . import __version__
 from .errors import EnvironmentUnavailable, ReverseSkillError, ToolOperationError
 from .ida import find_latest_ida, install_ida_mcp, start_server
+from .integrations import annotate_yara_matches, integration_inventory, scan_yara
 from .mcp import McpClient, probe_tool_count
 
 
 SCHEMA_VERSION = "1"
-COMMAND_NAMES = {"install", "register", "start", "status", "doctor", "tools", "open", "sessions", "call", "close"}
+COMMAND_NAMES = {
+    "install",
+    "register",
+    "start",
+    "status",
+    "doctor",
+    "tools",
+    "integrations",
+    "yara-scan",
+    "open",
+    "sessions",
+    "call",
+    "close",
+}
 
 
 class State:
@@ -197,6 +211,63 @@ def tools(state: State) -> None:
     """List tools discovered from the active MCP endpoint."""
     with McpClient(state.url, timeout=state.timeout) as client:
         emit(state, "tools", client.request("tools/list"))
+
+
+@cli.command()
+@click.pass_obj
+def integrations(state: State) -> None:
+    """Report local tools that can complement the IDA workflow."""
+    values = integration_inventory()
+    emit(
+        state,
+        "integrations",
+        {
+            "integrations": values,
+            "summary": {
+                "ready": sum(item["support"] == "ready" and item["available"] for item in values),
+                "available": sum(item["available"] for item in values),
+            },
+        },
+    )
+
+
+@cli.command(name="yara-scan")
+@click.argument("target", type=click.Path(exists=True, dir_okay=False, resolve_path=True, path_type=Path))
+@click.option(
+    "--rules",
+    "rule_paths",
+    type=click.Path(exists=True, dir_okay=False, resolve_path=True, path_type=Path),
+    multiple=True,
+    required=True,
+    help="YARA source file; repeat for multiple namespaces.",
+)
+@click.option("--database", help="Open IDA database session to annotate.")
+@click.option("--annotate", is_flag=True, help="Append comments for unique byte matches in IDA.")
+@click.option("--scan-timeout", type=click.FloatRange(min=1), default=60.0, show_default=True)
+@click.pass_obj
+def yara_scan(
+    state: State,
+    target: Path,
+    rule_paths: tuple[Path, ...],
+    database: str | None,
+    annotate: bool,
+    scan_timeout: float,
+) -> None:
+    """Scan a binary with YARA and optionally annotate its active IDA database."""
+    if annotate and not database:
+        raise click.UsageError("--annotate requires --database")
+    result, instances = scan_yara(target, rule_paths, scan_timeout)
+    result["annotation"] = {
+        "requested": False,
+        "applied": 0,
+        "skipped": [],
+        "resolved": [],
+        "writes": [],
+    }
+    if annotate and database:
+        with McpClient(state.url, timeout=state.timeout) as client:
+            result["annotation"] = annotate_yara_matches(client, database, target, instances)
+    emit(state, "yara-scan", result)
 
 
 @cli.command()

@@ -48,7 +48,7 @@ Frida injects JavaScript into running processes for real-time hooking, tracing, 
 ### Installation
 
 ```bash
-pip install frida-tools frida
+uv tool install frida-tools
 # Verify
 frida --version
 ```

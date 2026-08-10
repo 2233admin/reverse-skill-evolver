@@ -19,7 +19,27 @@ def test_help_and_version_are_available() -> None:
     assert help_result.returncode == 0
     assert "Commands:" in help_result.stdout
     assert version_result.returncode == 0
-    assert "1.0.0" in version_result.stdout
+    assert "1.1.0" in version_result.stdout
+
+
+def test_integrations_has_a_stable_json_shape() -> None:
+    result = run_cli("--json", "integrations")
+
+    assert result.returncode == 0
+    value = json.loads(result.stdout)
+    assert value["command"] == "integrations"
+    integrations = {item["name"]: item for item in value["data"]["integrations"]}
+    assert integrations["yara"]["support"] == "ready"
+    assert integrations["capa"]["support"] == "discovery_only"
+
+
+def test_yara_annotation_requires_database() -> None:
+    result = run_cli("--json", "yara-scan", __file__, "--rules", __file__, "--annotate")
+
+    assert result.returncode == 2
+    value = json.loads(result.stdout)
+    assert value["command"] == "yara-scan"
+    assert "--database" in value["error"]["message"]
 
 
 def test_unknown_command_is_usage_error() -> None:

@@ -4,7 +4,7 @@
   "info": {
     "title": "reverse-skill",
     "summary": "Operate the local IDA Pro MCP service from Python.",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "license": { "identifier": "MIT" }
   },
   "command": {
@@ -48,6 +48,18 @@
       { "name": "status", "description": "Report IDA, MCP negotiation, and Codex registration." },
       { "name": "doctor", "description": "Alias for status." },
       { "name": "tools", "description": "List dynamically discovered MCP tools." },
+      { "name": "integrations", "description": "Report local tools that can complement the IDA workflow." },
+      {
+        "name": "yara-scan",
+        "description": "Scan a binary with YARA and optionally annotate its active IDA database.",
+        "arguments": [{ "name": "TARGET", "required": true }],
+        "options": [
+          { "name": "--rules", "arguments": [{ "name": "FILE", "required": true }], "repeatable": true },
+          { "name": "--database", "arguments": [{ "name": "SESSION_ID", "required": true }] },
+          { "name": "--annotate", "description": "Append comments for unique byte matches in IDA." },
+          { "name": "--scan-timeout", "arguments": [{ "name": "SECONDS", "required": true }] }
+        ]
+      },
       {
         "name": "open",
         "description": "Open a binary through idb_open.",

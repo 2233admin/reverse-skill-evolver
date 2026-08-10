@@ -29,6 +29,14 @@ reverse-skill install
 reverse-skill register
 reverse-skill start
 reverse-skill --json status
+reverse-skill integrations
+reverse-skill yara-scan "C:\path\sample.exe" --rules "C:\rules\triage.yar"
 reverse-skill open "C:\path\sample.exe"
 reverse-skill call decompile --database SESSION --arguments-json '{"addr":"0x140001000"}'
 ```
+
+## IDA companion integrations
+
+`reverse-skill integrations` reports both local availability and implementation state. `ready` means the CLI has a tested execution path; `discovery_only` means the tool is detected but no result-import bridge is claimed yet.
+
+YARA is the first ready bridge. Install the optional dependency with `python -m pip install -e ".[ida-integrations]"`, scan normally with `yara-scan`, and add `--database SESSION --annotate` to append comments to the active IDA database. Annotation is deliberately conservative: the CLI verifies that the session opened the same target and writes only matched byte sequences that resolve to exactly one IDA address. Short, missing, or ambiguous matches remain in the JSON result and are not written.

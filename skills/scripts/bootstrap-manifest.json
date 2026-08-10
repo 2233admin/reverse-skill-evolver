@@ -23,16 +23,16 @@
     },
     {
       "name": "frida",
-      "bootstrapKind": "pip-package",
-      "pipPackage": "frida-tools",
+      "bootstrapKind": "uv-tool",
+      "uvPackage": "frida-tools",
       "docsUrl": "https://frida.re/",
       "canAutoInstall": true,
       "verifyCommand": "frida"
     },
     {
       "name": "frida-ps",
-      "bootstrapKind": "pip-package",
-      "pipPackage": "frida-tools",
+      "bootstrapKind": "uv-tool",
+      "uvPackage": "frida-tools",
       "docsUrl": "https://frida.re/",
       "canAutoInstall": true,
       "verifyCommand": "frida-ps"

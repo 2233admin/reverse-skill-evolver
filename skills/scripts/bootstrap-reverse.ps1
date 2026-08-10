@@ -202,20 +202,33 @@ function Ensure-ApktoolInstall {
     return (Resolve-ReverseToolSpec -Name 'apktool')
 }
 
-function Ensure-PipPackageInstall {
+function Ensure-UvToolInstall {
     param([Parameter(Mandatory = $true)]$Definition)
 
-    Ensure-PythonRuntime
-    $python = Get-FirstCommandPath -Names @('python', 'python3')
-    # Use pipSource (git URL) if available, otherwise use pipPackage name
-    $installTarget = if ($Definition.PSObject.Properties['pipSource'] -and -not [string]::IsNullOrWhiteSpace($Definition.pipSource)) {
-        $Definition.pipSource
-    } else {
-        $Definition.pipPackage
+    $uv = Get-FirstCommandPath -Names @('uv')
+    if ([string]::IsNullOrWhiteSpace($uv)) {
+        Ensure-PythonRuntime
+        $python = Get-FirstCommandPath -Names @('python', 'python3')
+        & $python -m pip install --user --upgrade uv
+        if ($LASTEXITCODE -ne 0) {
+            throw 'uv installation failed.'
+        }
+        $uv = Get-FirstCommandPath -Names @('uv')
+        if ([string]::IsNullOrWhiteSpace($uv)) {
+            $candidate = Join-Path ([Environment]::GetFolderPath('UserProfile')) '.local\bin\uv.exe'
+            if (Test-Path -LiteralPath $candidate) {
+                $uv = $candidate
+            }
+        }
     }
-    & $python -m pip install --upgrade $installTarget
+
+    if ([string]::IsNullOrWhiteSpace($uv)) {
+        throw 'uv is not available after installation.'
+    }
+
+    & $uv tool install --upgrade $Definition.uvPackage
     if ($LASTEXITCODE -ne 0) {
-        throw "pip install failed for $installTarget"
+        throw "uv tool install failed for $($Definition.uvPackage)"
     }
 }
 
@@ -351,8 +364,8 @@ function Ensure-Capability {
         'github-release-jar-wrapper' {
             return Ensure-ApktoolInstall -Definition $definition
         }
-        'pip-package' {
-            Ensure-PipPackageInstall -Definition $definition
+        'uv-tool' {
+            Ensure-UvToolInstall -Definition $definition
             return $true
         }
         'winget-package' {

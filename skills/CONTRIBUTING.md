@@ -147,7 +147,7 @@ description: <一句话描述适用场景和触发条件>
 |------|---------|---------|
 | `github-release-zip` | GitHub Release 下载解压 | `repo`, `assetRegex`, `installDir` |
 | `github-release-jar-wrapper` | Java JAR + bat wrapper | `repo`, `assetRegex`, `installDir`, `wrapperName` |
-| `pip-package` | Python pip 安装 | `pipPackage` |
+| `uv-tool` | 隔离安装 Python CLI | `uvPackage` |
 | `npm-mcp` | npx 启动的 MCP server | `npmPackage`, `mcpNames`, `mcpCommand`, `mcpArgs` |
 | `local-http-mcp` | 本地 HTTP 服务型 MCP | `mcpUrl`, `servicePort` |
 | `winget-package` | Windows winget 安装 | `wingetId` |
@@ -358,7 +358,7 @@ skills/ghidra-headless/
 |------|------|------|--------------------------------------|
 | npx 启动型 | 通过 `npx -y @xxx/yyy` 拉起，无需本地项目 | jshookmcp | `npm-mcp` |
 | 本地 HTTP 服务型 | 需要 clone 项目、安装依赖、启动 dev server | anything-analyzer | `local-http-mcp` |
-| pip 安装 + HTTP 型 | pip 安装后启动 HTTP 服务 | idalib-mcp | `pip-package` + 单独的 `local-http-mcp` 条目 |
+| Python CLI + HTTP 型 | `uv tool` 隔离安装后启动 HTTP 服务 | 通用 Python MCP | `uv-tool` + 单独的 `local-http-mcp` 条目 |
 | Docker 型 | 通过 docker run 启动 | 未来可能的 MCP | `docker-mcp`（需扩展 bootstrap 脚本） |
 | 远程托管型 | 直接连远程 URL，无需本地安装 | 云端 MCP 服务 | 无需 bootstrap，只需注册 URL |
 
@@ -406,15 +406,15 @@ skills/ghidra-headless/
 }
 ```
 
-#### pip + HTTP 服务型 MCP
+#### `uv tool` + HTTP 服务型 MCP
 
-需要两个条目：一个 pip 安装，一个服务注册：
+需要两个条目：一个隔离 CLI 安装，一个服务注册：
 
 ```json
 {
   "name": "<tool-name>",
-  "bootstrapKind": "pip-package",
-  "pipPackage": "<package-name>",
+  "bootstrapKind": "uv-tool",
+  "uvPackage": "<package-name>",
   "docsUrl": "...",
   "canAutoInstall": true,
   "verifyCommand": "<executable>"

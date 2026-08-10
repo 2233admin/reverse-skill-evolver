@@ -40,7 +40,7 @@ FridaBypassKit 是一个集成了四大绕过能力的 Frida 脚本，无需针�
 
 ```bash
 # 前置条件
-pip install frida-tools
+uv tool install frida-tools
 adb push frida-server /data/local/tmp/
 adb shell chmod 755 /data/local/tmp/frida-server
 adb shell su -c /data/local/tmp/frida-server &

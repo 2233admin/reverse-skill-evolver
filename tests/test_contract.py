@@ -45,6 +45,8 @@ def test_opencli_description_matches_click_command_surface() -> None:
         "status",
         "doctor",
         "tools",
+        "integrations",
+        "yara-scan",
         "open",
         "sessions",
         "call",

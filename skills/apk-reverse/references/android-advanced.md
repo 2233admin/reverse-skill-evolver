@@ -343,7 +343,7 @@ Java.perform(function() {
 |------|------|------|
 | jadx | Java 反编译 | 已在 bootstrap 中 |
 | apktool | 解包/重打包 | 已在 bootstrap 中 |
-| Frida | 动态 Hook | `pip install frida-tools` |
+| Frida | 动态 Hook | `uv tool install frida-tools` |
 | Objection | Frida 封装（更易用） | `pip install objection` |
 | MobSF | 自动化移动安全分析 | Docker 部署 |
 | BlackDex | 免 root 脱壳 | APK 安装 |

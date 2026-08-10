@@ -176,7 +176,8 @@ C:\Tools\radare2\                      # 可选
 |---|---|---|---|---|---|
 | Claude Code | 建议 | https://github.com/anthropics/claude-code | 作为主 AI 客户端，最适合本包 | 用户自己的 Claude 环境 | 按官方说明安装；后续把本包路径和 MCP/Hook 接进去 |
 | Node.js 22.12+ | JS/MCP 必需 | https://nodejs.org/ | 运行 `npx`、`jshookmcp`、本地 JS 复现 | `C:\Program Files\nodejs\` | 安装后确认 `node -v`、`npx -v` |
-| Python 3.x | 常用 | https://www.python.org/ | 运行 Frida、部分辅助脚本、`ida-mcp` 常见分发形态 | `C:\Users\<用户>\AppData\Local\Programs\Python\Python3xx\` | 安装后确认 `python --version`、`pip --version` |
+| Python 3.x | 常用 | https://www.python.org/ | 运行 `reverse-skill`、辅助脚本、YARA 和常见 MCP 分发 | `C:\Users\<用户>\AppData\Local\Programs\Python\Python3xx\` | 安装后确认 `python --version`、`pip --version` |
+| uv | 隔离 Python CLI 必需 | https://docs.astral.sh/uv/ | 避免 Frida 等 CLI 的依赖污染共享 Python 环境 | 用户工具目录 | 确认 `uv --version`；缺失时 bootstrap 自动安装 |
 | Java / JDK | APK 必需 | https://adoptium.net/ 或 https://www.oracle.com/java/ | 运行 `jadx`、`apktool` 等 Java 工具链 | 系统默认 JDK 路径即可 | 安装后确认 `java -version` |
 
 ### 4.2 APK / Android 逆向工具
@@ -192,7 +193,7 @@ C:\Tools\radare2\                      # 可选
 
 | 组件 | 是否必需 | 项目地址 | 作用 | 推荐安装位置 | 安装方式 |
 |---|---|---|---|---|---|
-| Frida / frida-tools | 动态 Hook 常用 | https://frida.re/ | Java / native 动态注入 | Python Scripts 目录 | 一般用 `pip install frida-tools`；确认 `frida`、`frida-ps` 可用 |
+| Frida / frida-tools | 动态 Hook 常用 | https://frida.re/ | Java / native 动态注入 | 隔离的 `uv tool` 环境 | `uv tool install frida-tools`；确认 `frida`、`frida-ps` 可用 |
 | anything-analyzer | Web/抓包增强 | https://github.com/Mouseww/anything-analyzer | 浏览器自动化、HTTP 捕获、AI 分析 | 任意代码目录，例如 `C:\work\anything-analyzer-main\` | 当前本机包信息显示使用 `pnpm`，常见流程：`pnpm install` → `pnpm dev` |
 | jshookmcp | JS 逆向增强 | https://github.com/vmoranv/jshookmcp | 浏览器/CDP/Hook/Network/SourceMap/AST 执行面 | 无固定目录；通过 `npx` 启动 | 不是裸工具；要先在 MCP 客户端里注册并启用 |
 
@@ -296,6 +297,7 @@ reverse-skill register
 reverse-skill start
 reverse-skill status
 reverse-skill tools
+reverse-skill integrations
 ```
 
 `register` 通过 `codex mcp add ... --url ...` 写入 Codex 配置；新任务启动时即可直接使用 `idapro` MCP 工具。`start` 会自动选择本机最高版本的有效 IDA，健康服务已存在时直接复用，只有服务不可达时才清理陈旧进程并重启。
@@ -308,6 +310,8 @@ reverse-skill sessions
 reverse-skill call decompile --database "<session-id>" --arguments-json '{"addr":"0x140001000"}'
 reverse-skill close "<session-id>"
 ```
+
+IDA 联动工具属于可选能力，可用 `python -m pip install -e ".[ida-integrations]"` 安装。首个打通的完整桥接是 YARA：`reverse-skill yara-scan sample.exe --rules triage.yar` 返回规则、字符串和文件偏移证据；增加 `--database <session-id> --annotate` 后，只把在对应 IDA 数据库中唯一定位的字节命中写成注释。`reverse-skill integrations` 会明确区分已经实现的桥接和仅能发现、尚未接入的工具。
 
 若现代服务返回 `resultType: "input_required"`，用新的 CLI 调用重试同一工具，并原样回传不透明状态：
 
