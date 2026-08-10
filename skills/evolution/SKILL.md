@@ -18,6 +18,9 @@ It does not replace `apk-reverse`, `ida-reverse`, `js-reverse`, `pentest-tools`,
 3. `NEXT`: Use `../routing.json` for machine routing and `../routing.md` for human-readable fallback context.
 4. `ACT`: Route to the selected child skill and record each material decision in a TraceCard.
 5. `END`: Classify the result through the promotion gate before changing stable routing or skill docs.
+6. `DOGFOOD`: When Code Intel emits `code-intel-dogfood-finding.v1`, read
+   `code-intel-dogfood-finding.md`; keep the finding in `candidate` until a
+   re-run oracle proves the proposed tool repair.
 
 ## Goal Contract
 
@@ -83,6 +86,11 @@ Write field-journal output into one of three tiers:
 - `forensic`: failed, ambiguous, sensitive, or adversarial; useful for analysis only.
 
 All memory entries MUST include provenance: source trace, tool versions, verification time, and applicable environment.
+
+Code Intel dogfood findings are advisory evidence, not an authority override.
+Consume their artifact digests through
+[`code-intel-dogfood-finding.md`](code-intel-dogfood-finding.md), then retain
+them in `candidate` until the cited project has been re-run after a repair.
 
 ## Promotion Gate
 
