@@ -201,7 +201,7 @@ The following tables are grouped by “required / commonly used / optional enhan
 | Component | Required? | Project URL | Purpose | Recommended Location | Installation |
 |---|---|---|---|---|---|
 | IDA Pro | Common for deep binary RE | https://hex-rays.com/ida-pro/ | Decompilation, xrefs, data flow, renaming, type recovery | Example: `D:\APP\IDA\` | Install IDA and point `IDADIR` to its root directory |
-| idalib-mcp | Required for `ida-reverse` | https://github.com/mrexodia/ida-pro-mcp | Exposes `idapro_*` MCP tools or a local HTTP service | Commonly installed in Python Scripts | `pip install git+https://github.com/mrexodia/ida-pro-mcp.git`, then `ida-pro-mcp --install` |
+| idalib-mcp | Required for `ida-reverse` | https://github.com/mrexodia/ida-pro-mcp | Exposes a local Streamable HTTP MCP service | Commonly installed in Python Scripts | `pip install git+https://github.com/mrexodia/ida-pro-mcp.git`; run interactive `ida-pro-mcp --install` only when GUI integration is needed |
 | radare2 | Optional | https://github.com/radareorg/radare2 | CLI reconnaissance, disassembly, diffing, patching | `C:\Tools\radare2\` | Confirm `r2`, `rabin2`, `rasm2`, `radiff2`, etc. work |
 
 ### 4.5 Supporting Knowledge Base
@@ -226,7 +226,7 @@ The following tables are grouped by “required / commonly used / optional enhan
 | Tool index | `tool-index.md` | Check whether local tools exist, where they are, and which scripts call them |
 | Capability graph | `capability-graph.json` | Session-level tool path, version, MCP registration, service health, and smoke status |
 | APK reverse engineering | `apk-reverse\` | Unpack, jadx, smali, repackaging, Frida, native dispatch |
-| IDA Pro | `ida-reverse\` | Deep binary RE and `idapro_*` workflows |
+| IDA Pro | `ida-reverse\` | Deep binary RE through native MCP and the unified CLI |
 | JS / Web | `js-reverse\` | Frontend signatures, request chains, environment simulation, SourceMap / AST / Hook |
 | radare2 | `radare2\` | CLI reconnaissance, strings, imports/exports, patching |
 | General methodology | `reverse-engineering\` | Cross-language, cross-platform, anti-analysis, pattern library |
@@ -283,46 +283,29 @@ After success, check:
 
 ## 6.2 IDA Pro Chain
 
-### Start the IDA MCP HTTP Service
-
-Current script entry point in this package:
+The repository-level `reverse-skill.ps1` is the unified entry point. It is convenient for direct use and targets the same Streamable HTTP service as native Codex MCP registration:
 
 ```powershell
-powershell -File "<SKILL_ROOT>\ida-reverse\scripts\start.ps1"
+.\reverse-skill.ps1 register
+.\reverse-skill.ps1 start
+.\reverse-skill.ps1 status
+.\reverse-skill.ps1 tools
 ```
 
-The current script logic will:
+`register` writes the Codex configuration through `codex mcp add ... --url ...`, so a new task can use the native `idapro` MCP tools directly. `start` selects the newest valid local IDA installation, preserves an existing healthy service, and only cleans up stale processes when the service is unavailable.
 
-1. Kill old `idalib-mcp` process trees
-2. Start the HTTP service in the background
-3. Wait for service readiness
-4. Output `OK:<tool count>` or `ERR:timeout`
-
-### Open a Sample
+Common session operations:
 
 ```powershell
-powershell -File "<SKILL_ROOT>\ida-reverse\scripts\open.ps1" -Path "C:\path\to\sample.exe" -TimeoutSeconds 600
+.\reverse-skill.ps1 open -Path "C:\path\to\sample.exe" -TimeoutSeconds 600
+.\reverse-skill.ps1 sessions
+.\reverse-skill.ps1 call -Tool decompile -Database "<session-id>" -ArgumentsJson '{"addr":"0x140001000"}'
+.\reverse-skill.ps1 close -Database "<session-id>"
 ```
 
-Features:
+`skills\ida-reverse\scripts\open.ps1` remains as a compatibility entry point but now delegates to the unified CLI. System32 inputs are still copied to the user temporary directory first.
 
-- Bypasses `idalib_open` schema issues
-- Automatically copies System32 files to a temporary directory
-- Falls back to a temporary copy when old database files are locked
-- Long analysis prints `INFO:opening:...`
-
-### Values You Must Change
-
-Default scripts still contain machine-specific values, such as:
-
-- `ida-reverse\scripts\start.ps1`
-  - `IDADIR`
-  - `ServerPath`
-- `ida-reverse\scripts\open.ps1`
-  - `IDADIR`
-  - `TempDir`
-
-After migration, change these to real values for your machine.
+The HTTP client initializes with the current stable MCP revision, `2025-11-25`, and accepts the version negotiated by the server. It handles JSON and SSE responses, `Mcp-Session-Id` sessions, and the `Mcp-Method` / `Mcp-Name` headers used by the newer draft. Tool counts are discovered dynamically with `tools/list` instead of being hard-coded.
 
 ## 6.3 anything-analyzer
 
@@ -474,16 +457,16 @@ If you already have `.claude\settings.local.json`, `.claude\mcp.json`, `RULES.md
 
 ## 7.3 Codex CLI
 
-Codex CLI can also reuse this package, but treat this README as an “integration principle" rather than a guide for one fixed configuration format.
+Codex CLI has a native Streamable HTTP MCP registration path. Run this from the repository root first:
 
-For Codex CLI, ensure at least:
+```powershell
+.\reverse-skill.ps1 register
+codex mcp get idapro --json
+```
 
-- The three entry files are exposed to the model
-- The model is instructed to read the routing file first for RE / CTF / packet-capture tasks
-- If anything-analyzer / jshook / idapro need to be called, the client side has corresponding MCP or external tool integration
-- If there is no hook mechanism, use project-level instructions / system prompt as a fallback
+Create a new Codex task after registration so the client reloads its MCP tool inventory. Agent calls use native `idapro` MCP tools; interactive installation, startup, diagnostics, and manual calls use `reverse-skill.ps1`. Project-level instructions still own routing, with no need to reproduce Claude hooks.
 
-In other words, Codex CLI should reuse this **routing methodology and tool entry design**, not necessarily replicate Claude’s hook implementation.
+Other services such as anything-analyzer and jshook must still be registered separately; the `idapro` registration does not replace them.
 
 ## 7.4 Cursor / Cline / Windsurf / Other Code CLIs
 
@@ -517,15 +500,17 @@ If you change computer, username, or drive letter, check all of the following:
 
 Pay special attention to:
 
+- `reverse-skill.ps1`
 - `skills\ida-reverse\scripts\start.ps1`
 - `skills\ida-reverse\scripts\open.ps1`
 
 At minimum, confirm:
 
-- `IDADIR`
-- Actual path of `idalib-mcp.exe` / `ida-pro-mcp.exe`
-- Whether the temporary directory exists and is writable
+- `reverse-skill.ps1 status` finds the newest valid local IDA installation
+- `idalib-mcp.exe` / `ida-pro-mcp.exe` are installed and available on `PATH`
 - Whether port `13337` conflicts
+
+There is no need to hard-code `IDADIR`. Pass `-IdaDir` to `start.ps1` only when pinning a specific installation is intentional.
 
 ### 8.3 Claude Local Hook
 
@@ -577,8 +562,10 @@ frida-ps -U
 ### 9.2 IDA Chain
 
 ```powershell
-powershell -File "<your skill root>\ida-reverse\scripts\start.ps1"
-powershell -File "<your skill root>\ida-reverse\scripts\open.ps1" -Path "C:\path\to\sample.exe" -TimeoutSeconds 600
+& "<your skill root>\reverse-skill.ps1" register
+& "<your skill root>\reverse-skill.ps1" start
+& "<your skill root>\reverse-skill.ps1" status
+& "<your skill root>\reverse-skill.ps1" tools
 ```
 
 ### 9.3 Tool Index
@@ -1070,20 +1057,19 @@ When automatic installation fails, the AI must tell the user in the following fo
 
 **Manual configuration steps**:
 
-1. Confirm IDA Pro is installed. The bundled scripts automatically select the highest usable version; a stale `IDADIR` is only a candidate and cannot override a newer installation.
+1. Install or sign in to IDA Pro through its official interactive installer. The bundled scripts automatically select the highest usable version; a stale `IDADIR` is only a candidate and cannot override a newer installation.
 
 2. Install ida-pro-mcp (must be from GitHub, not PyPI):
    ```powershell
    pip install git+https://github.com/mrexodia/ida-pro-mcp.git
    ```
 
-3. Install the IDA plugin:
+3. Register, start, and verify from the repository root:
    ```powershell
-   ida-pro-mcp --install
+   .\reverse-skill.ps1 register
+   .\reverse-skill.ps1 start
+   .\reverse-skill.ps1 status
    ```
-   Choose: Streamable HTTP → Global → select all clients
-
-4. Restart IDA Pro, open the target file, and the plugin will automatically listen on 13337
 
 **After startup succeeds, tell me and I will continue the current task.**
 ```

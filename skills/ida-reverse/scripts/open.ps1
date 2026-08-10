@@ -1,20 +1,12 @@
-﻿<#
+<#
 .SYNOPSIS
-Open binary file via IDA HTTP API (bypass MCP schema issue)
-.PARAMETER Path
-Binary file path (required)
-.PARAMETER SessionId
-Session ID (optional, auto-generated)
-.PARAMETER NoAutoAnalysis
-Skip automatic analysis (faster open for large files)
-.PARAMETER TimeoutSeconds
-Open timeout in seconds, returns timeout instead of blocking forever
+Compatibility entry point for opening a target through reverse-skill.ps1.
 #>
 
 param(
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory = $true)]
     [string]$Path,
-    [string]$SessionId = "",
+    [string]$SessionId = '',
     [switch]$NoAutoAnalysis = $false,
     [int]$TimeoutSeconds = 120
 )
@@ -22,203 +14,57 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$toolDiscovery = Join-Path $PSScriptRoot '..\..\scripts\lib\ToolDiscovery.ps1'
-. $toolDiscovery
-$ida = Get-LatestIdaInstallation
-if ($null -eq $ida) {
-    Write-Error 'ERR:No usable IDA installation found (requires ida.exe/idat.exe and idalib.dll).'
-    exit 1
-}
-$env:IDADIR = $ida.InstallDir
-$Port = 13337
-$TempDir = Join-Path $env:TEMP 'reverse-skill'
-if (-not (Test-Path -LiteralPath $TempDir)) {
-    New-Item -ItemType Directory -Path $TempDir -Force | Out-Null
-}
-$PollIntervalMs = 2000
-$ProgressIntervalSeconds = 10
-
-function Get-OpenReadySession {
-    param(
-        [string]$ExpectedSessionId,
-        [string]$ExpectedPath,
-        [int]$RequestPort
-    )
-
-    $listBody = '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"idalib_list","arguments":{}}}'
-    $listResult = Invoke-RestMethod "http://127.0.0.1:$RequestPort/mcp" -Method Post -Body $listBody `
-        -ContentType "application/json" -TimeoutSec 10 -ErrorAction Stop
-
-    $sessions = @($listResult.result.structuredContent.sessions)
-    foreach ($candidate in $sessions) {
-        if (-not $candidate) {
-            continue
-        }
-
-        $sameSession = $candidate.session_id -eq $ExpectedSessionId
-        $samePath = $candidate.input_path -eq $ExpectedPath
-        $sameFile = [System.IO.Path]::GetFileName($candidate.input_path) -eq [System.IO.Path]::GetFileName($ExpectedPath)
-        if (($sameSession -or $samePath -or $sameFile) -and $candidate.is_analyzing -eq $false) {
-            return $candidate
-        }
-    }
-
-    return $null
-}
-
-if (-not (Test-Path $Path)) {
-    Write-Output "ERR:file_not_found"
-    exit 1
-}
-
 if ($TimeoutSeconds -le 0) {
-    Write-Output "ERR:invalid_timeout"
+    Write-Output 'ERR:invalid_timeout'
+    exit 1
+}
+if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+    Write-Output 'ERR:file_not_found'
     exit 1
 }
 
-# 判断是否用了临时副本（避免递归复制）
-$isTempCopy = $Path.StartsWith($TempDir, [StringComparison]::OrdinalIgnoreCase)
-
-# System32 文件自动复制到 Temp
-if (-not $isTempCopy -and $Path -match "C:\\Windows\\System32") {
-    $Filename = [System.IO.Path]::GetFileName($Path)
-    $TempPath = "$TempDir\$Filename"
-    Copy-Item $Path $TempPath -Force -ErrorAction SilentlyContinue
-    if ($?) {
-        $Path = $TempPath
-        $isTempCopy = $true
+$resolvedPath = (Resolve-Path -LiteralPath $Path).Path
+$isTempCopy = $false
+$system32 = Join-Path $env:WINDIR 'System32'
+if ($resolvedPath.StartsWith($system32, [StringComparison]::OrdinalIgnoreCase)) {
+    $tempDir = Join-Path $env:TEMP 'reverse-skill'
+    if (-not (Test-Path -LiteralPath $tempDir)) {
+        New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
     }
+    $tempName = "{0}-{1}" -f ([guid]::NewGuid().ToString('N').Substring(0, 8)), ([IO.Path]::GetFileName($resolvedPath))
+    $tempPath = Join-Path $tempDir $tempName
+    Copy-Item -LiteralPath $resolvedPath -Destination $tempPath
+    $resolvedPath = $tempPath
+    $isTempCopy = $true
 }
 
-# 清理同名旧数据库文件（只在非 Temp 副本时尝试）
-if (-not $isTempCopy) {
-    $dir = [System.IO.Path]::GetDirectoryName($Path)
-    $base = [System.IO.Path]::GetFileNameWithoutExtension($Path)
-    $oldExts = @(".id0", ".id1", ".id2", ".nam", ".til", ".i64")
-    $hasLocked = $false
-    foreach ($ext in $oldExts) {
-        $f = Join-Path $dir "$base$ext"
-        if (Test-Path $f) {
-            Remove-Item $f -Force -ErrorAction SilentlyContinue
-            if (Test-Path $f) { $hasLocked = $true }
-        }
-    }
-    # 旧数据库文件被锁，自动用 Temp 副本
-    if ($hasLocked) {
-        $guid = [System.Guid]::NewGuid().ToString("N").Substring(0, 8)
-        $newName = "$guid-$([System.IO.Path]::GetFileName($Path))"
-        $TempPath = "$TempDir\$newName"
-        Copy-Item $Path $TempPath -Force
-        $Path = $TempPath
-        $isTempCopy = $true
-    }
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
+$cli = Join-Path $repoRoot 'reverse-skill.ps1'
+$cliArguments = @(
+    'open',
+    '-Path', $resolvedPath,
+    '-Mode', 'prefer_headless',
+    '-TimeoutSeconds', [string]$TimeoutSeconds,
+    '-Json'
+)
+if ($NoAutoAnalysis) {
+    $cliArguments += '-NoAutoAnalysis'
 }
-
-$autoAnalysis = if ($NoAutoAnalysis) { "false" } else { "true" }
-$escapedPath = $Path -replace '\\', '\\'
-
-# 始终使用明确的会话 ID，便于超时时轮询会话状态判断是否已成功打开
-if (-not $SessionId) {
-    $SessionId = [System.Guid]::NewGuid().ToString("N").Substring(0, 8)
+if (-not [string]::IsNullOrWhiteSpace($SessionId)) {
+    $cliArguments += @('-PreferredSessionId', $SessionId)
 }
-
- $body = @"
-{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"idalib_open","arguments":{"input_path":"$escapedPath","run_auto_analysis":$autoAnalysis,"session_id":null}}}
-"@
-if ($SessionId) {
-    $body = @"
-{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"idalib_open","arguments":{"input_path":"$escapedPath","run_auto_analysis":$autoAnalysis,"session_id":"$SessionId"}}}
-"@
-}
-
-# 将打开请求放到后台，避免 HTTP 长时间不回包时阻塞整个脚本
-$openJob = Start-Job -ScriptBlock {
-    param($RequestBody, $RequestPort)
-    try {
-        Invoke-RestMethod "http://127.0.0.1:$RequestPort/mcp" -Method Post -Body $RequestBody `
-            -ContentType "application/json" -ErrorAction Stop
-    } catch {
-        $_.Exception.Message
-    }
-} -ArgumentList $body, $Port
-
-$deadline = (Get-Date).AddSeconds($TimeoutSeconds)
-$openCompleted = $false
-$startTime = Get-Date
-$lastProgressAt = $startTime.AddSeconds(-$ProgressIntervalSeconds)
 
 try {
-    while ((Get-Date) -lt $deadline) {
-        if (Wait-Job -Job $openJob -Timeout 1) {
-            $openCompleted = $true
-            break
-        }
-
-        try {
-            $session = Get-OpenReadySession -ExpectedSessionId $SessionId -ExpectedPath $Path -RequestPort $Port
-            if ($session) {
-                $tag = if ($isTempCopy) { " (temp copy)" } else { "" }
-                Stop-Job -Job $openJob -ErrorAction SilentlyContinue
-                Remove-Job -Job $openJob -Force -ErrorAction SilentlyContinue
-                Write-Output "OK:$($session.filename):$($session.session_id)$tag"
-                exit 0
-            }
-        } catch {}
-
-        $now = Get-Date
-        if (($now - $lastProgressAt).TotalSeconds -ge $ProgressIntervalSeconds) {
-            $elapsed = [math]::Floor(($now - $startTime).TotalSeconds)
-            Write-Output "INFO:opening:$elapsed/${TimeoutSeconds}s"
-            $lastProgressAt = $now
-        }
-
-        Start-Sleep -Milliseconds $PollIntervalMs
-    }
-
-    if (-not $openCompleted) {
-        Stop-Job -Job $openJob -ErrorAction SilentlyContinue
-        Remove-Job -Job $openJob -Force -ErrorAction SilentlyContinue
-
-        try {
-            $session = Get-OpenReadySession -ExpectedSessionId $SessionId -ExpectedPath $Path -RequestPort $Port
-            if ($session) {
-                $tag = if ($isTempCopy) { " (temp copy)" } else { "" }
-                Write-Output "OK:$($session.filename):$($session.session_id)$tag"
-                exit 0
-            }
-        } catch {}
-
-        Write-Output "ERR:open_timeout_${TimeoutSeconds}s"
+    $result = ((& $cli @cliArguments) -join [Environment]::NewLine) | ConvertFrom-Json
+    if ($result.success -ne $true) {
+        Write-Output "ERR:$($result.error)"
         exit 1
     }
 
-    $jobResult = Receive-Job -Job $openJob
-    Remove-Job -Job $openJob -Force -ErrorAction SilentlyContinue
-
-    if ($jobResult -is [string]) {
-        Write-Output "ERR:$jobResult"
-        exit 1
-    }
-
-    if ($jobResult.result.structuredContent.success -eq $true) {
-        $session = $jobResult.result.structuredContent.session
-        $tag = if ($isTempCopy) { " (temp copy)" } else { "" }
-        Write-Output "OK:$($session.filename):$($session.session_id)$tag"
-    } else {
-        # 自动降级：非 Temp 副本失败时，复制到 Temp 重试
-        if (-not $isTempCopy) {
-            $guid = [System.Guid]::NewGuid().ToString("N").Substring(0, 8)
-            $newName = "$guid-$([System.IO.Path]::GetFileName($Path))"
-            $TempPath = "$TempDir\$newName"
-            Copy-Item $Path $TempPath -Force
-            & $PSCommandPath -Path $TempPath -SessionId $SessionId -NoAutoAnalysis:$NoAutoAnalysis -TimeoutSeconds $TimeoutSeconds
-        } else {
-            Write-Output "ERR:$($jobResult.result.structuredContent.error)"
-        }
-    }
-} finally {
-    if ($openJob) {
-        Stop-Job -Job $openJob -ErrorAction SilentlyContinue
-        Remove-Job -Job $openJob -Force -ErrorAction SilentlyContinue
-    }
+    $tag = if ($isTempCopy) { ' (temp copy)' } else { '' }
+    Write-Output "OK:$($result.session.filename):$($result.session.session_id)$tag"
+}
+catch {
+    Write-Output "ERR:$($_.Exception.Message)"
+    exit 1
 }

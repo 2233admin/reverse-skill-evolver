@@ -201,7 +201,7 @@ C:\Tools\radare2\                      # 可选
 | 组件 | 是否必需 | 项目地址 | 作用 | 推荐安装位置 | 安装方式 |
 |---|---|---|---|---|---|
 | IDA Pro | 二进制深度逆向常用 | https://hex-rays.com/ida-pro/ | 反编译、xref、数据流、重命名、类型恢复 | 例如 `D:\APP\IDA\` | 安装 IDA 本体后，把 `IDADIR` 指向其根目录 |
-| idalib-mcp | 使用 ida-reverse 必需 | https://github.com/mrexodia/ida-pro-mcp | 暴露 `idapro_*` MCP 工具或本地 HTTP 服务 | 常见落点为 Python Scripts 目录 | `pip install git+https://github.com/mrexodia/ida-pro-mcp.git`，然后 `ida-pro-mcp --install` 安装 IDA 插件 |
+| idalib-mcp | 使用 ida-reverse 必需 | https://github.com/mrexodia/ida-pro-mcp | 暴露本地 Streamable HTTP MCP 服务 | 常见落点为 Python Scripts 目录 | `pip install git+https://github.com/mrexodia/ida-pro-mcp.git`；需要 GUI 集成时再运行交互式 `ida-pro-mcp --install` |
 | radare2 | 可选 | https://github.com/radareorg/radare2 | CLI 侦察、反汇编、差分、patch | `C:\Tools\radare2\` | 安装后确认 `r2`、`rabin2`、`rasm2`、`radiff2` 等可用 |
 
 ### 4.5 配套资料库
@@ -225,7 +225,7 @@ C:\Tools\radare2\                      # 可选
 | 工具索引 | `tool-index.md` | 看本机工具有没有、路径在哪、哪个脚本会调用 |
 | 能力图谱 | `capability-graph.json` | 会话级工具路径、版本、MCP 注册、服务健康、smoke 状态 |
 | APK 逆向 | `apk-reverse\` | 解包、jadx、smali、重打包、Frida、native 分流 |
-| IDA Pro | `ida-reverse\` | 深度二进制逆向、`idapro_*` 工作流 |
+| IDA Pro | `ida-reverse\` | 深度二进制逆向、原生 MCP 与统一 CLI 工作流 |
 | JS / Web | `js-reverse\` | 前端签名、请求链路、补环境、SourceMap / AST / Hook |
 | radare2 | `radare2\` | CLI 侦察、字符串、导入导出、patch |
 | 通用方法论 | `reverse-engineering\` | 跨语言、跨平台、反分析、模式库 |
@@ -282,46 +282,29 @@ powershell -File "<SKILL_ROOT>\scripts\refresh-tool-index.ps1"
 
 ## 6.2 IDA Pro 链路
 
-### 启动 IDA MCP HTTP 服务
-
-当前包内脚本入口：
+仓库根目录提供统一入口 `reverse-skill.ps1`。它既可供人手动调用，也与 Codex 原生 MCP 注册指向同一个 Streamable HTTP 服务：
 
 ```powershell
-powershell -File "<SKILL_ROOT>\ida-reverse\scripts\start.ps1"
+.\reverse-skill.ps1 register
+.\reverse-skill.ps1 start
+.\reverse-skill.ps1 status
+.\reverse-skill.ps1 tools
 ```
 
-当前脚本逻辑会：
+`register` 通过 `codex mcp add ... --url ...` 写入 Codex 配置；新任务启动时即可直接使用 `idapro` MCP 工具。`start` 会自动选择本机最高版本的有效 IDA，健康服务已存在时直接复用，只有服务不可达时才清理陈旧进程并重启。
 
-1. 杀掉旧 `idalib-mcp` 进程树
-2. 后台启动 HTTP 服务
-3. 等待服务就绪
-4. 输出 `OK:<工具数量>` 或 `ERR:timeout`
-
-### 打开样本
+常用会话操作：
 
 ```powershell
-powershell -File "<SKILL_ROOT>\ida-reverse\scripts\open.ps1" -Path "C:\path\to\sample.exe" -TimeoutSeconds 600
+.\reverse-skill.ps1 open -Path "C:\path\to\sample.exe" -TimeoutSeconds 600
+.\reverse-skill.ps1 sessions
+.\reverse-skill.ps1 call -Tool decompile -Database "<session-id>" -ArgumentsJson '{"addr":"0x140001000"}'
+.\reverse-skill.ps1 close -Database "<session-id>"
 ```
 
-特点：
+`skills\ida-reverse\scripts\open.ps1` 继续保留为兼容入口，但内部已经委托给统一 CLI。System32 输入仍会先复制到用户临时目录。
 
-- 绕过 `idalib_open` 的 schema 问题
-- System32 文件会自动复制到临时目录
-- 旧数据库文件被锁时会降级到临时副本
-- 长分析会输出 `INFO:opening:...`
-
-### 你必须改的地方
-
-默认脚本里仍然存在机器相关值，例如：
-
-- `ida-reverse\scripts\start.ps1`
-  - `IDADIR`
-  - `ServerPath`
-- `ida-reverse\scripts\open.ps1`
-  - `IDADIR`
-  - `TempDir`
-
-迁移后必须按你的机器改成真实值。
+HTTP 客户端按当前稳定 MCP `2025-11-25` 发起初始化，并接受服务器协商到其支持的版本；支持 JSON 与 SSE 响应、`Mcp-Session-Id` 会话以及新草案使用的 `Mcp-Method` / `Mcp-Name` 请求头。工具数量通过 `tools/list` 动态发现，不再写死。
 
 ## 6.3 anything-analyzer
 
@@ -473,16 +456,16 @@ Claude Code 最适合直接接这套包，因为它同时支持：
 
 ## 7.3 Codex CLI
 
-Codex CLI 也可以复用这套包，但建议把 README 理解成“接入原则”而不是“只认某一种配置格式”。
+Codex CLI 有原生 Streamable HTTP MCP 注册入口。先在仓库根目录执行：
 
-对 Codex CLI，至少确保：
+```powershell
+.\reverse-skill.ps1 register
+codex mcp get idapro --json
+```
 
-- 能把本包的三个入口文件暴露给模型
-- 能告诉模型遇到逆向/CTF/抓包任务时先读路由文件
-- 如果要调 anything-analyzer / jshook / idapro，则客户端侧要有对应 MCP 或外部工具接入能力
-- 如果没有 hook 机制，就用项目级 instructions / system prompt 兜底
+注册后新建 Codex 任务，让客户端重新加载 MCP 工具清单。代理调用走原生 `idapro` MCP；登录安装、启动、状态诊断和人工调用走 `reverse-skill.ps1`。项目级 instructions 继续负责路由，不需要复刻 Claude hook。
 
-换句话说，Codex CLI 需要复用的是这套**路由方法论和工具入口**，不一定要复刻 Claude 的 hook 实现。
+anything-analyzer、jshook 等其他服务仍需分别注册；`idapro` 的注册不会替代它们。
 
 ## 7.4 Cursor / Cline / Windsurf / 其他代码 CLI
 
@@ -519,15 +502,17 @@ Codex CLI 也可以复用这套包，但建议把 README 理解成“接入原�
 
 重点检查：
 
+- `reverse-skill.ps1`
 - `skills\ida-reverse\scripts\start.ps1`
 - `skills\ida-reverse\scripts\open.ps1`
 
 至少要确认：
 
-- `IDADIR`
-- `idalib-mcp.exe` / `ida-pro-mcp.exe` 实际路径
-- 临时目录是否存在且可写
+- `reverse-skill.ps1 status` 能找到本机最高版本的有效 IDA
+- `idalib-mcp.exe` / `ida-pro-mcp.exe` 已安装并位于 `PATH`
 - 端口 `13337` 是否冲突
+
+不需要手工写死 `IDADIR`。只有需要固定到特定安装时，才给 `start.ps1` 显式传入 `-IdaDir`。
 
 ### 8.3 Claude 本地 hook
 
@@ -581,8 +566,10 @@ frida-ps -U
 ### 9.2 IDA 链路
 
 ```powershell
-powershell -File "<你的 skill 根目录>\ida-reverse\scripts\start.ps1"
-powershell -File "<你的 skill 根目录>\ida-reverse\scripts\open.ps1" -Path "C:\path\to\sample.exe" -TimeoutSeconds 600
+& "<你的 skill 根目录>\reverse-skill.ps1" register
+& "<你的 skill 根目录>\reverse-skill.ps1" start
+& "<你的 skill 根目录>\reverse-skill.ps1" status
+& "<你的 skill 根目录>\reverse-skill.ps1" tools
 ```
 
 ### 9.3 工具索引
@@ -1065,35 +1052,25 @@ AI 在开始新任务时，必须先检查 `field-journal/_index.md`：
 **问题**：端口 13337 无响应
 
 **可能原因**：
-- IDA Pro 未安装或 IDADIR 环境变量未设置
-- idalib-mcp 未安装
-- IDA 许可证问题
+- 本机没有同时包含 `ida.exe` / `idat.exe` 与 `idalib.dll` 的有效 IDA 安装
+- `idalib-mcp` 未安装或不在 `PATH`
+- 端口被其他服务占用
 
 **手动配置步骤**：
 
-1. 确认 IDA Pro 已安装，记下安装目录
+1. 通过官方交互安装器安装/登录 IDA Pro。脚本会自动选择本机最高的有效版本，不要求设置永久 `IDADIR`。
 
-2. 设置环境变量（替换为你的实际路径）：
-   ```powershell
-   [Environment]::SetEnvironmentVariable('IDADIR', '<你的IDA安装目录>', 'User')
-   ```
-   或 CMD：
-   ```cmd
-   setx IDADIR "<你的IDA安装目录>"
-   ```
-
-3. 安装 ida-pro-mcp（必须从 GitHub，不是 PyPI）：
+2. 安装 ida-pro-mcp（必须从 GitHub，不是 PyPI）：
    ```powershell
    pip install git+https://github.com/mrexodia/ida-pro-mcp.git
    ```
 
-4. 安装 IDA 插件：
+3. 在仓库根目录注册、启动并验证：
    ```powershell
-   ida-pro-mcp --install
+   .\reverse-skill.ps1 register
+   .\reverse-skill.ps1 start
+   .\reverse-skill.ps1 status
    ```
-   选择：Streamable HTTP → Global → 全选客户端
-
-5. 重启 IDA Pro，打开目标文件，插件自动监听 13337
 
 **启动成功后告诉我，我继续当前任务。**
 ```

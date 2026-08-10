@@ -29,7 +29,7 @@
 | **无人值守过夜运行** | `overnight-run/` | 无人值守跑到绝对 DEADLINE：slot 填表 → validate 冒烟 → 脚手架（.night/ + night 分支 + pre-commit 红线）→ 增量报告 → 经验回流（OVERNIGHT.md v2 契约） |
 | **通用逆向** | `reverse-engineering/` | GDB / Frida / angr / Unicorn / Qiling / 反分析对抗 / 全语言平台逆向 / CTF 模式库 |
 | **APK 逆向** | `apk-reverse/` | Android APK 解包、jadx 反编译、smali 修改、Frida Hook、重打包签名安装 |
-| **IDA Pro 逆向** | `ida-reverse/` | IDA Pro MCP HTTP 服务器（72 个工具）：反编译、反汇编、数据流追踪、交叉引用 |
+| **IDA Pro 逆向** | `ida-reverse/` | IDA Pro Streamable HTTP MCP：工具由 `tools/list` 动态发现，支持反编译、反汇编、数据流追踪、交叉引用 |
 | **前端 JS 逆向** | `js-reverse/` | 浏览器端签名定位、加密参数分析、运行时采样、Node 补环境复现；优先用现有 `js-reverse_*`，需要更强的浏览器/CDP/Hook 面时接入 jshookmcp，但前提是先把该 MCP server 下载/注册并启用 |
 | **radare2 分析** | `radare2/` | CLI 二进制侦察、反汇编、patch：r2 / rabin2 / rasm2 / radiff2 |
 | **CTF 竞赛全栈** | `../CTF-Sandbox-Orchestrator/` | 40+ 子技能：Web/逆向/Pwn/云/容器/AD/取证/隐写/移动端/密码学，由总控统一编排 |

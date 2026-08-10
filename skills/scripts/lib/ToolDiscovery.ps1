@@ -536,6 +536,40 @@ function Get-ClaudeMcpServerNames {
     }
 }
 
+function Get-CodexMcpServerNames {
+    [CmdletBinding()]
+    param()
+
+    if (Get-Variable -Name 'CodexMcpServerNamesCached' -Scope Script -ErrorAction SilentlyContinue) {
+        return @($script:CodexMcpServerNamesCached)
+    }
+
+    $codex = Get-Command codex -ErrorAction SilentlyContinue
+    if (-not $codex) {
+        $script:CodexMcpServerNamesCached = @()
+        return $script:CodexMcpServerNamesCached
+    }
+
+    try {
+        $output = & $codex.Source mcp list --json 2>$null
+        $nativeExitCode = $LASTEXITCODE
+        $global:LASTEXITCODE = 0
+        if ($nativeExitCode -ne 0 -or -not $output) {
+            $script:CodexMcpServerNamesCached = @()
+            return $script:CodexMcpServerNamesCached
+        }
+
+        $servers = ($output -join [Environment]::NewLine) | ConvertFrom-Json
+        $script:CodexMcpServerNamesCached = @($servers | ForEach-Object { [string]$_.name } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        return $script:CodexMcpServerNamesCached
+    }
+    catch {
+        $global:LASTEXITCODE = 0
+        $script:CodexMcpServerNamesCached = @()
+        return $script:CodexMcpServerNamesCached
+    }
+}
+
 function Test-ReverseTcpPort {
     [CmdletBinding()]
     param(
@@ -575,7 +609,10 @@ function Get-ReverseCapabilityState {
 
     $registered = $false
     if ($definition.PSObject.Properties['mcpNames']) {
-        $registeredNames = Get-ClaudeMcpServerNames
+        $registeredNames = @(
+            Get-ClaudeMcpServerNames
+            Get-CodexMcpServerNames
+        ) | Select-Object -Unique
         foreach ($candidate in @($definition.mcpNames)) {
             if ($registeredNames -contains $candidate) {
                 $registered = $true

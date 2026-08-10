@@ -18,7 +18,28 @@ param(
 )
 
 $toolDiscovery = Join-Path $PSScriptRoot '..\..\scripts\lib\ToolDiscovery.ps1'
+$mcpClientScript = Join-Path $PSScriptRoot '..\..\scripts\lib\McpHttpClient.ps1'
 . $toolDiscovery
+. $mcpClientScript
+
+function Get-OnlineMcpToolCount {
+    param([int]$RequestPort)
+
+    $client = $null
+    try {
+        $client = New-McpHttpClient -Url "http://127.0.0.1:$RequestPort/mcp" -TimeoutSeconds 3
+        $result = Invoke-McpRequest -Client $client -Method 'tools/list' -TimeoutSeconds 3
+        return @($result.tools).Count
+    }
+    catch {
+        return -1
+    }
+    finally {
+        if ($null -ne $client) {
+            Close-McpHttpClient -Client $client
+        }
+    }
+}
 
 $ida = if ([string]::IsNullOrWhiteSpace($IdaDir)) {
     Get-LatestIdaInstallation
@@ -33,6 +54,12 @@ if ($null -eq $ida) {
 $IdaDir = $ida.InstallDir
 $env:IDADIR = $IdaDir
 Write-Output "INFO:IDA:$($ida.Version):$IdaDir"
+
+$existingToolCount = Get-OnlineMcpToolCount -RequestPort $Port
+if ($existingToolCount -gt 0) {
+    Write-Output "OK:${existingToolCount}:existing"
+    exit 0
+}
 
 if ([string]::IsNullOrWhiteSpace($ServerPath)) {
     # Try both possible executable names (idalib-mcp is the HTTP server, ida-pro-mcp is the installer CLI)
@@ -107,16 +134,12 @@ Start-Process -WindowStyle Hidden -FilePath $ServerPath -ArgumentList "--host 12
 $ready = $false
 for ($i = 0; $i -lt 15; $i++) {
     Start-Sleep -Seconds 1
-    try {
-        $r = Invoke-RestMethod "http://127.0.0.1:$Port/mcp" -Method Post `
-            -Body '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' `
-            -ContentType "application/json" -ErrorAction Stop
-        if ($r.result.tools.Count -gt 0) {
-            Write-Output "OK:$($r.result.tools.Count)"
-            $ready = $true
-            break
-        }
-    } catch {}
+    $toolCount = Get-OnlineMcpToolCount -RequestPort $Port
+    if ($toolCount -gt 0) {
+        Write-Output "OK:$toolCount"
+        $ready = $true
+        break
+    }
 }
 if (-not $ready) {
     Write-Output "ERR:timeout"
