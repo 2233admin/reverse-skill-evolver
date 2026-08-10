@@ -282,47 +282,46 @@ powershell -File "<SKILL_ROOT>\scripts\refresh-tool-index.ps1"
 
 ## 6.2 IDA Pro 链路
 
-仓库根目录提供统一入口 `reverse-skill.ps1`。它既可供人手动调用，也与 Codex 原生 MCP 注册指向同一个 Streamable HTTP 服务：
+统一入口是 Python 命令 `reverse-skill`。在仓库中执行 `python -m pip install -e .` 即可安装；源码检出也可直接使用 `python -m reverse_skill`。它与 Codex 原生 MCP 注册指向同一个 Streamable HTTP 服务：
 
 | 执行入口 | 用途 | 边界 |
 |---|---|---|
 | 原生 MCP | Agent 直接调用工具 | 把 `idapro` 注册到 HTTP 端点；调用交互由 MCP 宿主管理 |
-| `reverse-skill.ps1` CLI | 人工使用、诊断、自动化 | 注册、服务生命周期、发现和调用的稳定命令面 |
-| `McpHttpClient.ps1` 库 | 仓库内脚本复用 | CLI 后面的传输客户端，不是另一个服务器 |
+| `reverse-skill` Python CLI | 人工使用、诊断、自动化 | 安装、注册、服务生命周期、发现和调用的稳定命令面 |
 
-Skill 文件属于路由/控制平面，不是第四种执行传输；`start.ps1`、`open.ps1` 只是进入 CLI 的兼容适配器。PowerShell 5.1 或 7 只充当 Windows 脚本宿主。
+Skill 文件属于路由/控制平面，不是另一种执行传输。IDA 链路不再有 PowerShell 适配层：`reverse-skill -> HTTP MCP -> idalib-mcp.exe -> IDA`。
 
-```powershell
-.\reverse-skill.ps1 register
-.\reverse-skill.ps1 start
-.\reverse-skill.ps1 status
-.\reverse-skill.ps1 tools
+```console
+reverse-skill register
+reverse-skill start
+reverse-skill status
+reverse-skill tools
 ```
 
 `register` 通过 `codex mcp add ... --url ...` 写入 Codex 配置；新任务启动时即可直接使用 `idapro` MCP 工具。`start` 会自动选择本机最高版本的有效 IDA，健康服务已存在时直接复用，只有服务不可达时才清理陈旧进程并重启。
 
 常用会话操作：
 
-```powershell
-.\reverse-skill.ps1 open -Path "C:\path\to\sample.exe" -TimeoutSeconds 600
-.\reverse-skill.ps1 sessions
-.\reverse-skill.ps1 call -Tool decompile -Database "<session-id>" -ArgumentsJson '{"addr":"0x140001000"}'
-.\reverse-skill.ps1 close -Database "<session-id>"
+```console
+reverse-skill --timeout 600 open "C:\path\to\sample.exe"
+reverse-skill sessions
+reverse-skill call decompile --database "<session-id>" --arguments-json '{"addr":"0x140001000"}'
+reverse-skill close "<session-id>"
 ```
 
 若现代服务返回 `resultType: "input_required"`，用新的 CLI 调用重试同一工具，并原样回传不透明状态：
 
-```powershell
-.\reverse-skill.ps1 call -Tool login -ArgumentsJson '{}' `
-  -InputResponsesJson '{"credentials":{"action":"accept","content":{"token":"..."}}}' `
-  -RequestState '<opaque-state>'
+```console
+reverse-skill call login --arguments-json '{}' --input-responses-json '{"credentials":{"action":"accept","content":{"token":"..."}}}' --request-state '<opaque-state>'
 ```
 
-`skills\ida-reverse\scripts\open.ps1` 继续保留为兼容入口，但内部已经委托给统一 CLI。System32 输入仍会先复制到用户临时目录。
+Python `open` 命令会在发 MCP 请求前把 System32 输入复制到用户临时目录。
+
+稳定 JSON 信封、退出码和 OpenCLI 命令描述见 `skills\ida-reverse\references\cli-contract.md`。
 
 HTTP 客户端是双时代实现。它先按已发布 MCP `2026-07-28` 调用 `server/discover`，每个请求携带 `_meta`，并镜像 `MCP-Protocol-Version` / `Mcp-Method` / `Mcp-Name` / `Mcp-Param-*` 请求头；支持请求级 JSON 或 SSE 响应和显式 MRTR 输入回传。现代模式没有协议会话。若端点返回非现代响应，客户端才降级到旧版 `initialize` / `notifications/initialized` 生命周期，并接受服务端协商到 `2025-11-25`、`2025-06-18` 或 `2025-03-26`；只有旧版路径使用 `Mcp-Session-Id`。
 
-`status` 会同时显示 `era` 和 `protocol_version`。在 2026-08-11 的验证环境中，Python 包是 `ida-pro-mcp 2.0.0`，服务端仍自报 `1.0.0`、使用 legacy 并协商到 `2025-06-18`；检查到的上游 `main` 也仍实现这套旧传输。这是服务端能力边界，不代表端到端已经运行现代协议。IDA database ID 在两个时代都只是显式应用句柄。工具定义继续由 `tools/list` 动态发现；现代响应中的 `ttlMs` / `cacheScope` 会被保留，非法 `x-mcp-header` 工具会被排除。
+`status` 会同时显示 `era` 和 `protocolVersion`。在 2026-08-11 的验证环境中，Python 包是 `ida-pro-mcp 2.0.0`，服务端仍自报 `1.0.0`、使用 legacy 并协商到 `2025-06-18`；检查到的上游 `main` 也仍实现这套旧传输。这是服务端能力边界，不代表端到端已经运行现代协议。IDA database ID 在两个时代都只是显式应用句柄。工具定义继续由 `tools/list` 动态发现；现代响应中的 `ttlMs` / `cacheScope` 会被保留，非法 `x-mcp-header` 工具会被排除。
 
 ## 6.3 anything-analyzer
 
@@ -476,12 +475,12 @@ Claude Code 最适合直接接这套包，因为它同时支持：
 
 Codex CLI 有原生 Streamable HTTP MCP 注册入口。先在仓库根目录执行：
 
-```powershell
-.\reverse-skill.ps1 register
+```console
+reverse-skill register
 codex mcp get idapro --json
 ```
 
-注册后新建 Codex 任务，让客户端重新加载 MCP 工具清单。代理调用走原生 `idapro` MCP；登录安装、启动、状态诊断和人工调用走 `reverse-skill.ps1`。项目级 instructions 继续负责路由，不需要复刻 Claude hook。
+注册后新建 Codex 任务，让客户端重新加载 MCP 工具清单。代理调用走原生 `idapro` MCP；登录安装、启动、状态诊断和人工调用走 `reverse-skill`。项目级 instructions 继续负责路由，不需要复刻 Claude hook。
 
 anything-analyzer、jshook 等其他服务仍需分别注册；`idapro` 的注册不会替代它们。
 
@@ -516,21 +515,22 @@ anything-analyzer、jshook 等其他服务仍需分别注册；`idapro` 的注�
 - `<用户目录>\...`
 - `D:\APP\IDA\`
 
-### 8.2 IDA 脚本
+### 8.2 IDA Python CLI
 
 重点检查：
 
-- `reverse-skill.ps1`
-- `skills\ida-reverse\scripts\start.ps1`
-- `skills\ida-reverse\scripts\open.ps1`
+- `pyproject.toml`
+- `reverse_skill\`
+- `reverse-skill.opencli.json`
+- `reverse-skill-output.schema.json`
 
 至少要确认：
 
-- `reverse-skill.ps1 status` 能找到本机最高版本的有效 IDA
+- `reverse-skill status` 能找到本机最高版本的有效 IDA
 - `idalib-mcp.exe` / `ida-pro-mcp.exe` 已安装并位于 `PATH`
 - 端口 `13337` 是否冲突
 
-不需要手工写死 `IDADIR`。只有需要固定到特定安装时，才给 `start.ps1` 显式传入 `-IdaDir`。
+不需要手工写死 `IDADIR`。只有需要固定到特定安装时，才给 `reverse-skill start` 显式传入 `--ida-dir`。
 
 ### 8.3 Claude 本地 hook
 
@@ -583,11 +583,12 @@ frida-ps -U
 
 ### 9.2 IDA 链路
 
-```powershell
-& "<你的 skill 根目录>\reverse-skill.ps1" register
-& "<你的 skill 根目录>\reverse-skill.ps1" start
-& "<你的 skill 根目录>\reverse-skill.ps1" status
-& "<你的 skill 根目录>\reverse-skill.ps1" tools
+```console
+python -m pip install -e .
+reverse-skill register
+reverse-skill start
+reverse-skill status
+reverse-skill tools
 ```
 
 ### 9.3 工具索引
@@ -1078,16 +1079,17 @@ AI 在开始新任务时，必须先检查 `field-journal/_index.md`：
 
 1. 通过官方交互安装器安装/登录 IDA Pro。脚本会自动选择本机最高的有效版本，不要求设置永久 `IDADIR`。
 
-2. 安装 ida-pro-mcp（必须从 GitHub，不是 PyPI）：
-   ```powershell
-   pip install git+https://github.com/mrexodia/ida-pro-mcp.git
+2. 从仓库安装 Python CLI，再运行上游交互安装器：
+   ```console
+   python -m pip install -e .
+   reverse-skill install
    ```
 
 3. 在仓库根目录注册、启动并验证：
-   ```powershell
-   .\reverse-skill.ps1 register
-   .\reverse-skill.ps1 start
-   .\reverse-skill.ps1 status
+   ```console
+   reverse-skill register
+   reverse-skill start
+   reverse-skill status
    ```
 
 **启动成功后告诉我，我继续当前任务。**

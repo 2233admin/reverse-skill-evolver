@@ -298,7 +298,7 @@
 
 | 服务 | 端口 | 用途 | 启动方式 |
 |------|------|------|---------|
-| idapro | 13337（默认） | IDA Pro MCP 逆向工具（由 `tools/list` 动态发现） | `reverse-skill.ps1 start`；健康服务直接复用 |
+| idapro | 13337（默认） | IDA Pro MCP 逆向工具（由 `tools/list` 动态发现） | `reverse-skill start`；健康服务直接复用 |
 | anything-analyzer | 23816 | 浏览器自动化 + HTTP 捕获 | `pnpm dev`（项目目录） |
 | jshookmcp | — | JS Hook/CDP/Network/AST | `npx -y @jshookmcp/jshook@latest`（stdio） |
 | ghidra | 8765 | Ghidra 免费反编译 | Ghidra GUI 启动后自动监听 |
@@ -307,7 +307,7 @@
 使用 MCP 工具前：
 1. 先确认 `tool-index.md` 中该服务的 `MCP 已注册` 状态
 2. 如果未注册 → 调用 bootstrap 注册
-3. 如果已注册但端口无响应 → 执行 `reverse-skill.ps1 start`，再用 `status` 验证
+3. 如果已注册但端口无响应 → 执行 `reverse-skill start`，再用 `status` 验证
 4. 默认地址为 `http://127.0.0.1:13337/mcp`；如显式修改端口，注册和调用必须使用同一个 `-Url`
 5. 如果启动失败 → 引导用户手动处理
 
@@ -474,7 +474,7 @@ gamma -> --destructive false
 powershell -NoProfile -ExecutionPolicy Bypass -File "<本包根目录>/skills/scripts/bootstrap-reverse.ps1" -Capability @('工具名') -StartServices
 ```
 
-支持的能力名：jadx、apktool、frida、idalib-mcp、jshookmcp、anything-analyzer、idapro、r2、rabin2、adb、agent-browser、ghidra-mcp、nmap、proxycat、burpsuite-mcp、binwalk、unblob、emba、firmadyne、qemu-static、pwntools、ropgadget、one_gadget、bindiff、ghidriff、syswhispers3、pe-sieve、garak、pyrit、osv-scanner、trivy、syft、gitleaks、objection、yara、floss
+支持的能力名：jadx、apktool、frida、jshookmcp、anything-analyzer、r2、rabin2、adb、agent-browser、ghidra-mcp、nmap、proxycat、burpsuite-mcp、binwalk、unblob、emba、firmadyne、qemu-static、pwntools、ropgadget、one_gadget、bindiff、ghidriff、syswhispers3、pe-sieve、garak、pyrit、osv-scanner、trivy、syft、gitleaks、objection、yara、floss。IDA 与 idalib-mcp 的安装、注册和启动只走 Python `reverse-skill`。
 
 ## 刷新工具索引
 

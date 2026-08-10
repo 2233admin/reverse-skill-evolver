@@ -91,7 +91,7 @@
 powershell -NoProfile -ExecutionPolicy Bypass -File "<skill-root>\scripts\bootstrap-reverse.ps1" -Capability @('工具名') -StartServices
 ```
 
-支持的能力：jadx、apktool、frida、idalib-mcp、jshookmcp、anything-analyzer、idapro、r2、rabin2、adb、agent-browser、ghidra-mcp、nmap、proxycat、burpsuite-mcp、binwalk、unblob、emba、firmadyne、qemu-static、pwntools、ropgadget、one_gadget、bindiff、ghidriff、syswhispers3、pe-sieve、garak、pyrit、osv-scanner、trivy、syft、gitleaks、objection、yara、floss
+支持的能力：jadx、apktool、frida、jshookmcp、anything-analyzer、r2、rabin2、adb、agent-browser、ghidra-mcp、nmap、proxycat、burpsuite-mcp、binwalk、unblob、emba、firmadyne、qemu-static、pwntools、ropgadget、one_gadget、bindiff、ghidriff、syswhispers3、pe-sieve、garak、pyrit、osv-scanner、trivy、syft、gitleaks、objection、yara、floss。IDA 与 idalib-mcp 的安装、注册和启动只走 Python `reverse-skill`。
 
 自举完成后会自动刷新 `tool-index`。
 

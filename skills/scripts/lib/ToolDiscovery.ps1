@@ -1,129 +1,6 @@
 ﻿Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-function ConvertTo-ReverseIdaVersion {
-    [CmdletBinding()]
-    param(
-        [AllowNull()]
-        [string]$Text
-    )
-
-    if ([string]::IsNullOrWhiteSpace($Text)) {
-        return [version]'0.0'
-    }
-
-    $match = [regex]::Match($Text, '(?<!\d)(\d+(?:\.\d+){1,3})(?!\d)')
-    if (-not $match.Success) {
-        return [version]'0.0'
-    }
-
-    try {
-        return [version]$match.Groups[1].Value
-    }
-    catch {
-        return [version]'0.0'
-    }
-}
-
-function Get-LatestIdaInstallation {
-    [CmdletBinding()]
-    param(
-        [string[]]$CandidatePaths = @(),
-        [switch]$OnlyCandidatePaths
-    )
-
-    $allCandidates = @($CandidatePaths)
-    if (-not $OnlyCandidatePaths) {
-        if (-not [string]::IsNullOrWhiteSpace($env:IDADIR)) {
-            $allCandidates += $env:IDADIR
-        }
-
-        if (-not [string]::IsNullOrWhiteSpace($env:APPDATA)) {
-            $idaConfigPath = Join-Path $env:APPDATA 'Hex-Rays\IDA Pro\ida-config.json'
-            if (Test-Path -LiteralPath $idaConfigPath -PathType Leaf) {
-                try {
-                    $idaConfig = Get-Content -LiteralPath $idaConfigPath -Raw | ConvertFrom-Json
-                    $configuredPath = [string]$idaConfig.Paths.'ida-install-dir'
-                    if (-not [string]::IsNullOrWhiteSpace($configuredPath)) {
-                        $allCandidates += $configuredPath
-                    }
-                }
-                catch {
-                    Write-Verbose "Ignoring invalid IDA config: $idaConfigPath"
-                }
-            }
-        }
-
-        $searchParents = @('C:\Program Files', 'C:\', 'D:\Program Files', 'D:\')
-        if (-not [string]::IsNullOrWhiteSpace($env:USERPROFILE)) {
-            $searchParents += (Join-Path $env:USERPROFILE 'Tools')
-        }
-
-        foreach ($parent in $searchParents) {
-            if (-not (Test-Path -LiteralPath $parent -PathType Container)) {
-                continue
-            }
-            $allCandidates += Get-ChildItem -LiteralPath $parent -Directory -Filter 'IDA*' -ErrorAction SilentlyContinue |
-                Where-Object { $_.Name -match '^IDA(?: Professional| Pro)?(?:\s+|$)' } |
-                Select-Object -ExpandProperty FullName
-        }
-    }
-
-    $seen = @{}
-    $installations = @()
-    foreach ($candidate in $allCandidates) {
-        if ([string]::IsNullOrWhiteSpace([string]$candidate)) {
-            continue
-        }
-
-        try {
-            $installDir = [System.IO.Path]::GetFullPath([string]$candidate).TrimEnd('\')
-        }
-        catch {
-            continue
-        }
-
-        $key = $installDir.ToLowerInvariant()
-        if ($seen.ContainsKey($key)) {
-            continue
-        }
-        $seen[$key] = $true
-
-        $idalibPath = Join-Path $installDir 'idalib.dll'
-        $idaPath = Join-Path $installDir 'ida.exe'
-        if (-not (Test-Path -LiteralPath $idaPath -PathType Leaf)) {
-            $idaPath = Join-Path $installDir 'idat.exe'
-        }
-        if (-not (Test-Path -LiteralPath $idalibPath -PathType Leaf) -or
-            -not (Test-Path -LiteralPath $idaPath -PathType Leaf)) {
-            continue
-        }
-
-        $version = ConvertTo-ReverseIdaVersion -Text (Split-Path -Leaf $installDir)
-        try {
-            $fileVersion = ConvertTo-ReverseIdaVersion -Text ([System.Diagnostics.FileVersionInfo]::GetVersionInfo($idaPath).ProductVersion)
-            if ($fileVersion -gt $version) {
-                $version = $fileVersion
-            }
-        }
-        catch {
-            Write-Verbose "Unable to read IDA file version: $idaPath"
-        }
-
-        $installations += [pscustomobject]@{
-            InstallDir = $installDir
-            Executable = $idaPath
-            IdalibPath = $idalibPath
-            Version = $version.ToString()
-            VersionObject = $version
-        }
-    }
-
-    return $installations |
-        Sort-Object -Property @{ Expression = 'VersionObject'; Descending = $true }, @{ Expression = 'InstallDir'; Descending = $true } |
-        Select-Object -First 1
-}
-
 function Get-ReverseToolCatalog {
     [CmdletBinding()]
     param()
@@ -210,10 +87,10 @@ function Get-ReverseToolCatalog {
         [pscustomobject]@{
             Name = 'idapro'
             Skill = 'ida-reverse'
-            Purpose = 'IDA Pro installation'
-            VersionArgs = @()
+            Purpose = 'Python IDA Pro MCP CLI'
+            VersionArgs = @('--version')
             Fallbacks = @(
-                [pscustomobject]@{ Type = 'ida-install'; Value = '' }
+                [pscustomobject]@{ Type = 'command'; Value = 'reverse-skill' }
             )
         }
         [pscustomobject]@{
@@ -719,23 +596,6 @@ function Resolve-ReverseToolSpec {
                         PrefixArgs = @('-jar', $candidate.Value)
                         VersionArgs = @('-jar', $candidate.Value, '--version')
                         FixedVersion = $fixedVersion
-                    }
-                }
-            }
-            'ida-install' {
-                $ida = Get-LatestIdaInstallation
-                if ($null -ne $ida) {
-                    return [pscustomobject]@{
-                        Name = $definition.Name
-                        Skill = $definition.Skill
-                        Purpose = $definition.Purpose
-                        Available = $true
-                        Source = 'LatestInstalledVersion'
-                        ResolvedPath = $ida.InstallDir
-                        Command = $ida.Executable
-                        PrefixArgs = @()
-                        VersionArgs = @()
-                        FixedVersion = $ida.Version
                     }
                 }
             }

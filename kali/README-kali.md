@@ -202,7 +202,7 @@ bash kali/scripts/bootstrap-reverse.sh idapro --start-services
 | 路径分隔符 | `\` | `/` |
 | 环境变量 | `%USERPROFILE%` | `$HOME` |
 | 预装工具 | 几乎没有 | 大量安全工具预装 |
-| IDA 启动 | `start.ps1` | `start.sh`（如果有 Linux 版 IDA） |
+| IDA 启动 | `reverse-skill start` | `start.sh`（如果有 Linux 版 IDA） |
 | MCP 配置路径 | `%USERPROFILE%\.claude\mcp.json` | `~/.claude/mcp.json` |
 | 端口检测 | `TcpClient` | `nc -z` 或 `ss` |
 

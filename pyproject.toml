@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "reverse-skill-evolver-cli"
+version = "1.0.0"
+description = "Python CLI for the IDA Pro MCP workflow"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+dependencies = [
+  "click>=8.1,<9",
+  "httpx>=0.27,<1",
+]
+
+[project.optional-dependencies]
+test = [
+  "jsonschema>=4.23,<5",
+  "pytest>=8,<10",
+]
+
+[project.scripts]
+reverse-skill = "reverse_skill.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["reverse_skill*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

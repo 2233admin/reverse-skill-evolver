@@ -5,7 +5,7 @@ description: |
 
   Ensure to use this skill when the user wants to analyze any binary file, regardless of whether they explicitly mention "IDA" or "reverse engineering". This includes requests like "看看这个exe", "分析这个dll", "帮我破解", "找一下密码", "这个软件怎么注册", etc.
 
-  Prefer native idapro MCP tools for agent calls and the repository-level reverse-skill.ps1 for registration, diagnostics, and manual CLI use. scripts/start.ps1 and scripts/open.ps1 remain compatibility entry points. PowerShell is only the Windows script host; it is not a reverse-engineering capability.
+  Prefer native idapro MCP tools for agent calls and the Python reverse-skill CLI for installation, registration, diagnostics, and manual use. The IDA execution path does not use PowerShell.
 ---
 
 # IDA Pro 逆向分析技能
@@ -16,112 +16,74 @@ description: |
 
 1. **原生 MCP 与 CLI 使用同一条真实链路**
    - Codex 注册名为 `idapro`，地址默认是 `http://127.0.0.1:13337/mcp`
-   - 原生 MCP 适合代理直接调工具；仓库根 `reverse-skill.ps1` 适合登录安装、诊断和人工操作
+   - 原生 MCP 适合代理直接调工具；Python 命令 `reverse-skill` 适合登录安装、诊断和人工操作
    - CLI 先按 `2026-07-28` 调用 `server/discover`；现代服务使用逐请求元数据，旧服务才降级到 `initialize` / `notifications/initialized` 和 `Mcp-Session-Id`
 
 2. **`C:\Windows\System32\` 文件无权限打开**
    - idalib 无法直接读取 System32 目录下的文件
-   - **解决办法**：`open.ps1` 自动检测并复制到 `临时目录` 目录后再打开
+   - **解决办法**：`reverse-skill open` 自动检测并复制到临时目录后再打开
 
 3. **启动服务器命令阻塞对话**
    - `idalib-mcp` 启动后会持续输出 INFO 日志到控制台
-   - **解决办法**：使用 `scripts/start.ps1`（`-WindowStyle Hidden` 后台静默启动）
-   - 脚本会等待服务就绪后自动退出，不阻塞对话
+   - **解决办法**：使用 `reverse-skill start`；Python 用无窗口后台进程启动服务
+   - 命令会等待服务就绪后自动退出，不阻塞对话
 
 4. **MCP 注册名固定为 `idapro`**
    - 服务器自身名称可以是 `ida-pro-mcp`；Codex 侧统一使用短注册名 `idapro`
-   - 运行 `reverse-skill.ps1 register`，不要手工漂移配置文件
+   - 运行 `reverse-skill register`，不要手工漂移配置文件
 
 5. **传输固定为 Streamable HTTP**
-   - 当前方案不使用 stdio，也不把 PowerShell 当逆向能力
-   - PowerShell 只是 Windows 系统壳，负责启动 CLI 和传递参数；真正链路是 `idalib-mcp.exe → IDA`
+   - 当前方案不使用 stdio，IDA CLI 也不经过 PowerShell
+   - 真正链路是 `reverse-skill → HTTP MCP → idalib-mcp.exe → IDA`
 
 6. **协议版本必须协商，不能写死服务端版本**
    - 客户端优先使用已发布版 `2026-07-28` 的逐请求 `_meta`，并镜像 `MCP-Protocol-Version` / `Mcp-Method` / `Mcp-Name` / `Mcp-Param-*` 头
    - 遇到非现代响应才进入 legacy 初始化，接受 `2025-11-25`、`2025-06-18` 或 `2025-03-26`；`status` 必须明确显示 `era`
    - 现代协议没有协议会话；IDA database ID 是应用层显式句柄，不等同于 `Mcp-Session-Id`
-   - MRTR 的 `requestState` 必须原样回传且重试使用新的 JSON-RPC id；CLI 用 `-InputResponsesJson` / `-RequestState` 显式完成该步骤
+   - MRTR 的 `requestState` 必须原样回传且重试使用新的 JSON-RPC id；CLI 用 `--input-responses-json` / `--request-state` 显式完成该步骤
    - 规范映射、双时代流程和本机验证见 [`references/mcp-2026-07-28-dual-era.md`](references/mcp-2026-07-28-dual-era.md)
 
 7. **健康服务不能为了“重启”被误杀**
-   - `start.ps1` 先完成 MCP 初始化和 `tools/list` 健康检查
-   - 服务健康时原样复用；只有端口不可用时，才清理陈旧 `idalib-mcp` 进程树后启动新服务
+   - `reverse-skill start` 先完成 MCP 初始化和 `tools/list` 健康检查
+   - 服务健康时原样复用；只有显式传入 `--replace-stale` 时，才清理陈旧 `idalib-mcp` 进程树后启动新服务
 
 8. **打开和分析可能是长请求**
-   - `idb_open(run_auto_analysis=true)` 会等待 IDA 分析，应按样本规模设置 `-TimeoutSeconds`
+   - `idb_open(run_auto_analysis=true)` 会等待 IDA 分析，应按样本规模设置根选项 `--timeout`
    - 超时是明确失败，不用吞错、盲重试或伪造成功会话
 
 ### 工作流程原则
 
 | 步骤 | 做什么 | 用什么 |
 |------|--------|--------|
-| 1 | 注册并检查 Codex MCP | `reverse-skill.ps1 register`、`status` |
-| 2 | 确保 HTTP 服务在运行 | `reverse-skill.ps1 start` |
-| 3 | 打开目标二进制文件 | `reverse-skill.ps1 open -Path "xxx.exe"` |
-| 4 | 调用动态发现的工具 | 原生 `idapro` MCP，或 `reverse-skill.ps1 call` |
-| 5 | 分析完毕 | `reverse-skill.ps1 close -Database <session-id>` |
+| 1 | 注册并检查 Codex MCP | `reverse-skill register`、`status` |
+| 2 | 确保 HTTP 服务在运行 | `reverse-skill start` |
+| 3 | 打开目标二进制文件 | `reverse-skill open "xxx.exe"` |
+| 4 | 调用动态发现的工具 | 原生 `idapro` MCP，或 `reverse-skill call` |
+| 5 | 分析完毕 | `reverse-skill close <session-id>` |
 
-## CLI 与兼容脚本
+## Python CLI
 
-根入口：`<repo-root>\reverse-skill.ps1`
+安装入口：`<repo-root>\pyproject.toml`；源码入口：`python -m reverse_skill`。
 
-```powershell
-.\reverse-skill.ps1 register
-.\reverse-skill.ps1 start
-.\reverse-skill.ps1 status
-.\reverse-skill.ps1 tools
-.\reverse-skill.ps1 open -Path "C:\path\to\file.exe" -TimeoutSeconds 600
-.\reverse-skill.ps1 sessions
-.\reverse-skill.ps1 call -Tool decompile -Database "<session-id>" -ArgumentsJson '{"addr":"0x140001000"}'
-.\reverse-skill.ps1 close -Database "<session-id>"
+```console
+python -m pip install -e .
+reverse-skill register
+reverse-skill start
+reverse-skill status
+reverse-skill tools
+reverse-skill --timeout 600 open "C:\path\to\file.exe"
+reverse-skill sessions
+reverse-skill call decompile --database "<session-id>" --arguments-json '{"addr":"0x140001000"}'
+reverse-skill close "<session-id>"
 ```
 
-### start.ps1 — 启动 MCP HTTP 服务器
+`start` 自动选择本机最高版本的有效 IDA；`--ida-dir` 只用于明确固定版本。`open` 支持 `--preferred-session-id`、`--no-auto-analysis`、`--no-build-caches`，并自动处理 System32 输入。复杂样本使用 `reverse-skill --timeout 600 open ...`；这只扩大等待上限，不改变服务端分析行为。
 
-路径：`scripts/start.ps1`
-
-- 自动选择本机最高版本的有效 IDA；也可显式传 `-IdaDir`
-- 先检查现有服务；健康时输出 `OK:<工具数量>:existing`，不会中断活跃会话
-- 服务不可用时才清理陈旧进程树、后台启动 `idalib-mcp` 并等待就绪
-- 服务器在后台运行，不阻塞对话
-
-**调用方式**：
-```
-powershell -File "<skill-root>\ida-reverse\scripts\start.ps1"
-```
-
-### open.ps1 — 打开二进制文件
-
-路径：`scripts/open.ps1`
-
-- 兼容旧调用方式，内部委托给根目录 `reverse-skill.ps1 open`
-- 调用当前 `idb_open` 工具并遵循 MCP 初始化和会话生命周期
-- 自动检测 System32 路径并复制到临时目录
-- 支持 `-SessionId`、`-NoAutoAnalysis` 和 `-TimeoutSeconds`
-- 成功输出 `OK:文件名:session_id`；真实失败直接输出 `ERR:<原因>`
-
-**调用方式**：
-```
-powershell -File "<skill-root>\ida-reverse\scripts\open.ps1" -Path "C:\path\to\file.exe"
-```
-
-**可选参数**：
-```
-# 指定 SessionId
-powershell -File "scripts\open.ps1" -Path "file.exe" -SessionId "my_session"
-
-# 跳过自动分析（大文件推荐）
-powershell -File "scripts\open.ps1" -Path "large.exe" -NoAutoAnalysis
-
-# 设置超时，避免带自动分析时长时间无返回
-powershell -File "scripts\open.ps1" -Path "file.exe" -TimeoutSeconds 600
-```
-
-复杂样本建议显式设置 `-TimeoutSeconds 600`；这只扩大等待上限，不改变服务端分析行为。
+机器调用使用 `--json`；输出 schema、稳定退出码和 OpenCLI 0.1 描述见 [`references/cli-contract.md`](references/cli-contract.md)。
 
 ## 核心工具列表
 
-`tools/list` 的实时结果是唯一真相；先执行 `reverse-skill.ps1 tools`，不要依赖固定数量或历史快照。当前主要分组如下：
+`tools/list` 的实时结果是唯一真相；先执行 `reverse-skill tools`，不要依赖固定数量或历史快照。当前主要分组如下：
 
 - 会话：`idb_open`、`idb_list`、`idb_close`、`idb_save`、`server_health`
 - 概览：`survey_binary`、`list_funcs`、`list_globals`、`entity_query`、`imports_query`
@@ -132,22 +94,22 @@ powershell -File "scripts\open.ps1" -Path "file.exe" -TimeoutSeconds 600
 - 注释与修改：`set_comments`、`append_comments`、`rename`、`patch`、`patch_asm`、`define_func`
 - 签名：`make_signature`、`make_signature_for_function`、`make_signature_for_range`、`find_xref_signatures`
 
-Codex 原生工具会由客户端加上 `idapro` 注册命名空间；CLI 的 `-Tool` 参数使用上面这些服务端原名。每个分析工具都必须携带 `database=<session-id>`。
+Codex 原生工具会由客户端加上 `idapro` 注册命名空间；CLI 的 `call TOOL` 参数使用上面这些服务端原名。每个分析工具都必须携带 `database=<session-id>`。
 
 ## 逆向分析完整工作流
 
 ### Step 1: 启动服务器
 确保 HTTP 服务在后台运行。
+```console
+reverse-skill register
+reverse-skill start
+reverse-skill status
 ```
-.\reverse-skill.ps1 register
-.\reverse-skill.ps1 start
-.\reverse-skill.ps1 status
-```
-`status` 中 `mcp.online=true` 且 `tool_count>0` 表示就绪。
+`status` 中 `mcp.online=true` 且 `toolCount>0` 表示就绪。
 
 ### Step 2: 打开文件
-```
-.\reverse-skill.ps1 open -Path "C:\目标.exe" -TimeoutSeconds 600
+```console
+reverse-skill --timeout 600 open "C:\目标.exe"
 ```
 命令返回真实 session；带自动分析的复杂样本需要更长超时。
 
@@ -197,9 +159,9 @@ rename(batch={"func": [{"addr": "函数地址", "name": "有意义的名字"}]},
 5. **遇到混淆代码** — 先做字符串解密、导入哈希去除、控制流平坦化去除等预处理
 6. **C++ STL 代码** — 用 FLIRT/Lumina 识别库函数后，再分析业务逻辑
 7. **不要暴力破解** — 分析应从反汇编中推导解决方案，用简单 Python 辅助计算
-8. **遇到 "No database bound"** — 先执行 `reverse-skill.ps1 open`，再把返回的 session 作为 `database`
+8. **遇到 "No database bound"** — 先执行 `reverse-skill open`，再把返回的 session 作为 `database`
 9. **遇到 worker 不可达** — 该 session 已陈旧；不要伪造结果，关闭或重新打开真实目标
-10. **带自动分析打开 GUI/复杂样本时** — 显式加 `-TimeoutSeconds 600`，超时后按失败处理
+10. **带自动分析打开 GUI/复杂样本时** — 显式加根选项 `--timeout 600`，超时后按失败处理
 
 ---
 
@@ -218,23 +180,23 @@ rename(batch={"func": [{"addr": "函数地址", "name": "有意义的名字"}]},
 
 ## 按需自举（On-Demand Bootstrap）
 
-本 skill 的入口脚本已接入统一自举系统。
+本 skill 的 Python CLI 已接入统一自举系统。
 
 ### 自动化能力边界
 
 | 工具 | 可自动安装 | 安装方式 | 说明 |
 |------|-----------|---------|------|
-| idalib-mcp | ✓ | pip install (from GitHub) | `start.ps1` 缺失时自动安装 |
-| IDA Pro 本体 | ✗ | 需手动安装 | 默认选择本机可用安装中的最高版本；显式 `-IdaDir` 才固定目录 |
+| idalib-mcp | ✓ | `reverse-skill install` | 从 GitHub 安装并进入上游交互安装器 |
+| IDA Pro 本体 | ✗ | 需手动安装/登录 | 默认选择本机可用安装中的最高版本；显式 `--ida-dir` 才固定目录 |
 
 ### 安装步骤（已验证）
 
-```cmd
-# 1. 从 GitHub 安装 ida-pro-mcp（PyPI 上的 ida-mcp 是另一个项目，不要装错！）
-pip install git+https://github.com/mrexodia/ida-pro-mcp.git
+```console
+# 1. 安装本仓库 Python CLI
+python -m pip install -e .
 
-# 2. 安装 IDA 插件（选择 Streamable HTTP + Global + 全选客户端）
-ida-pro-mcp --install
+# 2. 从 GitHub 安装 ida-pro-mcp 并进入交互安装（选择 Streamable HTTP）
+reverse-skill install
 
 # 3. 重启 IDA Pro，打开目标文件
 # 插件自动监听 127.0.0.1:13337
@@ -248,10 +210,10 @@ ida-pro-mcp --config
 
 ### 自举触发点
 
-- `scripts/start.ps1`：缺 `idalib-mcp` 时自动调用 `bootstrap-reverse.ps1`
-- MCP 注册：对 Codex 执行 `reverse-skill.ps1 register`；其他客户端按各自的原生注册命令配置同一 URL
+- CLI 安装：`reverse-skill install`
+- MCP 注册：对 Codex 执行 `reverse-skill register`；其他客户端按各自的原生注册命令配置同一 URL
 
 ### 前置条件
 
-- IDA Pro 已安装；入口脚本按版本选择本机最高的有效安装，旧 `IDADIR` 只作为候选，不再覆盖新版
+- IDA Pro 已安装；Python CLI 按版本选择本机最高的有效安装，旧 `IDADIR` 只作为候选，不再覆盖新版
 - Python 已安装（idalib-mcp 依赖 Python）

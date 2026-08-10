@@ -1,0 +1,82 @@
+{
+  "$schema": "https://opencli.org/draft.json",
+  "opencli": "0.1",
+  "info": {
+    "title": "reverse-skill",
+    "summary": "Operate the local IDA Pro MCP service from Python.",
+    "version": "1.0.0",
+    "license": { "identifier": "MIT" }
+  },
+  "command": {
+    "name": "reverse-skill",
+    "description": "Install, register, start, inspect, and call the IDA Pro MCP service.",
+    "options": [
+      { "name": "--url", "arguments": [{ "name": "URL", "required": true }], "description": "MCP Streamable HTTP URL." },
+      { "name": "--name", "arguments": [{ "name": "NAME", "required": true }], "description": "Codex MCP registration name." },
+      { "name": "--json", "description": "Emit one JSON output envelope on stdout." },
+      { "name": "--timeout", "arguments": [{ "name": "SECONDS", "required": true }], "description": "Request timeout in seconds." },
+      { "name": "--version", "description": "Show the CLI version." },
+      { "name": "--help", "aliases": ["-h"], "description": "Show help." }
+    ],
+    "exitCodes": [
+      { "code": 0, "description": "Success." },
+      { "code": 1, "description": "Unexpected internal failure." },
+      { "code": 2, "description": "Invalid command-line usage." },
+      { "code": 3, "description": "Required local environment or executable unavailable." },
+      { "code": 4, "description": "MCP transport or protocol failure." },
+      { "code": 5, "description": "The MCP tool completed with an operation-level error." }
+    ],
+    "commands": [
+      {
+        "name": "install",
+        "description": "Install ida-pro-mcp and run its interactive installer.",
+        "interactive": true,
+        "metadata": [{ "name": "jsonSupported", "value": false }],
+        "options": [{ "name": "--upgrade", "description": "Upgrade ida-pro-mcp before installation." }]
+      },
+      { "name": "register", "description": "Register the HTTP endpoint with Codex." },
+      {
+        "name": "start",
+        "description": "Start or reuse the local IDA MCP service.",
+        "options": [
+          { "name": "--ida-dir", "arguments": [{ "name": "DIRECTORY", "required": true }] },
+          { "name": "--port", "arguments": [{ "name": "PORT", "required": true }] },
+          { "name": "--server-path", "arguments": [{ "name": "FILE", "required": true }] },
+          { "name": "--replace-stale", "description": "Terminate stale server processes before starting." }
+        ]
+      },
+      { "name": "status", "description": "Report IDA, MCP negotiation, and Codex registration." },
+      { "name": "doctor", "description": "Alias for status." },
+      { "name": "tools", "description": "List dynamically discovered MCP tools." },
+      {
+        "name": "open",
+        "description": "Open a binary through idb_open.",
+        "arguments": [{ "name": "PATH", "required": true }],
+        "options": [
+          { "name": "--mode", "arguments": [{ "name": "MODE", "required": true, "acceptedValues": ["prefer_headless", "force_headless", "prefer_gui", "force_gui"] }] },
+          { "name": "--preferred-session-id", "arguments": [{ "name": "SESSION_ID", "required": true }] },
+          { "name": "--no-auto-analysis" },
+          { "name": "--no-build-caches" }
+        ]
+      },
+      { "name": "sessions", "description": "List active and discovered IDA database sessions." },
+      {
+        "name": "call",
+        "description": "Call a dynamically discovered MCP tool.",
+        "arguments": [{ "name": "TOOL", "required": true }],
+        "options": [
+          { "name": "--arguments-json", "arguments": [{ "name": "JSON_OBJECT", "required": true }] },
+          { "name": "--database", "arguments": [{ "name": "SESSION_ID", "required": true }] },
+          { "name": "--input-responses-json", "arguments": [{ "name": "JSON_OBJECT", "required": true }] },
+          { "name": "--request-state", "arguments": [{ "name": "OPAQUE_STATE", "required": true }] }
+        ]
+      },
+      {
+        "name": "close",
+        "description": "Close an IDA database session.",
+        "arguments": [{ "name": "DATABASE", "required": true }],
+        "options": [{ "name": "--no-save" }]
+      }
+    ]
+  }
+}

@@ -38,20 +38,6 @@
       "verifyCommand": "frida-ps"
     },
     {
-      "name": "idalib-mcp",
-      "bootstrapKind": "pip-package",
-      "pipPackage": "ida-pro-mcp",
-      "pipSource": "git+https://github.com/mrexodia/ida-pro-mcp.git",
-      "docsUrl": "https://github.com/mrexodia/ida-pro-mcp",
-      "canAutoInstall": true,
-      "verifyCommand": "ida-pro-mcp",
-      "postInstallSteps": [
-        "ida-pro-mcp --install (选择 Streamable HTTP + Global)",
-        "重启 IDA Pro 使插件生效",
-        "IDA 打开文件后 MCP 自动监听 127.0.0.1:13337"
-      ]
-    },
-    {
       "name": "jshookmcp",
       "bootstrapKind": "npm-mcp",
       "npmPackage": "@jshookmcp/jshook@latest",
@@ -81,20 +67,6 @@
       "docsUrl": "https://github.com/Mouseww/anything-analyzer",
       "canAutoInstall": true,
       "verificationMode": "service-or-registration"
-    },
-    {
-      "name": "idapro",
-      "bootstrapKind": "local-http-mcp",
-      "dependsOn": ["idalib-mcp"],
-      "mcpNames": ["idapro"],
-      "mcpUrl": "http://127.0.0.1:13337/mcp",
-      "servicePort": 13337,
-      "servicePortRange": [13337, 13350],
-      "portNote": "IDA 多实例时端口递增 (13337→13338→...)，检查 IDA Output 窗口的 [MCP] port=xxxxx 日志",
-      "startScript": "%SKILL_ROOT%\\ida-reverse\\scripts\\start.ps1",
-      "docsUrl": "https://hex-rays.com/ida-pro/",
-      "canAutoInstall": true,
-      "verificationMode": "service-and-registration"
     },
     {
       "name": "r2",

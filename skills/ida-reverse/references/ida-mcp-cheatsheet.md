@@ -1,6 +1,6 @@
 # IDA Pro MCP 工具速查
 
-> 72 个 MCP 工具按功能分类，附常用参数和典型用法。
+> MCP 工具按功能分类，附常用参数和典型用法；数量与 schema 以实时 `tools/list` 为准。
 > 服务器名：`idapro`，工具前缀：`idapro_*`，HTTP 模式运行。
 
 ---
@@ -9,20 +9,18 @@
 
 ### 服务器启动
 
-```powershell
-# 启动 MCP HTTP 服务器（后台静默）
-powershell -File "scripts/start.ps1"
-# 输出 OK:72 表示就绪
+```console
+# 启动或复用 MCP HTTP 服务器
+reverse-skill start
 
-# 打开目标文件（绕过 schema 校验）
-powershell -File "scripts/open.ps1" -Path "C:\target.exe"
-# 输出 OK:filename:session_id
+# 打开目标文件
+reverse-skill open "C:\target.exe"
 
 # 大文件/GUI 程序建议加超时
-powershell -File "scripts/open.ps1" -Path "C:\big.exe" -TimeoutSeconds 600
+reverse-skill --timeout 600 open "C:\big.exe"
 
 # 跳过自动分析（快速打开）
-powershell -File "scripts/open.ps1" -Path "C:\huge.sys" -NoAutoAnalysis
+reverse-skill open "C:\huge.sys" --no-auto-analysis
 ```
 
 ### 会话工具
@@ -506,10 +504,10 @@ idapro_py_eval(code="import ida_funcs; f=ida_funcs.get_func(0x401000); print(f.s
 
 | 错误 | 原因 | 解决 |
 |------|------|------|
-| "No database bound" | 没有打开文件 | 执行 `open.ps1` |
-| "Failed to open database" | 旧库被锁 | `open.ps1` 自动降级到 Temp |
-| schema 校验失败 | MCP 客户端 BUG | 用 `open.ps1` 代替 `idalib_open` |
-| 工具超时 | 大文件分析中 | 加 `-TimeoutSeconds 600` |
-| "ERR:timeout" (start.ps1) | 服务器启动失败 | 检查 Python/idalib-mcp 安装 |
+| "No database bound" | 没有打开文件 | 执行 `reverse-skill open` |
+| "Failed to open database" | 旧库被锁 | 关闭旧会话或换新 session |
+| schema 校验失败 | 参数与实时工具 schema 不符 | 先执行 `reverse-skill tools` 检查定义 |
+| 工具超时 | 大文件分析中 | 加根选项 `--timeout 600` |
+| 服务启动超时 | 服务器启动失败 | 检查 Python/idalib-mcp 安装 |
 | 进制转换错误 | 手动计算出错 | 用 `idapro_int_convert` |
 | 函数名找不到 | 名称不精确 | 用 `list_funcs` + filter 先搜索 |

@@ -211,7 +211,7 @@ After task completion (vulnerability verified / reverse complete / flag captured
 
 | Service | Port | Purpose | Startup |
 |---------|------|---------|---------|
-| idapro | 13337 (default) | IDA Pro MCP reverse tools, discovered dynamically through `tools/list` | `reverse-skill.ps1 start`; preserves a healthy service |
+| idapro | 13337 (default) | IDA Pro MCP reverse tools, discovered dynamically through `tools/list` | `reverse-skill start`; preserves a healthy service |
 | anything-analyzer | 23816 | Browser automation + HTTP capture | `pnpm dev` (project dir) |
 | jshookmcp | — | JS Hook/CDP/Network/AST | `npx -y @jshookmcp/jshook@latest` (stdio) |
 | ghidra | 8765 | Ghidra free decompiler | Ghidra GUI auto-listens after launch |

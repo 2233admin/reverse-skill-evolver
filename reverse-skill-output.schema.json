@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://reverse-skill.local/schema/output-v1.json",
+  "title": "reverse-skill JSON output envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "ok", "command", "data", "error"],
+  "properties": {
+    "schemaVersion": { "const": "1" },
+    "ok": { "type": "boolean" },
+    "command": { "type": "string", "minLength": 1 },
+    "data": true,
+    "error": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["code", "message"],
+          "properties": {
+            "code": { "type": "string", "minLength": 1 },
+            "message": { "type": "string" }
+          }
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "ok": { "const": true } }, "required": ["ok"] },
+      "then": { "properties": { "error": { "type": "null" } } },
+      "else": {
+        "properties": {
+          "data": { "type": "null" },
+          "error": { "type": "object" }
+        }
+      }
+    }
+  ]
+}

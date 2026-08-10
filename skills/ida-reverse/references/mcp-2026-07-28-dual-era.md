@@ -4,7 +4,7 @@
 
 ## 结论
 
-`reverse-skill.ps1` 的 HTTP 客户端采用 dual-era：先按 MCP `2026-07-28` 发 `server/discover`；识别到现代错误时留在现代时代并协商版本，其他响应才进入 legacy `initialize`。不能把“客户端支持新版”写成“当前 IDA 服务端已运行新版”。
+Python `reverse-skill` 的 HTTP 客户端采用 dual-era：先按 MCP `2026-07-28` 发 `server/discover`；识别到现代错误时留在现代时代并协商版本，其他响应才进入 legacy `initialize`。不能把“客户端支持新版”写成“当前 IDA 服务端已运行新版”。
 
 ```mermaid
 flowchart TD
@@ -26,7 +26,7 @@ IDA database ID 是工具参数里的应用层句柄，不是协议会话；现�
 - 现代请求的 `params._meta` 固定携带协议版本、客户端身份和客户端能力；HTTP 同步镜像版本、方法、名称及 `x-mcp-header` 参数头。
 - `Mcp-Name` 与参数头对非 ASCII、控制字符、首尾空白和 sentinel 形状做 UTF-8 Base64 sentinel 编码。
 - `tools/list` 保留 `ttlMs` / `cacheScope`；非法、重复、非 primitive 或非静态 `properties` 路径的 `x-mcp-header` 定义会被排除。
-- MRTR 的 `input_required` 原样返回。重试由 `-InputResponsesJson` 和 `-RequestState` 显式提供；不透明状态不解析、不改写，每次调用生成新的 JSON-RPC id。
+- MRTR 的 `input_required` 原样返回。重试由 `--input-responses-json` 和 `--request-state` 显式提供；不透明状态不解析、不改写，每次调用生成新的 JSON-RPC id。
 - CLI 不声明 roots、sampling 或自动 elicitation 能力；没有实际交互实现的能力不能冒充已支持。
 - 现代模式不发 `initialize`、`notifications/initialized` 或 DELETE；legacy 模式保留这些生命周期行为。
 
@@ -54,8 +54,8 @@ Codex registration: idapro -> http://127.0.0.1:13337/mcp, enabled
 
 ## 本轮工具链经验
 
-1. PowerShell 5.1 / 7 只是系统壳和 CLI 宿主，不应登记为逆向能力；真实链路是 `reverse-skill.ps1 -> HTTP MCP -> idalib-mcp.exe -> IDA`。
+1. IDA CLI 已迁移到 Python，不再经过 PowerShell；真实链路是 `reverse-skill -> HTTP MCP -> idalib-mcp.exe -> IDA`。
 2. “最新版”分三层核对：IDA 安装版本、Python 包元数据、服务端实际协商协议。任一层的版本号都不能代替另外两层。
 3. 服务端 `serverInfo.version` 是自报展示字段；本机包为 `2.0.0`，服务仍自报 `1.0.0`，不能混写。
 4. 健康检查必须先验证监听和 MCP 工具发现；启动脚本在服务健康时复用进程，避免破坏活跃数据库句柄。
-5. PowerShell 脚本调用另一个 `.ps1` 后不能假定 `$LASTEXITCODE` 已存在；应立即检查 `$?`。本轮真实启动验证抓到了这个旧缺陷。
+5. JSON-RPC notification 的 HTTP `202 Accepted` 可以带非 JSON 文本；Python 客户端必须按无响应语义处理，不能把该确认文本误判成协议 JSON。

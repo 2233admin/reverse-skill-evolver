@@ -283,47 +283,46 @@ After success, check:
 
 ## 6.2 IDA Pro Chain
 
-The repository-level `reverse-skill.ps1` is the unified entry point. It is convenient for direct use and targets the same Streamable HTTP service as native Codex MCP registration:
+The Python command `reverse-skill` is the unified entry point. Install it from the repository with `python -m pip install -e .`; a source checkout can run the same interface as `python -m reverse_skill`. It targets the same Streamable HTTP service as native Codex MCP registration:
 
 | Execution entry | Intended use | Boundary |
 |---|---|---|
 | Native MCP | Agent tool calls | Register `idapro` at the HTTP endpoint; the MCP host owns invocation UX |
-| `reverse-skill.ps1` CLI | Human use, diagnostics, automation | Stable command surface for registration, service lifecycle, discovery, and calls |
-| `McpHttpClient.ps1` library | Repository scripts | Reusable transport client behind the CLI; not a separate server |
+| `reverse-skill` Python CLI | Human use, diagnostics, automation | Stable command surface for installation, registration, service lifecycle, discovery, and calls |
 
-The skill files are the routing/control plane, not another execution transport. `start.ps1` and `open.ps1` are compatibility adapters into the CLI. PowerShell 5.1 or 7 is only the Windows script host.
+The skill files are the routing/control plane, not another execution transport. The IDA path has no PowerShell adapter: `reverse-skill -> HTTP MCP -> idalib-mcp.exe -> IDA`.
 
-```powershell
-.\reverse-skill.ps1 register
-.\reverse-skill.ps1 start
-.\reverse-skill.ps1 status
-.\reverse-skill.ps1 tools
+```console
+reverse-skill register
+reverse-skill start
+reverse-skill status
+reverse-skill tools
 ```
 
 `register` writes the Codex configuration through `codex mcp add ... --url ...`, so a new task can use the native `idapro` MCP tools directly. `start` selects the newest valid local IDA installation, preserves an existing healthy service, and only cleans up stale processes when the service is unavailable.
 
 Common session operations:
 
-```powershell
-.\reverse-skill.ps1 open -Path "C:\path\to\sample.exe" -TimeoutSeconds 600
-.\reverse-skill.ps1 sessions
-.\reverse-skill.ps1 call -Tool decompile -Database "<session-id>" -ArgumentsJson '{"addr":"0x140001000"}'
-.\reverse-skill.ps1 close -Database "<session-id>"
+```console
+reverse-skill --timeout 600 open "C:\path\to\sample.exe"
+reverse-skill sessions
+reverse-skill call decompile --database "<session-id>" --arguments-json '{"addr":"0x140001000"}'
+reverse-skill close "<session-id>"
 ```
 
 If a modern server returns `resultType: "input_required"`, retry the same tool with a new CLI invocation and echo the opaque state exactly:
 
-```powershell
-.\reverse-skill.ps1 call -Tool login -ArgumentsJson '{}' `
-  -InputResponsesJson '{"credentials":{"action":"accept","content":{"token":"..."}}}' `
-  -RequestState '<opaque-state>'
+```console
+reverse-skill call login --arguments-json '{}' --input-responses-json '{"credentials":{"action":"accept","content":{"token":"..."}}}' --request-state '<opaque-state>'
 ```
 
-`skills\ida-reverse\scripts\open.ps1` remains as a compatibility entry point but now delegates to the unified CLI. System32 inputs are still copied to the user temporary directory first.
+System32 inputs are copied to the user temporary directory by the Python `open` command before the MCP call.
+
+The stable JSON envelope, exit codes, and OpenCLI command description are documented in `skills\ida-reverse\references\cli-contract.md`.
 
 The HTTP client is dual-era. It first uses released MCP `2026-07-28`: `server/discover`, per-request `_meta`, mirrored `MCP-Protocol-Version` / `Mcp-Method` / `Mcp-Name` / `Mcp-Param-*` headers, request-scoped JSON or SSE responses, and explicit MRTR input responses. Modern mode has no protocol session. If the endpoint answers with a non-modern response, the client falls back to the legacy `initialize` / `notifications/initialized` lifecycle and accepts a negotiated `2025-11-25`, `2025-06-18`, or `2025-03-26` revision; only that path uses `Mcp-Session-Id`.
 
-`status` reports both `era` and `protocol_version`. In the 2026-08-11 verification environment, the `ida-pro-mcp 2.0.0` package still self-identifies as server version `1.0.0`, is correctly detected as legacy, and negotiates `2025-06-18`; the inspected upstream `main` also still implements that legacy transport. This is a server capability boundary, not a claimed end-to-end modern session. IDA database IDs remain explicit application handles in both eras. Tool definitions are discovered dynamically with `tools/list`; modern `ttlMs` / `cacheScope` hints are preserved and invalid `x-mcp-header` definitions are excluded.
+`status` reports both `era` and `protocolVersion`. In the 2026-08-11 verification environment, the `ida-pro-mcp 2.0.0` package still self-identifies as server version `1.0.0`, is correctly detected as legacy, and negotiates `2025-06-18`; the inspected upstream `main` also still implements that legacy transport. This is a server capability boundary, not a claimed end-to-end modern session. IDA database IDs remain explicit application handles in both eras. Tool definitions are discovered dynamically with `tools/list`; modern `ttlMs` / `cacheScope` hints are preserved and invalid `x-mcp-header` definitions are excluded.
 
 ## 6.3 anything-analyzer
 
@@ -477,12 +476,12 @@ If you already have `.claude\settings.local.json`, `.claude\mcp.json`, `RULES.md
 
 Codex CLI has a native Streamable HTTP MCP registration path. Run this from the repository root first:
 
-```powershell
-.\reverse-skill.ps1 register
+```console
+reverse-skill register
 codex mcp get idapro --json
 ```
 
-Create a new Codex task after registration so the client reloads its MCP tool inventory. Agent calls use native `idapro` MCP tools; interactive installation, startup, diagnostics, and manual calls use `reverse-skill.ps1`. Project-level instructions still own routing, with no need to reproduce Claude hooks.
+Create a new Codex task after registration so the client reloads its MCP tool inventory. Agent calls use native `idapro` MCP tools; interactive installation, startup, diagnostics, and manual calls use `reverse-skill`. Project-level instructions still own routing, with no need to reproduce Claude hooks.
 
 Other services such as anything-analyzer and jshook must still be registered separately; the `idapro` registration does not replace them.
 
@@ -514,21 +513,22 @@ If you change computer, username, or drive letter, check all of the following:
 - `<user directory>\...`
 - `D:\APP\IDA\`
 
-### 8.2 IDA Scripts
+### 8.2 IDA Python CLI
 
 Pay special attention to:
 
-- `reverse-skill.ps1`
-- `skills\ida-reverse\scripts\start.ps1`
-- `skills\ida-reverse\scripts\open.ps1`
+- `pyproject.toml`
+- `reverse_skill\`
+- `reverse-skill.opencli.json`
+- `reverse-skill-output.schema.json`
 
 At minimum, confirm:
 
-- `reverse-skill.ps1 status` finds the newest valid local IDA installation
+- `reverse-skill status` finds the newest valid local IDA installation
 - `idalib-mcp.exe` / `ida-pro-mcp.exe` are installed and available on `PATH`
 - Whether port `13337` conflicts
 
-There is no need to hard-code `IDADIR`. Pass `-IdaDir` to `start.ps1` only when pinning a specific installation is intentional.
+There is no need to hard-code `IDADIR`. Pass `--ida-dir` to `reverse-skill start` only when pinning a specific installation is intentional.
 
 ### 8.3 Claude Local Hook
 
@@ -579,11 +579,12 @@ frida-ps -U
 
 ### 9.2 IDA Chain
 
-```powershell
-& "<your skill root>\reverse-skill.ps1" register
-& "<your skill root>\reverse-skill.ps1" start
-& "<your skill root>\reverse-skill.ps1" status
-& "<your skill root>\reverse-skill.ps1" tools
+```console
+python -m pip install -e .
+reverse-skill register
+reverse-skill start
+reverse-skill status
+reverse-skill tools
 ```
 
 ### 9.3 Tool Index
@@ -1077,16 +1078,17 @@ When automatic installation fails, the AI must tell the user in the following fo
 
 1. Install or sign in to IDA Pro through its official interactive installer. The bundled scripts automatically select the highest usable version; a stale `IDADIR` is only a candidate and cannot override a newer installation.
 
-2. Install ida-pro-mcp (must be from GitHub, not PyPI):
-   ```powershell
-   pip install git+https://github.com/mrexodia/ida-pro-mcp.git
+2. Install the Python CLI from the repository, then run the interactive upstream installer:
+   ```console
+   python -m pip install -e .
+   reverse-skill install
    ```
 
 3. Register, start, and verify from the repository root:
-   ```powershell
-   .\reverse-skill.ps1 register
-   .\reverse-skill.ps1 start
-   .\reverse-skill.ps1 status
+   ```console
+   reverse-skill register
+   reverse-skill start
+   reverse-skill status
    ```
 
 **After startup succeeds, tell me and I will continue the current task.**
