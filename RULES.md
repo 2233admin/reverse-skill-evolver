@@ -1,11 +1,11 @@
 # AIGX-first routing bootstrap
 
-This repository uses AIGX as the mandatory context plane. `.aigx/` is the sole canonical source for project rules and per-file boundaries.
+This repository uses AIGX as the mandatory context plane. `.aigx/` is the sole canonical source for project rules and per-file boundaries; this file is only a compatibility bridge.
 
 1. Read `.aigx/protocol.aigx` and the concern files touched by the task.
-2. Before editing an indexed non-genome file, resolve its binding entry in `.aigx/files.aigx`; validate genome edits with official lint.
-3. For a target project, run `python skills/scripts/aigx_context.py --project-path <project-root> --target <repo-relative-file>`; a missing or invalid genome and an unresolved edit target are blocking conditions.
-4. Run `python skills/scripts/route_task.py --task <task> --project-path <project-root> --aigx-target <repo-relative-file> --pretty` for deterministic routing.
-5. Only after the AIGX preflight passes, load `skills/SKILL.md`, `skills/evolution/SKILL.md`, the selected child skill, and current capability evidence.
+2. Run `reverse-skill context <project-root> --target <repo-relative-file>` for project-aware work. A missing genome, failed lint, or unresolved edit boundary is blocking.
+3. Run `reverse-skill route <task> --project-path <project-root> --aigx-target <repo-relative-file>` for deterministic routing.
+4. Only when the route is `ready`, load `skills/SKILL.md`, the selected child skill, and current capability evidence. Execution remains opt-in through `--execute`.
+5. Use `reverse-skill plugins inventory` and `reverse-skill teams preflight <repo>` for IDA plugin and Teams readiness. The newest usable local IDA is selected automatically unless `--ida-dir` is explicit.
 
-Session roles, worktrees, credentials, mutable evidence, and convergence records remain external runtime data. They MUST NOT be written into AIGX or persisted as target-project identity in this generic repository.
+Do not write global client configuration, install dependencies, or run compatibility PowerShell scripts as a side effect of reading this package. Interactive IDA sign-in or installation must stay an explicit user-facing action. Session roles, worktrees, credentials, mutable evidence, and target identity remain external runtime data.

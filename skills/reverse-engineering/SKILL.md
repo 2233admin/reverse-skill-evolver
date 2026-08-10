@@ -19,14 +19,15 @@ Quick reference for RE challenges. For detailed techniques, see supporting files
 For source or workspace search, use the routed Python entrypoint rather than an ad-hoc PowerShell pipeline:
 
 ```text
-python "skills/scripts/cli_search.py" --path "<workspace>" --query "<pattern>" --engine auto --pretty
+reverse-skill search "<workspace>" "<pattern>" --engine auto
 ```
 
-It is read-only. Auto mode probes `x rg` first, records any wrapper diagnostic, and falls back to native `rg` for clean machine-readable output. Use `--engine xcmd` only when an explicit x-cmd invocation is required.
+It is read-only. Auto mode uses native `rg` for clean machine-readable output. `xcmd` remains optional and is used only when explicitly selected.
 
 **Python packages (all platforms):**
 ```bash
-pip install frida-tools angr qiling uncompyle6 capstone lief z3-solver
+uv tool install frida-tools
+python -m pip install angr qiling uncompyle6 capstone lief z3-solver
 # For Python 3.9+ bytecode: build pycdc from source
 git clone https://github.com/zrax/pycdc && cd pycdc && cmake . && make
 ```

@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "reverse-skill-evolver-cli"
+version = "2.0.0b2"
+description = "Deterministic Python CLI for reverse-engineering routing and IDA MCP workflows"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+dependencies = [
+  "click>=8.1,<9",
+  "httpx>=0.27,<1",
+]
+
+[project.optional-dependencies]
+ida-integrations = [
+  "yara-python>=4.5,<5",
+]
+test = [
+  "jsonschema>=4.23,<5",
+  "pytest>=8,<10",
+]
+
+[project.scripts]
+reverse-skill = "reverse_skill.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["reverse_skill*"]
+
+[tool.setuptools.package-data]
+reverse_skill = ["data/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

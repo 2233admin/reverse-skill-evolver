@@ -5,6 +5,9 @@ node_modules/
 __pycache__/
 *.pyc
 *.pyo
+*.egg-info/
+/build/
+/dist/
 
 # OS files
 Thumbs.db

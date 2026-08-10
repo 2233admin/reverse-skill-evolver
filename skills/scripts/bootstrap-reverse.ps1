@@ -202,20 +202,33 @@ function Ensure-ApktoolInstall {
     return (Resolve-ReverseToolSpec -Name 'apktool')
 }
 
-function Ensure-PipPackageInstall {
+function Ensure-UvToolInstall {
     param([Parameter(Mandatory = $true)]$Definition)
 
-    Ensure-PythonRuntime
-    $python = Get-FirstCommandPath -Names @('python', 'python3')
-    # Use pipSource (git URL) if available, otherwise use pipPackage name
-    $installTarget = if ($Definition.PSObject.Properties['pipSource'] -and -not [string]::IsNullOrWhiteSpace($Definition.pipSource)) {
-        $Definition.pipSource
-    } else {
-        $Definition.pipPackage
+    $uv = Get-FirstCommandPath -Names @('uv')
+    if ([string]::IsNullOrWhiteSpace($uv)) {
+        Ensure-PythonRuntime
+        $python = Get-FirstCommandPath -Names @('python', 'python3')
+        & $python -m pip install --user --upgrade uv
+        if ($LASTEXITCODE -ne 0) {
+            throw 'uv installation failed.'
+        }
+        $uv = Get-FirstCommandPath -Names @('uv')
+        if ([string]::IsNullOrWhiteSpace($uv)) {
+            $candidate = Join-Path ([Environment]::GetFolderPath('UserProfile')) '.local\bin\uv.exe'
+            if (Test-Path -LiteralPath $candidate) {
+                $uv = $candidate
+            }
+        }
     }
-    & $python -m pip install --upgrade $installTarget
+
+    if ([string]::IsNullOrWhiteSpace($uv)) {
+        throw 'uv is not available after installation.'
+    }
+
+    & $uv tool install --upgrade $Definition.uvPackage
     if ($LASTEXITCODE -ne 0) {
-        throw "pip install failed for $installTarget"
+        throw "uv tool install failed for $($Definition.uvPackage)"
     }
 }
 
@@ -311,24 +324,6 @@ function Start-AnythingAnalyzerService {
     }
 }
 
-function Start-IdaProService {
-    param([Parameter(Mandatory = $true)]$Definition)
-
-    if (Test-ReverseTcpPort -Port ([int]$Definition.servicePort)) {
-        return
-    }
-
-    $startScript = $Definition.startScript
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $startScript
-    if ($LASTEXITCODE -ne 0 -and -not (Test-ReverseTcpPort -Port ([int]$Definition.servicePort))) {
-        throw 'Failed to start idapro service.'
-    }
-
-    if (-not (Wait-ForPort -Port ([int]$Definition.servicePort) -TimeoutSeconds 45)) {
-        throw 'idapro service did not open port 13337 in time.'
-    }
-}
-
 function Ensure-AndroidPlatformTools {
     $adb = Resolve-ReverseToolSpec -Name 'adb'
     if ($adb.Available) {
@@ -369,8 +364,8 @@ function Ensure-Capability {
         'github-release-jar-wrapper' {
             return Ensure-ApktoolInstall -Definition $definition
         }
-        'pip-package' {
-            Ensure-PipPackageInstall -Definition $definition
+        'uv-tool' {
+            Ensure-UvToolInstall -Definition $definition
             return $true
         }
         'winget-package' {
@@ -436,14 +431,6 @@ function Ensure-Capability {
                 Ensure-McpServer -ServerName 'anything-analyzer' -ServerDefinition @{ url = $definition.mcpUrl }
                 if ($StartServices) {
                     Start-AnythingAnalyzerService -Definition $definition
-                }
-                return $true
-            }
-            if ($Name -eq 'idapro') {
-                Ensure-Capability -Name 'idalib-mcp'
-                Ensure-McpServer -ServerName 'idapro' -ServerDefinition @{ url = $definition.mcpUrl }
-                if ($StartServices -or -not (Test-ReverseTcpPort -Port ([int]$definition.servicePort))) {
-                    Start-IdaProService -Definition $definition
                 }
                 return $true
             }

@@ -51,9 +51,80 @@
     <check>CTX-project-gate CTX-edit-boundary CTX-no-target-data CTX-official-semantics ENG-fail-closed</check>
   </file>
   <file path="skills/scripts/route_task.py" domain="routing">
-    <role>Build a deterministic checked plan and controlled dispatch command.</role>
+    <role>Preserve the historical script name as a thin alias to the packaged Python router.</role>
     <gotcha pri="CRIT">A project route cannot become ready unless its AIGX preflight is ready.</gotcha>
     <check>ROUTE-deterministic-entry ROUTE-aigx-first ROUTE-blocked-no-execute ENG-fail-closed</check>
+  </file>
+  <file path="pyproject.toml" domain="distribution">
+    <role>Define the installable Python CLI, supported runtimes, and packaged contract data.</role>
+    <check>CTX-no-target-data ENG-regression-first</check>
+  </file>
+  <file path="reverse-skill.opencli.json" domain="distribution">
+    <role>Describe the public CLI commands, arguments, options, and exit codes.</role>
+    <check>CTX-no-target-data ENG-regression-first ROUTE-deterministic-entry</check>
+  </file>
+  <file path="reverse-skill-output.schema.json" domain="distribution">
+    <role>Define the stable machine-readable output envelope.</role>
+    <check>CTX-no-target-data ENG-regression-first ENG-fail-closed</check>
+  </file>
+  <file path="reverse_skill/cli.py" domain="execution">
+    <role>Expose the canonical Python command surface for context, routing, search, IDA MCP, plugins, and Teams.</role>
+    <gotcha pri="CRIT">Controlled writes require an explicit command option and must preserve stable exit semantics.</gotcha>
+    <check>ROUTE-deterministic-entry ROUTE-blocked-no-execute ENG-fail-closed ENG-readonly-default</check>
+  </file>
+  <file path="reverse_skill/routing.py" domain="routing">
+    <role>Build deterministic checked plans and dispatch only validated Python entrypoints.</role>
+    <gotcha pri="CRIT">A project route cannot become ready unless its AIGX preflight is ready.</gotcha>
+    <check>ROUTE-deterministic-entry ROUTE-aigx-first ROUTE-blocked-no-execute ENG-fail-closed</check>
+  </file>
+  <file path="reverse_skill/aigx.py" domain="context">
+    <role>Implement the canonical fail-closed AIGX project gate used by the package CLI.</role>
+    <forbid pri="CRIT">Never persist a registry of target project identities or paths.</forbid>
+    <check>CTX-project-gate CTX-edit-boundary CTX-no-target-data CTX-official-semantics ENG-fail-closed</check>
+  </file>
+  <file path="reverse_skill/ida.py" domain="execution">
+    <role>Select the newest usable local IDA and operate its MCP service without a shell dependency.</role>
+    <check>ROUTE-capability-evidence ENG-fail-closed</check>
+  </file>
+  <file path="reverse_skill/ida_capabilities.py" domain="discovery">
+    <role>Inventory the selected IDA, plugins, runtimes, and workflow gates without modifying them.</role>
+    <check>CTX-no-target-data ENG-readonly-default ROUTE-capability-evidence ROUTE-oracle-required</check>
+  </file>
+  <file path="reverse_skill/ida_plugins.py" domain="discovery">
+    <role>Validate plugin manifests and Python compatibility without loading plugins into IDA.</role>
+    <check>CTX-no-target-data ENG-readonly-default ENG-fail-closed ROUTE-capability-evidence</check>
+  </file>
+  <file path="reverse_skill/search.py" domain="discovery">
+    <role>Provide bounded read-only workspace search through Python.</role>
+    <check>ENG-readonly-default ENG-fail-closed</check>
+  </file>
+  <file path="reverse_skill/teams_preflight.py" domain="collaboration">
+    <role>Probe newest-IDA Teams readiness without initializing a repository.</role>
+    <check>ENG-readonly-default ENG-no-credentials ROUTE-capability-evidence</check>
+  </file>
+  <file path="reverse_skill/teams_collaboration.py" domain="collaboration">
+    <role>Validate external Teams collaboration contracts without modifying source repositories.</role>
+    <check>ENG-preserve-dirty ENG-readonly-default ENG-no-credentials</check>
+  </file>
+  <file path="reverse_skill/teams_worktree_lab.py" domain="collaboration">
+    <role>Plan or explicitly create isolated collaboration worktrees from committed baselines.</role>
+    <check>ENG-preserve-dirty ENG-readonly-default ENG-no-credentials CTX-runtime-separation</check>
+  </file>
+  <file path="reverse_skill/data/routing.json" domain="distribution">
+    <role>Package the canonical route table for installed CLI use outside the source checkout.</role>
+    <check>CTX-no-target-data ROUTE-deterministic-entry</check>
+  </file>
+  <file path="reverse_skill/data/ida-plugin-capabilities.json" domain="distribution">
+    <role>Package stable plugin workflow metadata for installed CLI use.</role>
+    <check>CTX-no-target-data ROUTE-capability-evidence</check>
+  </file>
+  <file path="tests/test_beta_surface.py" domain="testing">
+    <role>Lock packaged beta data, fail-closed context, search, plugin, and Teams surfaces.</role>
+    <check>ENG-regression-first ENG-fail-closed</check>
+  </file>
+  <file path=".github/workflows/python-cli.yml" domain="testing">
+    <role>Run Python package, compatibility, and build gates on beta and main across supported hosts.</role>
+    <check>CTX-no-target-data ENG-regression-first</check>
   </file>
   <file path="skills/scripts/test_aigx_context.py" domain="testing">
     <role>Lock fail-closed genome and boundary behavior.</role>
@@ -226,14 +297,6 @@
   <file path=".gitignore" domain="distribution">
     <role>Keep generated host capability evidence and caches out of version control.</role>
     <check>CTX-no-target-data CTX-runtime-separation</check>
-  </file>
-  <file path="skills/ida-reverse/scripts/open.ps1" domain="execution">
-    <role>Open IDA or idalib through validated portable paths and artifact inputs.</role>
-    <check>ENG-fail-closed ENG-readonly-default ROUTE-capability-evidence</check>
-  </file>
-  <file path="skills/ida-reverse/scripts/start.ps1" domain="execution">
-    <role>Start validated IDA analysis services without mutating IDA configuration.</role>
-    <check>ENG-fail-closed ENG-readonly-default ROUTE-capability-evidence</check>
   </file>
   <file path="skills/reverse-engineering/SKILL.md" domain="routing">
     <role>Define generic reverse-engineering routes and evidence requirements.</role>

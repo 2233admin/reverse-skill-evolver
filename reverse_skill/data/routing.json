@@ -1,0 +1,359 @@
+{
+  "schema_version": 1,
+  "context_protocol": {
+    "standard": "AIGX 1.1",
+    "validator_package": "aigx==1.2.0",
+    "project_path_requires_valid_root_genome": true,
+    "explicit_edit_requires_boundary": true,
+    "runtime_state_is_external": true
+  },
+  "routing_entry": ["SKILL.md", "routing.md", "routing.json"],
+  "evolution_protocol": {
+    "pre_route": ["goal_contract", "capability_graph"],
+    "route_levels": ["macro_route", "micro_route"],
+    "post_route": ["trace_card", "success_oracle", "promotion_gate"],
+    "stable_change_requires": ["oracle_passed", "regression_checked", "sensitive_data_scan_passed", "rollback_documented"]
+  },
+  "tool_stages": {
+    "apk-android": [
+      {"phase": "static", "purpose": "解码 APK 并恢复 Java/Smali 证据", "execution": "controlled_apk_entrypoint", "skill": "apk-reverse", "tools": ["jadx", "apktool"]},
+      {"phase": "runtime", "purpose": "在已授权设备上枚举或插桩应用进程", "execution": "cli_via_skill", "skill": "tools-dynamic", "when_any": ["frida", "hook", "dynamic", "ssl pinning", "root detection"], "tools": ["frida-ps", "frida"]}
+    ],
+    "js-browser-signature": [
+      {"phase": "rebuild", "purpose": "以 Node 复现最小签名或加密逻辑", "execution": "skill", "tools": ["node", "npx"]},
+      {"phase": "observe", "purpose": "采集页面、请求和可交互证据", "execution": "browser_skill", "when_any": ["browser", "observe", "capture", "runtime", "websocket"], "tools": ["agent-browser", "playwright"]},
+      {"phase": "hook", "purpose": "在已注册 MCP 上做 CDP/Hook 取证", "execution": "mcp", "when_any": ["jshookmcp", "cdp", "hook", "breakpoint"], "tools": ["jshookmcp"]}
+    ],
+    "workspace-search": [
+      {"phase": "search", "purpose": "用 Python 入口执行只读工作区搜索；自动记录 x-cmd 健康度并在必要时降级到 rg", "execution": "controlled_python_cli", "tools": ["rg"], "guidance": "x-cmd is used only when its wrapper passes a clean health probe. The source workspace is never modified."}
+    ],
+    "native-binary": [
+      {"phase": "open", "purpose": "用 IDA MCP 打开并完成基础分析", "execution": "router_dispatch", "tools": ["idapro"]},
+      {"phase": "survey", "purpose": "先用 IDA 9.4 原生分析建立语言、导入、函数和类型的只读基线", "execution": "ida_mcp", "tools": ["idapro"], "mcp_tools": ["survey_binary", "imports_query", "entity_query"]},
+      {"phase": "reachability", "purpose": "以 MCP 的 xref、调用图和数据流操作形成可复核的可达性证据；这是 Pathfinder 的自动化等价路径", "execution": "ida_mcp", "when_any": ["pathfinder", "reachability", "reachable", "call path", "xref graph", "control flow", "可达性", "调用链", "交叉引用图", "控制流"], "tools": ["idapro", "ida94-navigation"], "mcp_tools": ["xref_query", "callgraph", "trace_data_flow"]},
+      {"phase": "interactive-navigation", "purpose": "需要人工探索时使用 9.4 的 Jump Anywhere、Pathfinder 和重做的 Xrefs Graph", "execution": "ida_gui", "when_any": ["jump anywhere", "pathfinder", "xrefs graph", "导航", "可达性", "交叉引用图"], "requires_gui": true, "tools": ["ida94-navigation"], "guidance": "GUI-only widgets are not represented as MCP calls; preserve the MCP reachability evidence in the final result."},
+      {"phase": "rust-native", "purpose": "Rust 先走 IDA 9.4 原生 rustc/crate/panic/calling-convention 恢复，再决定是否需要插件增强", "execution": "ida_mcp", "when_any": ["rust", "cargo"], "tools": ["idapro", "ida94-rust"], "mcp_tools": ["survey_binary", "entity_query", "decompile", "type_query"]},
+      {"phase": "swift-native", "purpose": "Swift 先读取 IDA 9.4 原生调用约定、async/throwing 伪代码和类型结果，禁止自动覆盖用户类型", "execution": "ida_mcp", "when_any": ["swift", "mach-o", "ios", "ipa"], "tools": ["idapro", "ida94-swift"], "mcp_tools": ["survey_binary", "decompile", "type_query", "func_profile"]},
+      {"phase": "go-native", "purpose": "Go 先利用 IDA 9.4 的 pclntab/buildinfo/类型与参数恢复，随后用调用图定位业务入口", "execution": "ida_mcp", "when_any": ["golang", "go binary", "pclntab", "go1."], "tools": ["idapro", "ida94-go"], "mcp_tools": ["survey_binary", "decompile", "func_profile", "callgraph"]},
+      {"phase": "dyld-shared-cache", "purpose": "Dyld Shared Cache 走 9.4 专用 GUI 工作流与组件导航；无匹配 MCP API 时不得伪称已无头执行", "execution": "ida_gui", "when_any": ["dyld", "shared cache", "dsc", "dyld cache"], "requires_gui": true, "tools": ["ida94-dyld-shared-cache"], "guidance": "Open the cache in IDA 9.4 GUI and record selected components and cross-cache navigation evidence."},
+      {"phase": "teams-isolated-lab", "purpose": "从已提交基线创建隔离 worktree lab，排除源仓脏改动；不初始化 git-ida 或写 IDB", "execution": "controlled_teams_worktree_lab", "when_any": ["teams worktree", "隔离 worktree"], "requires_worktree_contract": true, "tools": ["git"], "guidance": "The external contract must name a new private lab root. Creation is only performed with explicit --apply-teams-lab."},
+      {"phase": "teams-git-preflight", "purpose": "用只读 git-ida status 预检 IDA 9.4 Teams Git 后端；不初始化、不写 Git 配置、不连接远端", "execution": "controlled_git_ida_preflight", "when_any": ["ida teams", "git-ida", "teams collaboration", "团队协作"], "unless_any": ["teams worktree", "隔离 worktree"], "requires_repo_path": true, "tools": ["git-ida"], "guidance": "Run the returned Python preflight before any explicit repository initialization or IDB synchronization. Pass an external collaboration contract to validate branch, scope, integrator, and source-project separation."},
+      {"phase": "teams-ui", "purpose": "仅在明确需要 IDA Teams GUI 操作时检查授权与交互式工作区；安装文件不等于可用", "execution": "ida_gui", "when_any": ["ida teams", "git-ida", "teams collaboration", "团队协作"], "unless_any": ["teams worktree", "隔离 worktree"], "requires_gui": true, "tools": ["ida-teams"], "guidance": "Run an explicit interactive smoke against the intended Teams workspace before writing or synchronizing any IDB data."},
+      {"phase": "export", "purpose": "导出可供 agent 复核的函数、xrefs 和伪代码结构", "execution": "ida_plugin", "tools": ["DeepExtract"]},
+      {"phase": "recognition", "purpose": "识别已知行为、YARA 和加密/库特征", "execution": "ida_plugin", "when_any": ["yara", "crypto", "malware", "signature", "加密", "恶意"], "tools": ["capa", "find-yara-x", "IDASignsrch"]},
+      {"phase": "rust-plugin-enhancement", "purpose": "HappyIDA 仅作为 Rust 可读性增强；原生 9.4 分析不依赖它", "execution": "ida_plugin", "when_any": ["rust", "cargo"], "tools": ["HappyIDA"]},
+      {"phase": "driver", "purpose": "分析 Windows 驱动 IOCTL、间接调用和动态导入", "execution": "ida_plugin", "when_any": ["driver", ".sys", "ioctl", "驱动"], "tools": ["DriverBuddyReloaded", "ApplyCalleeTypeEx", "renimp"]}
+    ],
+    "patch-diff": [
+      {"phase": "export", "purpose": "为两版二进制导出可重复比对数据", "execution": "ida_plugin", "tools": ["idapro", "binexport"]},
+      {"phase": "match", "purpose": "匹配函数并解释 CFG、伪代码、类型和调用图差异", "execution": "ida_plugin", "tools": ["bindiff", "diaphora"]}
+    ],
+    "protocol-pcap": [
+      {"phase": "parse", "purpose": "离线解析 PCAP/协议样本并输出字段证据", "execution": "skill", "tools": ["python"]},
+      {"phase": "browser-correlation", "purpose": "把 WebSocket/HTTP 流量关联回浏览器发起点", "execution": "browser_skill", "when_any": ["browser", "websocket", "http", "frontend", "前端"], "tools": ["agent-browser", "playwright"]}
+    ],
+    "protocol-source-implementation": [
+      {"phase": "offline", "purpose": "运行离线单元测试、fixture 重放和协议字段比对", "execution": "skill", "tools": ["python"]},
+      {"phase": "rust", "purpose": "编译并测试 Rust 协议实现", "execution": "skill", "when_any": ["rust", "cargo", ".rs"], "tools": ["cargo", "rustc"]}
+    ],
+    "mobile-reverse": [
+      {"phase": "runtime", "purpose": "在已授权移动设备上枚举进程并做 Frida 动态观察", "execution": "cli_via_skill", "tools": ["frida-ps", "frida"]},
+      {"phase": "native", "purpose": "对应用 native 库做静态关联分析", "execution": "router_dispatch", "when_any": [".so", "native", "arm64", "mach-o"], "tools": ["idapro"]}
+    ],
+    "firmware-pentest": [
+      {"phase": "triage", "purpose": "生成可重复的固件布局和文件系统证据", "execution": "skill", "tools": ["python"]},
+      {"phase": "extract", "purpose": "提取固件与文件系统", "execution": "skill", "when_any": ["binwalk", "extract", "提取"], "tools": ["binwalk"]},
+      {"phase": "emulate", "purpose": "在隔离环境中仿真或 fuzz", "execution": "skill", "when_any": ["qemu", "emulation", "仿真", "fuzz"], "tools": ["qemu-system-arm", "afl-fuzz"]}
+    ],
+    "malware-analysis": [
+      {"phase": "indicators", "purpose": "提取静态指标并生成规则化证据", "execution": "skill", "tools": ["python"]},
+      {"phase": "classify", "purpose": "在 IDA 中识别行为、YARA、字符串和加密特征", "execution": "ida_plugin", "when_any": ["native", "pe", "elf", "yara", "sample", "样本"], "tools": ["idapro", "capa", "find-yara-x", "idamagicstrings"]}
+    ],
+    "api-security": [
+      {"phase": "reproduce", "purpose": "在授权范围内构造最小请求重放与负向证据", "execution": "skill", "tools": ["python"]},
+      {"phase": "discovery", "purpose": "在授权范围内识别端口和服务", "execution": "cli_via_skill", "when_any": ["nmap", "port scan", "service discovery", "端口扫描"], "tools": ["nmap"]},
+      {"phase": "intercept", "purpose": "通过已启用代理 MCP 记录可复现实验", "execution": "mcp", "when_any": ["burp", "intercept", "proxy"], "tools": ["burpsuite-mcp"]}
+    ],
+    "supply-chain-security": [
+      {"phase": "inventory", "purpose": "解析依赖与构建元数据", "execution": "skill", "tools": ["python"]},
+      {"phase": "scan", "purpose": "执行明确请求的 SBOM、漏洞或密钥扫描", "execution": "skill", "when_any": ["trivy", "syft", "gitleaks", "sbom", "secret scan"], "tools": ["trivy", "syft", "gitleaks"]}
+    ],
+    "pwn-chain": [
+      {"phase": "harness", "purpose": "在授权 fixture 中构建最小复现 harness", "execution": "skill", "tools": ["python"]},
+      {"phase": "static", "purpose": "对目标二进制建立函数和控制流证据", "execution": "router_dispatch", "when_any": ["binary", "elf", "pe", "rop", "native"], "tools": ["idapro"]}
+    ],
+    "ghidra-reverse": [
+      {"phase": "headless", "purpose": "在 Ghidra 无头模式创建分析产物", "execution": "skill", "tools": ["analyzeHeadless"]}
+    ],
+    "edr-bypass-re": [
+      {"phase": "evidence", "purpose": "在授权实验室中记录防御 hook 或遥测证据", "execution": "skill", "tools": ["python"]},
+      {"phase": "static", "purpose": "关联本地二进制、调用链和导入解析", "execution": "router_dispatch", "when_any": ["binary", "dll", "sys", "native"], "tools": ["idapro", "ApplyCalleeTypeEx", "renimp"]}
+    ],
+    "diagram-generator": [
+      {"phase": "render", "purpose": "生成并渲染关系图", "execution": "skill", "tools": ["python"]}
+    ],
+    "architecture-governance": [
+      {"phase": "rules", "purpose": "以 Sentrux 读取项目结构并检查已定义的架构规则", "execution": "sentrux_check", "requires_project_path": true, "tools": ["sentrux"]},
+      {"phase": "regression", "purpose": "与现有 Sentrux baseline 比较结构质量；新 baseline 只能由显式人工写入", "execution": "sentrux_gate", "requires_project_path": true, "when_any": ["gate", "baseline", "session", "regression", "门禁", "基线"], "tools": ["sentrux"]}
+    ],
+    "active-security-assessment": [
+      {"phase": "discovery", "purpose": "在授权范围内进行最小服务识别", "execution": "cli_via_skill", "when_any": ["nmap", "port scan", "service discovery", "端口扫描"], "tools": ["nmap"]},
+      {"phase": "intercept", "purpose": "使用已启用的代理 MCP 记录请求证据", "execution": "mcp", "when_any": ["burp", "intercept", "proxy"], "tools": ["burpsuite-mcp"]}
+    ]
+  },
+  "macro_routes": [
+    {
+      "id": "apk-android",
+      "target_kinds": ["apk", "android", "xapk", "dex", "smali"],
+      "intent_keywords": ["decompile", "repack", "smali", "frida", "ssl pinning", "signature bypass", "root detection"],
+      "primary_skill": "apk-reverse/SKILL.md",
+      "requires_capabilities": ["jadx", "apktool"],
+      "fallback_edges": [
+        { "when": "native_validation_detected", "goto": "ida-reverse/SKILL.md" },
+        { "when": "cli_only_or_ida_missing", "goto": "radare2/SKILL.md" },
+        { "when": "dynamic_verification_needed", "goto": "reverse-engineering/tools-dynamic.md" }
+      ],
+      "success_oracles": ["decoded_artifact_exists", "target_function_labeled", "replay_or_bypass_verified"]
+    },
+    {
+      "id": "js-browser-signature",
+      "target_kinds": ["js_bundle", "web_frontend", "browser_runtime", "sourcemap"],
+      "intent_keywords": ["signature", "encrypted params", "js reverse", "request replay", "websocket"],
+      "primary_skill": "js-reverse/SKILL.md",
+      "requires_capabilities": ["node", "npx"],
+      "fallback_edges": [
+        { "when": "runtime_observation_needed", "goto": "browser-automation/SKILL.md" },
+        { "when": "hook_or_cdp_needed", "goto": "jshookmcp" }
+      ],
+      "success_oracles": ["entry_function_identified", "local_replay_matches_browser"]
+    },
+    {
+      "id": "workspace-search",
+      "target_kinds": ["workspace_search", "source_search", "code_search"],
+      "intent_keywords": ["workspace search", "code search", "search files", "ripgrep", "xcmd", "x rg", "搜索代码", "搜索工作区"],
+      "primary_skill": "reverse-engineering/SKILL.md",
+      "requires_capabilities": ["rg"],
+      "fallback_edges": [],
+      "success_oracles": ["search_results_recorded", "search_engine_health_recorded", "source_workspace_unchanged"]
+    },
+    {
+      "id": "native-binary",
+      "target_kinds": ["elf", "pe", "dll", "so", "macho", "stripped_binary"],
+      "intent_keywords": ["ida", "disassemble", "decompile", "function map", "strings", "xref", "pathfinder", "dyld", "git-ida", "ida teams"],
+      "primary_skill": "ida-reverse/SKILL.md",
+      "requires_capabilities": ["idapro"],
+      "fallback_edges": [
+        { "when": "idapro_unavailable", "goto": "radare2/SKILL.md" },
+        { "when": "ghidra_available_and_ida_missing", "goto": "reverse-engineering/SKILL.md", "requires_capabilities": ["analyzeHeadless"] },
+        { "when": "exploitability_needed", "goto": "pwn-chain/SKILL.md" }
+      ],
+      "success_oracles": ["target_function_labeled", "control_flow_evidence_recorded"]
+    },
+    {
+      "id": "patch-diff",
+      "target_kinds": ["two_versions", "vendor_patch", "nday", "cve_reproduction"],
+      "intent_keywords": ["patch diff", "bindiff", "ghidriff", "symbol migration", "root cause"],
+      "primary_skill": "binary-diff/SKILL.md",
+      "requires_capabilities": ["idapro"],
+      "fallback_edges": [
+        { "when": "exploit_path_requested", "goto": "patch-diff-exploit/SKILL.md" },
+        { "when": "native_decompile_needed", "goto": "ida-reverse/SKILL.md" }
+      ],
+      "success_oracles": ["changed_function_identified", "root_cause_explained"]
+    },
+    {
+      "id": "protocol-pcap",
+      "target_kinds": ["pcap", "custom_protocol", "packet_capture", "websocket_capture"],
+      "intent_keywords": ["pcap", "protocol reverse", "packet analysis", "replay", "parser"],
+      "primary_skill": "reverse-engineering/platforms.md",
+      "requires_capabilities": ["python"],
+      "fallback_edges": [
+        { "when": "browser_origin_protocol", "goto": "js-reverse/SKILL.md" },
+        { "when": "ctf_fixture", "goto": "../CTF-Sandbox-Orchestrator/competition-pcap-protocol/SKILL.md" }
+      ],
+      "success_oracles": ["fields_extracted", "message_sequence_replayed_or_documented"]
+    },
+    {
+      "id": "protocol-source-implementation",
+      "target_kinds": ["source_tree", "rust_workspace", "go_workspace", "custom_protocol_client", "market_data_protocol"],
+      "intent_keywords": ["protocol implementation", "codec", "packet parser", "fixture replay", "cargo test"],
+      "primary_skill": "reverse-engineering/platforms.md",
+      "requires_capabilities": ["python"],
+      "fallback_edges": [
+        { "when": "compiled_binary_needed", "goto": "reverse-engineering/languages-compiled.md" },
+        { "when": "runtime_or_live_endpoint_needed", "goto": "reverse-engineering/tools-dynamic.md" },
+        { "when": "websocket_or_http_origin", "goto": "js-reverse/SKILL.md" }
+      ],
+      "success_oracles": ["offline_unit_tests_pass", "cli_or_fixture_replay_passed", "live_tests_isolated_or_explicitly_marked"]
+    },
+    {
+      "id": "mobile-reverse",
+      "target_kinds": ["ipa", "ios", "mobile_app"],
+      "intent_keywords": ["ios reverse", "mobile security", "objection", "ssl pinning", "root detection"],
+      "primary_skill": "mobile-reverse/SKILL.md",
+      "requires_capabilities": ["frida"],
+      "fallback_edges": [
+        { "when": "native_validation_detected", "goto": "ida-reverse/SKILL.md" },
+        { "when": "cli_only_or_ida_missing", "goto": "reverse-engineering/tools-dynamic.md" }
+      ],
+      "success_oracles": ["target_function_identified", "dynamic_behavior_replayed", "bypass_or_failure_evidence_recorded"]
+    },
+    {
+      "id": "firmware-pentest",
+      "target_kinds": ["firmware", "iot", "router_firmware"],
+      "intent_keywords": ["firmware", "iot", "binwalk", "qemu", "emulation", "fuzz"],
+      "primary_skill": "firmware-pentest/SKILL.md",
+      "requires_capabilities": ["python"],
+      "fallback_edges": [
+        { "when": "compiled_binary_needed", "goto": "reverse-engineering/languages-compiled.md" }
+      ],
+      "success_oracles": ["firmware_extracted", "emulation_or_static_evidence_recorded", "finding_reproduced_or_limit_documented"]
+    },
+    {
+      "id": "malware-analysis",
+      "target_kinds": ["malware", "virus_sample", "malware_fixture"],
+      "intent_keywords": ["malware", "virus", "sample analysis", "yara", "sigma", "ioc", "sandbox"],
+      "primary_skill": "malware-analysis/SKILL.md",
+      "requires_capabilities": ["python"],
+      "fallback_edges": [
+        { "when": "native_validation_detected", "goto": "ida-reverse/SKILL.md" },
+        { "when": "dynamic_verification_needed", "goto": "reverse-engineering/tools-dynamic.md" }
+      ],
+      "success_oracles": ["static_indicators_recorded", "behavior_evidence_recorded", "ioc_or_rule_artifact_written"]
+    },
+    {
+      "id": "api-security",
+      "target_kinds": ["api_security", "graphql_api", "jwt_api"],
+      "intent_keywords": ["api security", "graphql", "jwt", "oauth", "bola", "idor", "api test"],
+      "primary_skill": "api-security/SKILL.md",
+      "requires_capabilities": ["python"],
+      "fallback_edges": [
+        { "when": "end_to_end_attack_chain", "goto": "attack-chain/SKILL.md" },
+        { "when": "browser_origin_protocol", "goto": "browser-automation/SKILL.md" }
+      ],
+      "success_oracles": ["scope_respected", "request_reproduced", "finding_or_negative_evidence_recorded"]
+    },
+    {
+      "id": "llm-security",
+      "target_kinds": ["llm_application", "agent_surface", "prompt_injection"],
+      "intent_keywords": ["llm security", "prompt injection", "agent security", "tool abuse", "memory poisoning"],
+      "primary_skill": "llm-security/SKILL.md",
+      "requires_capabilities": [],
+      "fallback_edges": [
+        { "when": "end_to_end_attack_chain", "goto": "attack-chain/SKILL.md" }
+      ],
+      "success_oracles": ["scope_respected", "attack_case_reproduced_or_rejected", "mitigation_evidence_recorded"]
+    },
+    {
+      "id": "supply-chain-security",
+      "target_kinds": ["supply_chain", "sbom", "sca"],
+      "intent_keywords": ["supply chain", "sbom", "sca", "dependency scan", "container security", "cicd"],
+      "primary_skill": "supply-chain-security/SKILL.md",
+      "requires_capabilities": ["python"],
+      "fallback_edges": [],
+      "success_oracles": ["sbom_written", "dependency_findings_reproduced", "reachability_or_risk_recorded"]
+    },
+    {
+      "id": "pwn-chain",
+      "target_kinds": ["pwn", "rop", "exploit_chain"],
+      "intent_keywords": ["pwn", "stack overflow", "heap", "rop", "ret2libc", "exploit"],
+      "primary_skill": "pwn-chain/SKILL.md",
+      "requires_capabilities": ["python"],
+      "fallback_edges": [
+        { "when": "native_decompile_needed", "goto": "ida-reverse/SKILL.md" }
+      ],
+      "success_oracles": ["crash_or_control_evidence_recorded", "exploit_reproduced_in_scope", "stability_limit_documented"]
+    },
+    {
+      "id": "ghidra-reverse",
+      "target_kinds": ["ghidra", "ghidra_headless"],
+      "intent_keywords": ["ghidra", "ghidra headless", "free ida alternative"],
+      "primary_skill": "ghidra-reverse/SKILL.md",
+      "requires_capabilities": ["analyzeHeadless"],
+      "fallback_edges": [
+        { "when": "idapro_unavailable", "goto": "radare2/SKILL.md" }
+      ],
+      "success_oracles": ["ghidra_project_created", "analysis_artifact_written"]
+    },
+    {
+      "id": "edr-bypass-re",
+      "target_kinds": ["edr", "av_bypass", "edr_bypass"],
+      "intent_keywords": ["edr bypass", "amsi", "etw", "hook survey", "telemetry"],
+      "primary_skill": "edr-bypass-re/SKILL.md",
+      "requires_capabilities": ["python"],
+      "fallback_edges": [
+        { "when": "native_decompile_needed", "goto": "ida-reverse/SKILL.md" }
+      ],
+      "success_oracles": ["hook_or_telemetry_evidence_recorded", "claim_reproduced_in_authorized_lab"]
+    },
+    {
+      "id": "diagram-generator",
+      "target_kinds": ["diagram", "flowchart", "architecture_diagram"],
+      "intent_keywords": ["draw diagram", "flowchart", "architecture diagram", "sequence diagram", "state machine"],
+      "primary_skill": "diagram-generator/SKILL.md",
+      "requires_capabilities": ["python"],
+      "fallback_edges": [],
+      "success_oracles": ["diagram_artifact_rendered", "diagram_matches_requested_relationships"]
+    },
+    {
+      "id": "docs-generator",
+      "target_kinds": ["report", "writeup", "technical_report"],
+      "intent_keywords": ["write report", "writeup", "technical documentation", "报告", "文档"],
+      "primary_skill": "docs-generator/SKILL.md",
+      "requires_capabilities": [],
+      "fallback_edges": [],
+      "success_oracles": ["report_artifact_written", "evidence_and_limitations_present"]
+    },
+    {
+      "id": "architecture-governance",
+      "target_kinds": ["source_tree", "architecture_governance", "codebase"],
+      "intent_keywords": ["sentrux", "architecture health", "structural gate", "architecture check", "架构门禁", "结构质量"],
+      "primary_skill": "evolution/SKILL.md",
+      "requires_capabilities": ["sentrux"],
+      "fallback_edges": [],
+      "success_oracles": ["sentrux_rules_checked", "structural_baseline_compared_or_explicitly_absent", "architecture_limits_recorded"]
+    },
+    {
+      "id": "active-security-assessment",
+      "target_kinds": ["web_app", "api", "cloud", "network", "source_tree"],
+      "intent_keywords": ["pentest", "api security", "bug bounty", "src", "nuclei", "burp", "graphql", "jwt"],
+      "primary_skill": "pentest-tools/SKILL.md",
+      "requires_capabilities": [],
+      "fallback_edges": [
+        { "when": "api_specific", "goto": "api-security/SKILL.md" },
+        { "when": "llm_agent_surface", "goto": "llm-security/SKILL.md" },
+        { "when": "end_to_end_attack_chain", "goto": "attack-chain/SKILL.md" }
+      ],
+      "success_oracles": ["scope_respected", "finding_reproduced", "evidence_recorded"]
+    },
+    {
+      "id": "unattended-overnight-run",
+      "target_kinds": ["overnight_run", "unattended_task", "deadline_run"],
+      "intent_keywords": ["overnight", "过夜", "整夜", "unattended", "无人值守", "deadline", "早上看结果"],
+      "primary_skill": "overnight-run/SKILL.md",
+      "requires_capabilities": [],
+      "fallback_edges": [
+        { "when": "evolution_loop_needed", "goto": "evolution/SKILL.md" }
+      ],
+      "success_oracles": ["slots_validated", "night_branch_exists", "report_readable"]
+    }
+  ],
+  "micro_route_rules": [
+    {
+      "when": "same_tool_same_params_failed_twice",
+      "action": "switch_edge_and_record_failure"
+    },
+    {
+      "when": "capability_graph_required_tool_missing",
+      "action": "bootstrap_or_choose_fallback"
+    },
+    {
+      "when": "oracle_not_defined",
+      "action": "stop_and_define_goal_or_downgrade_to_candidate"
+    },
+    {
+      "when": "trace_contains_no_new_evidence_for_two_steps",
+      "action": "change_static_dynamic_or_tool_family"
+    }
+  ]
+}

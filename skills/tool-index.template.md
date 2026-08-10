@@ -43,7 +43,7 @@
 |------------|:---:|:---:|:---:|:---:|----------------|
 | jadx | — | — | — | ✓ | github-release-zip |
 | apktool | — | — | — | ✓ | github-release-jar-wrapper |
-| frida | — | — | — | ✓ | pip-package |
+| frida | — | — | — | ✓ | uv-tool |
 | idalib-mcp | — | — | — | ✓ | pip-package |
 | jshookmcp | — | ✓ | — | ✓ | npm-mcp |
 | anything-analyzer | — | ✓ | — | ✓ | local-http-mcp |

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ida-start.sh — 启动 IDA Pro MCP HTTP 服务 (Linux 版)
-# 等价于 Windows 版的 ida-reverse/scripts/start.ps1
+# Linux 辅助入口；Windows 与跨平台主入口是 Python reverse-skill CLI
 
 set -euo pipefail
 

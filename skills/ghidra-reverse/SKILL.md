@@ -2,11 +2,11 @@
 name: ghidra-reverse
 description: |
   Ghidra 逆向分析辅助技能（GhydraMCP）。用户提到用 Ghidra 逆向、反编译、分析二进制/PE/ELF/APK/DLL/SO，
-  或明确不想用/没有 IDA License 想用免费方案时使用此技能。
+  或明确不想用 IDA、IDA 当前不可运行时使用此技能。
   Use when the user wants to reverse engineer, decompile, or analyze a binary with Ghidra specifically,
   or as a free alternative when IDA Pro is unavailable.
-  ⚠️ 本仓库尚未用真实项目验证过此技能，见下方"来源与验证状态"。有 IDA License 时优先用 `ida-reverse`
-  （已有本仓库真机验证的踩坑记录）；本技能用于 IDA 不可用、或用户明确要求 Ghidra 的场景。
+  ⚠️ 本仓库尚未用真实项目验证过此技能，见下方"来源与验证状态"。本机最新版 IDA 可运行时优先用 `ida-reverse`
+  （已有本仓库真机验证的踩坑记录）；本技能用于 IDA 不可运行、或用户明确要求 Ghidra 的场景。
 ---
 
 # Ghidra 逆向分析技能（GhydraMCP）
@@ -169,7 +169,7 @@ GhydraMCP 没有像 `idapro_*` 那样的单一共享前缀，工具按资源类�
 ## 路由上下文
 
 **上游入口**: `skills/SKILL.md`（总控）、`routing.md`
-**上游备选**: `ida-reverse/`（有 IDA License 时优先，已有本仓库真机验证的踩坑记录）；`radare2/`
+**上游备选**: `ida-reverse/`（本机最新版 IDA 可运行时优先，已有本仓库真机验证的踩坑记录）；`radare2/`
 （都不可用时的开源备选）
 **下游出口**:
 - 需要动态验证 -> `reverse-engineering/tools-dynamic.md`

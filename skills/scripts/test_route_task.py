@@ -214,6 +214,10 @@ class RouteTaskTests(unittest.TestCase):
         self.assertGreater(result["score"], 100)
         self.assertIn("target_kind:native-binary", result["signals"])
 
+    def test_short_ascii_alias_does_not_match_inside_a_word(self):
+        plan = build_plan({"task": "audit this Python source project", "target_kind": "source_tree"})
+        self.assertNotEqual(plan.get("route", {}).get("base_id"), "native-binary")
+
     def test_tool_plan_separates_ready_tools_from_unverified_ida_plugins(self):
         stages = {
             "native-binary": [
@@ -618,8 +622,8 @@ class RouteTaskTests(unittest.TestCase):
             },
         )
         self.assertEqual(entrypoint["reason"], "controlled_teams_collaboration_plan")
-        self.assertTrue(entrypoint["script"].endswith("teams_collaboration.py"))
-        self.assertIn("--contract", entrypoint["command"])
+        self.assertIsNone(entrypoint["script"])
+        self.assertEqual(entrypoint["command"][1:5], ["-m", "reverse_skill", "teams", "plan"])
         self.assertNotIn("requires", entrypoint)
 
     def test_teams_worktree_contract_selects_the_isolated_lab_creator(self):
@@ -634,7 +638,8 @@ class RouteTaskTests(unittest.TestCase):
             },
         )
         self.assertEqual(entrypoint["reason"], "controlled_teams_worktree_lab")
-        self.assertTrue(entrypoint["script"].endswith("teams_worktree_lab.py"))
+        self.assertIsNone(entrypoint["script"])
+        self.assertEqual(entrypoint["command"][1:5], ["-m", "reverse_skill", "teams", "lab"])
         self.assertIn("--apply", entrypoint["command"])
         self.assertNotIn("requires", entrypoint)
 
@@ -652,8 +657,9 @@ class RouteTaskTests(unittest.TestCase):
             },
         )
         self.assertEqual(entrypoint["reason"], "controlled_workspace_search")
-        self.assertTrue(entrypoint["script"].endswith("cli_search.py"))
-        self.assertIn("--query", entrypoint["command"])
+        self.assertIsNone(entrypoint["script"])
+        self.assertEqual(entrypoint["command"][1:4], ["-m", "reverse_skill", "search"])
+        self.assertIn("needle", entrypoint["command"])
         self.assertIn("*.rs", entrypoint["command"])
         self.assertNotIn("requires", entrypoint)
 
@@ -667,7 +673,7 @@ class RouteTaskTests(unittest.TestCase):
 
         entrypoint = build_entrypoint("ida-reverse/SKILL.md", {"task": "IDA Teams worktree lab"})
         self.assertEqual(entrypoint["reason"], "controlled_teams_worktree_lab")
-        self.assertTrue(entrypoint["script"].endswith("teams_worktree_lab.py"))
+        self.assertIsNone(entrypoint["script"])
         self.assertEqual(entrypoint["requires"], ["teams_worktree_contract"])
         self.assertIsNone(entrypoint["command"])
 

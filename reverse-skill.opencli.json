@@ -1,0 +1,191 @@
+{
+  "$schema": "https://opencli.org/draft.json",
+  "opencli": "0.1",
+  "info": {
+    "title": "reverse-skill",
+    "summary": "Route reverse-engineering work and operate local IDA MCP workflows from Python.",
+    "version": "2.0.0-beta.2",
+    "license": { "identifier": "MIT" }
+  },
+  "command": {
+    "name": "reverse-skill",
+    "description": "Validate context, route reverse-engineering tasks, inspect local capabilities, and operate the IDA Pro MCP service.",
+    "options": [
+      { "name": "--url", "arguments": [{ "name": "URL", "required": true }], "description": "MCP Streamable HTTP URL." },
+      { "name": "--name", "arguments": [{ "name": "NAME", "required": true }], "description": "Codex MCP registration name." },
+      { "name": "--json", "description": "Emit one JSON output envelope on stdout." },
+      { "name": "--timeout", "arguments": [{ "name": "SECONDS", "required": true }], "description": "Request timeout in seconds." },
+      { "name": "--version", "description": "Show the CLI version." },
+      { "name": "--help", "aliases": ["-h"], "description": "Show help." }
+    ],
+    "exitCodes": [
+      { "code": 0, "description": "Success." },
+      { "code": 1, "description": "Unexpected internal failure." },
+      { "code": 2, "description": "Invalid command-line usage." },
+      { "code": 3, "description": "Required local environment or executable unavailable." },
+      { "code": 4, "description": "MCP transport or protocol failure." },
+      { "code": 5, "description": "A controlled operation was blocked or failed." }
+    ],
+    "commands": [
+      {
+        "name": "install",
+        "description": "Install ida-pro-mcp and run its interactive installer.",
+        "interactive": true,
+        "metadata": [{ "name": "jsonSupported", "value": false }],
+        "options": [{ "name": "--upgrade", "description": "Upgrade ida-pro-mcp before installation." }]
+      },
+      { "name": "register", "description": "Register the HTTP endpoint with Codex." },
+      {
+        "name": "start",
+        "description": "Start or reuse the local IDA MCP service.",
+        "options": [
+          { "name": "--ida-dir", "arguments": [{ "name": "DIRECTORY", "required": true }] },
+          { "name": "--port", "arguments": [{ "name": "PORT", "required": true }] },
+          { "name": "--server-path", "arguments": [{ "name": "FILE", "required": true }] },
+          { "name": "--replace-stale", "description": "Terminate stale server processes before starting." }
+        ]
+      },
+      { "name": "status", "description": "Report IDA, MCP negotiation, and Codex registration." },
+      { "name": "doctor", "description": "Alias for status." },
+      { "name": "tools", "description": "List dynamically discovered MCP tools." },
+      { "name": "integrations", "description": "Report local tools that can complement the IDA workflow." },
+      {
+        "name": "context",
+        "description": "Validate AIGX project context and edit boundaries.",
+        "arguments": [{ "name": "PROJECT_PATH", "required": true }],
+        "options": [
+          { "name": "--target", "arguments": [{ "name": "PATH", "required": true }], "repeatable": true },
+          { "name": "--aigx-command", "arguments": [{ "name": "FILE", "required": true }] }
+        ]
+      },
+      {
+        "name": "route",
+        "description": "Build or execute a deterministic fail-closed dispatch plan.",
+        "arguments": [{ "name": "TASK", "required": false }],
+        "options": [
+          { "name": "--task-file", "arguments": [{ "name": "FILE", "required": true }] },
+          { "name": "--task-json", "arguments": [{ "name": "JSON_OBJECT", "required": true }] },
+          { "name": "--input-path", "arguments": [{ "name": "PATH", "required": true }] },
+          { "name": "--target-kind", "arguments": [{ "name": "KIND", "required": true }] },
+          { "name": "--mode", "arguments": [{ "name": "MODE", "required": true }] },
+          { "name": "--route-id", "arguments": [{ "name": "ROUTE", "required": true }] },
+          { "name": "--authorization-scope", "arguments": [{ "name": "SCOPE", "required": true, "acceptedValues": ["ctf", "own_asset", "lab_fixture", "bug_bounty", "engagement"] }] },
+          { "name": "--project-path", "arguments": [{ "name": "DIRECTORY", "required": true }] },
+          { "name": "--aigx-target", "arguments": [{ "name": "PATH", "required": true }], "repeatable": true },
+          { "name": "--aigx-command", "arguments": [{ "name": "FILE", "required": true }] },
+          { "name": "--search-path", "arguments": [{ "name": "DIRECTORY", "required": true }] },
+          { "name": "--search-query", "arguments": [{ "name": "PATTERN", "required": true }] },
+          { "name": "--search-engine", "arguments": [{ "name": "ENGINE", "required": true, "acceptedValues": ["auto", "xcmd", "rg"] }] },
+          { "name": "--search-glob", "arguments": [{ "name": "GLOB", "required": true }], "repeatable": true },
+          { "name": "--repo-path", "arguments": [{ "name": "DIRECTORY", "required": true }] },
+          { "name": "--teams-contract", "arguments": [{ "name": "FILE", "required": true }] },
+          { "name": "--teams-worktree-contract", "arguments": [{ "name": "FILE", "required": true }] },
+          { "name": "--apply-teams-lab" },
+          { "name": "--execute" }
+        ]
+      },
+      {
+        "name": "search",
+        "description": "Search a workspace through a read-only Python entrypoint.",
+        "arguments": [
+          { "name": "PATH", "required": true },
+          { "name": "QUERY", "required": true }
+        ],
+        "options": [
+          { "name": "--glob", "arguments": [{ "name": "GLOB", "required": true }], "repeatable": true },
+          { "name": "--engine", "arguments": [{ "name": "ENGINE", "required": true, "acceptedValues": ["auto", "xcmd", "rg"] }] },
+          { "name": "--max-results", "arguments": [{ "name": "COUNT", "required": true }] }
+        ]
+      },
+      {
+        "name": "plugins",
+        "description": "Inspect IDA plugin compatibility and workflow readiness.",
+        "commands": [
+          {
+            "name": "check",
+            "description": "Run a read-only plugin compatibility preflight.",
+            "options": [
+              { "name": "--plugin-root", "arguments": [{ "name": "DIRECTORY", "required": true }] },
+              { "name": "--ida-version", "arguments": [{ "name": "VERSION", "required": true }] },
+              { "name": "--python-exe", "arguments": [{ "name": "FILE", "required": true }] }
+            ]
+          },
+          {
+            "name": "inventory",
+            "description": "Report the newest local IDA and plugin workflow capabilities.",
+            "options": [
+              { "name": "--ida-dir", "arguments": [{ "name": "DIRECTORY", "required": true }] },
+              { "name": "--hcli-path", "arguments": [{ "name": "FILE", "required": true }] },
+              { "name": "--plugin-root", "arguments": [{ "name": "DIRECTORY", "required": true }] },
+              { "name": "--python-exe", "arguments": [{ "name": "FILE", "required": true }] },
+              { "name": "--skip-upgrade-check" }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "teams",
+        "description": "Plan isolated IDA Teams collaboration without implicit setup.",
+        "commands": [
+          {
+            "name": "preflight",
+            "description": "Probe Git and git-ida readiness without repository writes.",
+            "arguments": [{ "name": "REPO", "required": true }],
+            "options": [{ "name": "--git-ida", "arguments": [{ "name": "FILE", "required": true }] }]
+          },
+          {
+            "name": "plan",
+            "description": "Validate an external collaboration contract.",
+            "arguments": [{ "name": "CONTRACT", "required": true }]
+          },
+          {
+            "name": "lab",
+            "description": "Plan or explicitly create an isolated worktree lab.",
+            "arguments": [{ "name": "CONTRACT", "required": true }],
+            "options": [{ "name": "--apply" }]
+          }
+        ]
+      },
+      {
+        "name": "yara-scan",
+        "description": "Scan a binary with YARA and optionally annotate its active IDA database.",
+        "arguments": [{ "name": "TARGET", "required": true }],
+        "options": [
+          { "name": "--rules", "arguments": [{ "name": "FILE", "required": true }], "repeatable": true },
+          { "name": "--database", "arguments": [{ "name": "SESSION_ID", "required": true }] },
+          { "name": "--annotate", "description": "Append comments for unique byte matches in IDA." },
+          { "name": "--scan-timeout", "arguments": [{ "name": "SECONDS", "required": true }] }
+        ]
+      },
+      {
+        "name": "open",
+        "description": "Open a binary through idb_open.",
+        "arguments": [{ "name": "PATH", "required": true }],
+        "options": [
+          { "name": "--mode", "arguments": [{ "name": "MODE", "required": true, "acceptedValues": ["prefer_headless", "force_headless", "prefer_gui", "force_gui"] }] },
+          { "name": "--preferred-session-id", "arguments": [{ "name": "SESSION_ID", "required": true }] },
+          { "name": "--no-auto-analysis" },
+          { "name": "--no-build-caches" }
+        ]
+      },
+      { "name": "sessions", "description": "List active and discovered IDA database sessions." },
+      {
+        "name": "call",
+        "description": "Call a dynamically discovered MCP tool.",
+        "arguments": [{ "name": "TOOL", "required": true }],
+        "options": [
+          { "name": "--arguments-json", "arguments": [{ "name": "JSON_OBJECT", "required": true }] },
+          { "name": "--database", "arguments": [{ "name": "SESSION_ID", "required": true }] },
+          { "name": "--input-responses-json", "arguments": [{ "name": "JSON_OBJECT", "required": true }] },
+          { "name": "--request-state", "arguments": [{ "name": "OPAQUE_STATE", "required": true }] }
+        ]
+      },
+      {
+        "name": "close",
+        "description": "Close an IDA database session.",
+        "arguments": [{ "name": "DATABASE", "required": true }],
+        "options": [{ "name": "--no-save" }]
+      }
+    ]
+  }
+}

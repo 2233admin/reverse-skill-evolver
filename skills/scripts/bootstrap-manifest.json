@@ -23,53 +23,19 @@
     },
     {
       "name": "frida",
-      "bootstrapKind": "pip-package",
-      "pipPackage": "frida-tools",
+      "bootstrapKind": "uv-tool",
+      "uvPackage": "frida-tools",
       "docsUrl": "https://frida.re/",
       "canAutoInstall": true,
       "verifyCommand": "frida"
     },
     {
       "name": "frida-ps",
-      "bootstrapKind": "pip-package",
-      "pipPackage": "frida-tools",
+      "bootstrapKind": "uv-tool",
+      "uvPackage": "frida-tools",
       "docsUrl": "https://frida.re/",
       "canAutoInstall": true,
       "verifyCommand": "frida-ps"
-    },
-    {
-      "name": "aigx",
-      "bootstrapKind": "pip-package",
-      "pipPackage": "aigx==1.2.0",
-      "docsUrl": "https://github.com/Lolner95/AIGX",
-      "canAutoInstall": true,
-      "verifyCommand": "aigx",
-      "note": "Mandatory project-context validator. The Python gate also discovers user-site Scripts when it is not on PATH."
-    },
-    {
-      "name": "sentrux",
-      "bootstrapKind": "manual-release",
-      "mcpNames": ["sentrux"],
-      "mcpCommand": "sentrux",
-      "mcpArgs": ["mcp"],
-      "docsUrl": "https://github.com/sentrux/sentrux",
-      "canAutoInstall": false,
-      "verifyCommand": "sentrux",
-      "manualInstallHint": "从 Sentrux 官方 GitHub Releases 安装 Windows 二进制并加入 PATH；需要 MCP 时，显式将 `sentrux mcp` 注册到目标 MCP host。"
-    },
-    {
-      "name": "idalib-mcp",
-      "bootstrapKind": "pip-package",
-      "pipPackage": "ida-pro-mcp",
-      "pipSource": "git+https://github.com/mrexodia/ida-pro-mcp.git",
-      "docsUrl": "https://github.com/mrexodia/ida-pro-mcp",
-      "canAutoInstall": true,
-      "verifyCommand": "ida-pro-mcp",
-      "postInstallSteps": [
-        "ida-pro-mcp --install (选择 Streamable HTTP + Global)",
-        "重启 IDA Pro 使插件生效",
-        "IDA 打开文件后 MCP 自动监听 127.0.0.1:13337"
-      ]
     },
     {
       "name": "jshookmcp",
@@ -101,20 +67,6 @@
       "docsUrl": "https://github.com/Mouseww/anything-analyzer",
       "canAutoInstall": true,
       "verificationMode": "service-or-registration"
-    },
-    {
-      "name": "idapro",
-      "bootstrapKind": "local-http-mcp",
-      "dependsOn": ["idalib-mcp"],
-      "mcpNames": ["idapro"],
-      "mcpUrl": "http://127.0.0.1:13337/mcp",
-      "servicePort": 13337,
-      "servicePortRange": [13337, 13350],
-      "portNote": "IDA 多实例时端口递增 (13337→13338→...)，检查 IDA Output 窗口的 [MCP] port=xxxxx 日志",
-      "startScript": "%SKILL_ROOT%\\ida-reverse\\scripts\\start.ps1",
-      "docsUrl": "https://hex-rays.com/ida-pro/",
-      "canAutoInstall": true,
-      "verificationMode": "service-and-registration"
     },
     {
       "name": "r2",
@@ -233,12 +185,32 @@
       "note": "群体智能渗透框架。需要 Go 1.24+ 或 Docker。支持 MCP server 模式。需要 Claude/Ollama API key。"
     },
     {
+      "name": "aigx",
+      "bootstrapKind": "uv-tool",
+      "uvPackage": "aigx==1.2.0",
+      "docsUrl": "https://github.com/Lolner95/AIGX",
+      "canAutoInstall": true,
+      "verifyCommand": "aigx",
+      "note": "Project-context validator used by reverse-skill route. Installed in an isolated uv tool environment."
+    },
+    {
+      "name": "sentrux",
+      "bootstrapKind": "manual-release",
+      "mcpNames": ["sentrux"],
+      "mcpCommand": "sentrux",
+      "mcpArgs": ["mcp"],
+      "docsUrl": "https://github.com/sentrux/sentrux",
+      "canAutoInstall": false,
+      "verifyCommand": "sentrux",
+      "manualInstallHint": "Install the official Sentrux binary and explicitly register `sentrux mcp` only when architecture governance is requested."
+    },
+    {
       "name": "git-ida",
       "bootstrapKind": "manual-release",
       "docsUrl": "https://docs.hex-rays.com/user-guide/teams/getting-started/getting-started-git",
       "canAutoInstall": false,
       "verifyCommand": "git-ida",
-      "manualInstallHint": "git-ida is bundled with IDA Pro 9.4 under tools\\teams; install/activate IDA Teams and provide Git separately."
+      "manualInstallHint": "Use git-ida bundled with the newest installed IDA; interactive sign-in or Teams entitlement is handled by the operator."
     },
     {
       "name": "git",
@@ -246,15 +218,7 @@
       "docsUrl": "https://git-scm.com/downloads",
       "canAutoInstall": false,
       "verifyCommand": "git",
-      "manualInstallHint": "Install Git for Windows before creating an isolated Teams worktree lab."
-    },
-    {
-      "name": "xcmd",
-      "bootstrapKind": "manual-release",
-      "docsUrl": "https://x-cmd.com/",
-      "canAutoInstall": false,
-      "verifyCommand": "x",
-      "manualInstallHint": "x-cmd is optional. The controlled search utility falls back to native rg if its Windows wrapper is unhealthy."
+      "manualInstallHint": "Install Git before creating an isolated Teams worktree lab."
     },
     {
       "name": "rg",
