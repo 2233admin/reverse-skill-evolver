@@ -1,0 +1,80 @@
+{
+  "$comment": "Frozen machine-readable contract for the reverse-skill deterministic document index (PageIndex-style tree + SQLite FTS5, no vector database). Single source of machine truth: tests and gates validate the implementation against this file; do not fork a second manifest into docs, tests, or skills.",
+  "contract_version": 1,
+  "schema_version": 1,
+  "index_file": {
+    "default_relative": ".reverse-skill/index/v1.sqlite3",
+    "suffix": ".sqlite3"
+  },
+  "exit_codes": {
+    "ok": 0,
+    "internal": 1,
+    "usage": 2,
+    "environment_unavailable": 3,
+    "blocked": 5
+  },
+  "status_values": ["observed", "planned", "applied", "absent", "blocked"],
+  "retrieval_modes": ["bm25", "tree", "hybrid"],
+  "limits": {
+    "default_top_k": 20,
+    "max_top_k": 200,
+    "bm25_shortlist_expansion": 4,
+    "tree_max_children": 8,
+    "trigram_min_query_length": 3
+  },
+  "node_id": {
+    "algorithm": "sha256-16hex",
+    "derivation": "first 16 hex chars of sha256(relative_path + '\\u0000' + tree_path + '\\u0000' + occurrence) where occurrence is the 1-based index among same-title siblings under the same parent",
+    "regex": "^[0-9a-f]{16}$"
+  },
+  "tree_path": {
+    "format": "RELATIVE_PATH#SEGMENT/SEGMENT",
+    "preamble_segment": "(preamble)",
+    "separator": "/",
+    "note": "Segments are raw heading/symbol titles; duplicate (parent,title) pairs are disambiguated by the occurrence component of node_id, not by tree_path text."
+  },
+  "default_exclusions": {
+    "directory_names": [
+      ".git", ".hg", ".svn", ".reverse-skill", "node_modules", "__pycache__",
+      ".pytest_cache", ".mypy_cache", ".ruff_cache", ".tox", ".nox",
+      ".venv", "venv", "dist", "build", ".eggs", ".cache", "site-packages"
+    ],
+    "virtualenv_names": ["venv", ".venv", "env"],
+    "credential_file_patterns": [
+      ".env", ".env.*", "*.pem", "*.key", "*.p12", "*.pfx", "*.jks",
+      "id_rsa", "id_dsa", "id_ecdsa", "id_ed25519",
+      ".netrc", ".npmrc", "credentials", "credentials.json", "service-account.json"
+    ],
+    "max_file_bytes": 4194304
+  },
+  "skip_reasons": [
+    "directory_excluded", "virtualenv", "symlink", "binary", "credential_file",
+    "too_large", "read_error"
+  ],
+  "document_kinds": ["markdown", "python", "text"],
+  "node_kinds": ["file", "heading", "preamble", "module", "class", "function", "async_function"],
+  "source_kinds": ["markdown", "python", "text"],
+  "edge_kinds": ["parent", "link"],
+  "evidence_fields": [
+    "schema_version", "index_revision", "root_hash", "mode", "stages",
+    "relative_path", "lines", "tree_path", "node_id", "content_sha256",
+    "score", "score_components"
+  ],
+  "error_codes": {
+    "index_path_not_found": "target workspace path does not exist or is not a directory",
+    "index_not_found": "index file does not exist at the resolved path; run 'index build --apply' first",
+    "index_corrupt": "index file is not a readable SQLite database",
+    "index_schema_incompatible": "index schema_version does not match this build",
+    "index_capability_unavailable": "SQLite FTS5/trigram required by the schema is unavailable",
+    "index_blocked": "requested operation was blocked by a safety boundary",
+    "node_not_found": "node_id does not exist in the index",
+    "invalid_node_id": "node_id does not match the frozen node_id regex"
+  },
+  "score_model": {
+    "bm25_rank_score": "1/(1+rank) where rank is the 0-based position after (bm25 rank, node_id) ordering",
+    "expansion_decay_ancestor": 0.5,
+    "expansion_decay_child": 0.3,
+    "tie_break": "node_id ascending"
+  },
+  "read_only_guarantee": "status, inspect, and retrieve never write; build/update without --apply only emit plans and never create the index directory."
+}

@@ -123,6 +123,11 @@
     <gotcha>Rejected domains must stay mapped_route=null; do not paper over them with new keywords.</gotcha>
     <check>CTX-no-target-data ENG-regression-first</check>
   </file>
+  <file path="reverse_skill/data/index-contracts.json" domain="distribution">
+    <role>Freeze the machine-readable index/retrieve contracts: schema version, exit/status codes, modes, default exclusions, limits, node_id/tree_path derivation, and evidence fields.</role>
+    <gotcha pri="CRIT">Single machine truth; do not fork a second manifest into docs, tests, or skills.</gotcha>
+    <check>CTX-no-target-data ENG-regression-first</check>
+  </file>
   <file path="reverse_skill/case.py" domain="execution">
     <role>Implement the canonical Python case package init/review chain (scope contract, network normalization, SHA-256 fixity, fail-closed path escape protection).</role>
     <check>ENG-fail-closed ENG-readonly-default ENG-regression-first</check>
