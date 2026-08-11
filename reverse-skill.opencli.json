@@ -81,6 +81,8 @@
           { "name": "--teams-contract", "arguments": [{ "name": "FILE", "required": true }] },
           { "name": "--teams-worktree-contract", "arguments": [{ "name": "FILE", "required": true }] },
           { "name": "--apply-teams-lab" },
+          { "name": "--routing-index-root", "arguments": [{ "name": "DIRECTORY", "required": true }] },
+          { "name": "--routing-index-path", "arguments": [{ "name": "FILE", "required": true }] },
           { "name": "--execute" }
         ]
       },

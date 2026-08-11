@@ -311,6 +311,8 @@ def context_check(state: State, project_path: Path, targets: tuple[str, ...], ai
 @click.option("--teams-contract", type=click.Path(dir_okay=False, path_type=Path))
 @click.option("--teams-worktree-contract", type=click.Path(dir_okay=False, path_type=Path))
 @click.option("--apply-teams-lab", is_flag=True)
+@click.option("--routing-index-root", type=click.Path(file_okay=False, path_type=Path))
+@click.option("--routing-index-path", type=click.Path(dir_okay=False, path_type=Path))
 @click.option("--execute", is_flag=True, help="Execute only when every route gate passes.")
 @click.pass_obj
 def route_command(
@@ -334,6 +336,8 @@ def route_command(
     teams_contract: Path | None,
     teams_worktree_contract: Path | None,
     apply_teams_lab: bool,
+    routing_index_root: Path | None,
+    routing_index_path: Path | None,
     execute: bool,
 ) -> int:
     """Build a deterministic, fail-closed reverse/security dispatch plan."""
@@ -368,6 +372,8 @@ def route_command(
         "teams_contract_path": str(teams_contract) if teams_contract else None,
         "teams_worktree_contract_path": str(teams_worktree_contract) if teams_worktree_contract else None,
         "teams_lab_apply": True if apply_teams_lab else None,
+        "routing_index_root": str(routing_index_root) if routing_index_root else None,
+        "routing_index_path": str(routing_index_path) if routing_index_path else None,
     }
     contract.update({key: value for key, value in overlays.items() if value is not None})
     if authorization_scope:

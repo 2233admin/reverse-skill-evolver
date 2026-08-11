@@ -2,20 +2,36 @@
 
 ## Last action
 
-`codex/beta-integration` is clean at `1e70744`. The deterministic SQLite index,
-BM25/tree/hybrid retrieval, CLI, and provider-neutral `reverse_skill.index_api`
-are implemented and locally fast-forwarded into Beta. Evidence at this checkpoint:
-126 tests passed, repository gates clean, AIGX clean (107 registered files before
-this handoff), and the isolated `2.0.0b4` wheel smoke passed.
+`codex/mcp2-tantivy-routing` is a local feature branch from Beta. The deterministic
+SQLite index, BM25/tree/hybrid retrieval, CLI, provider-neutral
+`reverse_skill.index_api`, and the first official MCP 2.0 thin adapter are now
+implemented. The adapter exposes only four read-only tools and delegates to
+`index_api`; the build/update operations remain outside MCP. Routing can now use
+an explicit fresh package index for advisory candidate discovery; static route
+selection, live capability checks, AIGX checks, and authorization remain the
+authoritative gates.
 
-The next dependency choices were verified but **not implemented**:
+The dependency choices are:
 
-- Official `mcp==2.0.0` for the MCP 2026-07-28 server surface. It supports
-  Python 3.10+ and legacy MCP clients.
-- `tree-sitter-language-pack==1.14.3` for functions/classes/imports/symbols and
-  syntax-aware chunks across 371 languages. Its parsers download on demand.
+- Official `mcp>=2,<3` is an optional extra for the MCP 2026-07-28 server
+  surface. The isolated `mcp==2.0.0` smoke passes and the adapter supports
+  stdio and Streamable HTTP only.
+- `tree-sitter-language-pack>=1.14,<2` is reserved for the next syntax-aware
+  extraction batch. Language packages must be explicitly installed or present
+  in the approved cache; routing and indexing never download implicitly.
 - `ast-grep-py` was rejected for this batch: it is better for structural
   search/rewrite and would require more per-language extraction rules.
+
+The full-text engine is not being replaced by Tantivy solely because its raw
+query number is lower. On this workspace (530 documents, 6509 nodes, 6.44 MB),
+Tantivy 0.26.0 built a text-only index in 0.66 s and answered a simple query in
+0.02–0.03 ms. The existing SQLite FTS5 build took 2.38 s, BM25 9.0 ms, and
+hybrid retrieval 11.1 ms. Tantivy does not provide our tree/edge/node-read
+contract or the existing atomic metadata store, and its top-20 overlap with
+the current BM25 results varied from 0/20 to 11/20 across the sampled queries.
+SQLite FTS5 remains the current mature lexical component; Tantivy is a future
+backend candidate only if a contract-preserving A/B benchmark justifies the
+extra dependency and duplicated storage.
 
 Primary references:
 
@@ -26,16 +42,9 @@ Primary references:
 
 ## Next action
 
-Start from this commit on a new feature branch. Freeze red tests and the machine
-contract for four **read-only** MCP tools before writing the adapter:
-`index_status`, `index_search`, `index_get_tree`, and `index_read_nodes`.
-Use the MCP SDK's in-memory `Client(MCPServer)` test path and assert each tool's
-structured result equals the direct `index_api` result for the same fixture.
-Add `mcp>=2,<3` as an optional extra, not a base CLI dependency.
-
-After that contract passes, add `reverse-skill-mcp` as a thin `MCPServer`
-entrypoint, then integrate `tree-sitter-language-pack>=1.14,<2` behind the
-existing index builder for the first reverse-core profile:
+Integrate
+`tree-sitter-language-pack>=1.14,<2` behind the existing index builder for the
+first reverse-core profile:
 C, C++, Rust, Go, Java, Kotlin, C#, JavaScript, TypeScript, Smali, ASM, x86asm.
 
 ## Why

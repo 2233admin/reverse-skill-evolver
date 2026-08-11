@@ -295,8 +295,20 @@ PageIndex-style heading tree and relative-link edges; Python gets AST symbol nod
 files remain file-level nodes. Retrieval modes are `bm25`, `tree`, and `hybrid`, backed by SQLite
 FTS5 `unicode61` + `trigram`. Responses carry index revision, root hash, and retrieval stages;
 each hit carries stable node/path/line evidence and score components. `index status` reports whether workspace
-content has made the index stale. The provider-neutral Python facade is ready for a future MCP
-adapter; this Beta does not add another MCP server or claim Tree-sitter/SCIP semantics.
+content has made the index stale. The provider-neutral Python facade is also exposed through the
+optional official MCP 2.0 thin adapter (`python -m pip install -e ".[mcp]"`), with only
+`index_status`, `index_search`, `index_get_tree`, and `index_read_nodes`; build/update stay in the
+CLI. To enable advisory route candidate discovery, explicitly build the package-root index and
+pass it to routing; the router never builds or downloads implicitly:
+
+```console
+reverse-skill index build C:\path\to\reverse-skill-evolver --apply
+reverse-skill route "recover a browser request signature" --routing-index-root C:\path\to\reverse-skill-evolver
+```
+
+The route index may discover only registered skills. Static route contracts, live capability probes,
+AIGX checks, and authorization remain authoritative; do not use a target-project index as the route
+catalog.
 
 ## 6.2 IDA Pro Chain
 

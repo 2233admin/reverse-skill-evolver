@@ -18,6 +18,9 @@ dependencies = [
 ida-integrations = [
   "yara-python>=4.5,<5",
 ]
+mcp = [
+  "mcp>=2,<3",
+]
 test = [
   "jsonschema>=4.23,<5",
   "pytest>=8,<10",
@@ -25,6 +28,7 @@ test = [
 
 [project.scripts]
 reverse-skill = "reverse_skill.cli:main"
+reverse-skill-mcp = "reverse_skill.mcp:mcp_main"
 
 [tool.setuptools.packages.find]
 include = ["reverse_skill*"]
