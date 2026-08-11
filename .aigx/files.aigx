@@ -239,6 +239,11 @@
     <gotcha>Registered modules are not implemented capabilities; never claim tool ability without an execution chain.</gotcha>
     <check>CTX-no-target-data CTX-runtime-separation</check>
   </file>
+  <file path="docs/continue.md" domain="collaboration">
+    <role>Provide the current cross-model handoff for the next bounded implementation task.</role>
+    <gotcha>This file is ephemeral current state, not a changelog or a second contract source.</gotcha>
+    <check>CTX-no-target-data ENG-regression-first CTX-runtime-separation</check>
+  </file>
   <file path="CHANGELOG.md" domain="distribution">
     <role>Record beta release facts for the Python main chain.</role>
     <check>CTX-no-target-data</check>
