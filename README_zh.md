@@ -273,6 +273,28 @@ reverse-skill plugins inventory
 
 `skills\tool-index.*` 与 `skills\capability-graph.json` 只保留为旧诊断快照；存在时可以补充证据，但不是必需入口，也不能覆盖失败的实时探测。
 
+### 6.1.1 确定性项目索引
+
+长周期逆向项目可以建立本地结构索引，不依赖向量数据库、云服务或模型调用。默认数据库
+位于目标工作区 `.reverse-skill/index/v1.sqlite3`，属于可重建的本机状态并被 Git 忽略。
+
+```console
+reverse-skill index build C:\path\to\project
+reverse-skill index build C:\path\to\project --apply
+reverse-skill index status C:\path\to\project
+reverse-skill retrieve C:\path\to\project "认证流程" --mode hybrid
+reverse-skill index inspect C:\path\to\project <node-id>
+reverse-skill index update C:\path\to\project --apply
+```
+
+`build` / `update` 默认只输出只读计划，只有显式 `--apply` 才写索引。Markdown 建立
+PageIndex 风格标题树和相对链接边；Python 建立 AST 符号节点；其他文本只建立文件级节点。
+检索提供 `bm25`、`tree`、`hybrid` 三种模式，底层是 SQLite FTS5 `unicode61` +
+`trigram`。每个命中都携带稳定 node/path/行号、索引 revision、root hash、检索 stage 和
+可解释分数组件；`index status` 会报告工作区内容是否已经使索引过期。provider-neutral
+Python facade 已可供未来 MCP adapter 复用；本 Beta 不新增第二个 MCP server，也不宣称
+Tree-sitter/SCIP 语义能力。
+
 ## 6.2 IDA Pro 链路
 
 统一入口是 Python 命令 `reverse-skill`。在仓库中执行 `python -m pip install -e .` 即可安装；源码检出也可直接使用 `python -m reverse_skill`。它与 Codex 原生 MCP 注册指向同一个 Streamable HTTP 服务：

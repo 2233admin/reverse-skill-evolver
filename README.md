@@ -275,6 +275,29 @@ reverse-skill plugins inventory
 
 `skills\tool-index.*` and `skills\capability-graph.json` remain legacy diagnostic snapshots. They may add evidence when present, but they are not required and cannot override a failed live probe.
 
+### 6.1.1 Deterministic project index
+
+Long reverse-engineering projects can build a local structural index without a vector database,
+cloud service, or model call. The default database is
+`.reverse-skill/index/v1.sqlite3` inside the target workspace and is ignored by Git.
+
+```console
+reverse-skill index build C:\path\to\project
+reverse-skill index build C:\path\to\project --apply
+reverse-skill index status C:\path\to\project
+reverse-skill retrieve C:\path\to\project "authentication flow" --mode hybrid
+reverse-skill index inspect C:\path\to\project <node-id>
+reverse-skill index update C:\path\to\project --apply
+```
+
+Build and update only print a read-only plan unless `--apply` is explicit. Markdown gets a
+PageIndex-style heading tree and relative-link edges; Python gets AST symbol nodes; other text
+files remain file-level nodes. Retrieval modes are `bm25`, `tree`, and `hybrid`, backed by SQLite
+FTS5 `unicode61` + `trigram`. Every hit carries stable node/path/line evidence, index revision,
+root hash, retrieval stages, and score components. `index status` reports whether workspace
+content has made the index stale. The provider-neutral Python facade is ready for a future MCP
+adapter; this Beta does not add another MCP server or claim Tree-sitter/SCIP semantics.
+
 ## 6.2 IDA Pro Chain
 
 The Python command `reverse-skill` is the unified entry point. Install it from the repository with `python -m pip install -e .`; a source checkout can run the same interface as `python -m reverse_skill`. It targets the same Streamable HTTP service as native Codex MCP registration:

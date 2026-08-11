@@ -7,6 +7,30 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.0.0b4] — 2026-08-11
+
+### Added
+- **Deterministic project index** — `reverse-skill index build|update|status|inspect` stores a
+  PageIndex-style Markdown tree, Python AST symbols, text nodes, and relative Markdown links in
+  one local SQLite database. Build and update are read-only plans until `--apply` is explicit.
+- **Explainable retrieval** — `reverse-skill retrieve` exposes `bm25`, `tree`, and `hybrid` modes
+  over SQLite FTS5 `unicode61` + `trigram`, with stable node IDs, line ranges, root hash,
+  revision, stages, and score components. No vector database or model service is required.
+- **Provider-neutral Python facade** — CLI and future MCP adapters share `reverse_skill.index_api`;
+  selected-node reads include the indexed body and complete index evidence.
+- Independent unit and CLI black-box fixtures cover Chinese and English retrieval, duplicate
+  headings, AST symbols, incremental add/change/delete, stale detection, exclusions, corrupt or
+  incompatible indexes, and legacy `search` behavior.
+
+### Fixed
+- Duplicate heading/symbol paths now use escaped structural segments plus `@N` sibling suffixes,
+  preventing stable-ID collisions in repeated subtrees.
+- Nested excluded directories, removed-file root hashes, changed-document node accounting,
+  read-only URI escaping, and FTS failure handling now follow the fail-closed contract.
+
+### Changed
+- Beta version bumped to `2.0.0b4`; this is a Beta integration, not a formal release or tag.
+
 ## [2.0.0b3] — 2026-08-11
 
 ### Added

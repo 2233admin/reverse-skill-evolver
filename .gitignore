@@ -46,6 +46,9 @@ skills/generated/
 *.dylib
 work/
 
+# Local deterministic document index (rebuildable machine state)
+.reverse-skill/
+
 
 # Build artifacts
 burp-mcp-full/build/classes/

@@ -4,7 +4,7 @@
   "info": {
     "title": "reverse-skill",
     "summary": "Route reverse-engineering work and operate local IDA MCP workflows from Python.",
-    "version": "2.0.0-beta.3",
+    "version": "2.0.0-beta.4",
     "license": { "identifier": "MIT" }
   },
   "command": {

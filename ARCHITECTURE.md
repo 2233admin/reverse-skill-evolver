@@ -29,6 +29,7 @@ flowchart TD
 | 上下文 | `.aigx/*.aigx` | 稳定项目规则、concerns 与编辑边界 |
 | 路由 | `skills/scripts/route_task.py`, `skills/routing.json`, `reverse_skill/routing.py` | 确定性选路、preflight、受控 dispatch |
 | 案件 | `reverse_skill/case.py`, `reverse_skill/data/case-contracts.json` | case init/review：scope 契约、network 归一化、SHA-256 fixity、路径逃逸 fail-closed |
+| 项目索引 | `reverse_skill/index_*.py`, `reverse_skill/retrieval.py` | SQLite 单一真相、Markdown 树/Python AST、BM25/tree/hybrid 检索与 provider-neutral API |
 | 门禁 | `reverse_skill/gates.py`, `reverse-skill gates` | leak-scan / doc-facts / version / routing-coherence（纯 Python，无 PowerShell 门禁） |
 | 能力 | `refresh_ida_capabilities.py`, manifests, tool discovery | 区分 installed、compatible、loaded、verified |
 | 工作流 | `skills/*/SKILL.md` | 具体逆向、安全、协作与报告流程 |
@@ -47,6 +48,23 @@ flowchart TD
 
 PowerShell 只保留为 Windows 系统壳（`ENG-python-primary`）；本仓库不再分发项目 PowerShell
 脚本，PowerShell 不作为项目入口、路由器、适配器或质量门禁。
+
+## 长项目索引与检索
+
+项目索引落在目标工作区的 `.reverse-skill/index/v1.sqlite3`，它是可重建的本机状态，不进入
+Git。数据库同时保存文档、结构节点、父子/Markdown 链接边和 FTS5 `unicode61` / `trigram`
+索引；不存在并行 manifest，也不依赖向量数据库、云服务或模型调用。
+
+- Markdown：按 ATX 标题构建确定性树，代码围栏内标题不参与解析；重复同名节点使用转义
+  identity segment 和 `@N` 后缀，保持结构路径与 node ID 唯一。
+- Python：标准库 AST 提取 module/class/function/async function；语法失败显式退回文件节点。
+- 其他文本：只建立文件级节点。本 Beta 不宣称 Tree-sitter、SCIP 或跨语言语义索引能力。
+- `bm25`：FTS5 排名；短查询走精确结构匹配和有界字面量扫描。
+- `tree`：按 node ID、tree path、标题定位并返回祖先和有界子节点。
+- `hybrid`：合并 FTS shortlist 与树扩展，返回可解释分数组件；不是向量混合检索。
+
+`reverse_skill.index_api` 是 CLI 与未来 MCP adapter 的共同入口。本批次只冻结并实现
+provider-neutral Python API，不内置第二个 MCP server，避免协议面与检索实现重复。
 
 ## 多平台
 

@@ -19,15 +19,18 @@ from .index_store import (
     META_ROOT_HASH,
     META_SCHEMA_VERSION,
     SCHEMA_VERSION,
+    IndexCorrupt,
     IndexError,
     InvalidNodeId,
     NodeNotFound,
     close,
+    compute_root_hash,
     default_index_path,
     load_contracts,
     open_read_only,
     probe_capabilities,
     read_node,
+    read_node_text,
     read_subtree,
     validate_node_id,
 )
@@ -61,6 +64,23 @@ def _node_payload(node: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _read_meta(connection: Any) -> Dict[str, str]:
+    return {
+        row["key"]: row["value"]
+        for row in connection.execute("SELECT key, value FROM index_meta")
+    }
+
+
+def _attach_index_evidence(
+    payload: Dict[str, Any], meta: Dict[str, str], resolved: Path
+) -> Dict[str, Any]:
+    payload["schema_version"] = SCHEMA_VERSION
+    payload["index_path"] = str(resolved)
+    payload["index_revision"] = meta.get(META_INDEX_REVISION, "0")
+    payload["root_hash"] = meta.get(META_ROOT_HASH)
+    return payload
+
+
 def index_status(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any]:
     """Read-only report on the index at the resolved path (never creates it)."""
     _require_root(root)
@@ -78,10 +98,7 @@ def index_status(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any
         return report
     connection = open_read_only(resolved)
     try:
-        meta = {
-            row["key"]: row["value"]
-            for row in connection.execute("SELECT key, value FROM index_meta")
-        }
+        meta = _read_meta(connection)
         report["index_revision"] = meta.get(META_INDEX_REVISION, "0")
         report["root_hash"] = meta.get(META_ROOT_HASH)
         report["built_at"] = meta.get(META_BUILT_AT)
@@ -103,6 +120,14 @@ def index_status(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any
         }
     finally:
         close(connection)
+    contracts = load_contracts()
+    files, _ = _build_engine.scan_workspace(root, contracts)
+    workspace_root_hash = compute_root_hash(
+        (item.relpath, item.sha256) for item in files
+    )
+    report["workspace_root_hash"] = workspace_root_hash
+    report["fresh"] = workspace_root_hash == report["root_hash"]
+    report["stale"] = not report["fresh"]
     return report
 
 
@@ -121,18 +146,11 @@ def index_search(
     resolved = _resolve_index_path(root, index_path)
     connection = open_read_only(resolved)
     try:
-        meta = {
-            row["key"]: row["value"]
-            for row in connection.execute("SELECT key, value FROM index_meta")
-        }
+        meta = _read_meta(connection)
         result = retrieve(connection, query, mode, top_k, contracts)
     finally:
         close(connection)
-    result["schema_version"] = SCHEMA_VERSION
-    result["index_path"] = str(resolved)
-    result["index_revision"] = meta.get(META_INDEX_REVISION, "0")
-    result["root_hash"] = meta.get(META_ROOT_HASH)
-    return result
+    return _attach_index_evidence(result, meta, resolved)
 
 
 def index_get_tree(
@@ -154,6 +172,7 @@ def index_get_tree(
         descendants = subtree[1:]
         truncated = len(descendants) > _MAX_DESCENDANTS
         limited = descendants[:_MAX_DESCENDANTS]
+        meta = _read_meta(connection)
         payload = {
             "status": "observed",
             "node": _node_payload(node),
@@ -164,7 +183,7 @@ def index_get_tree(
         }
     finally:
         close(connection)
-    return payload
+    return _attach_index_evidence(payload, meta, resolved)
 
 
 def read_subtree_ancestors(connection: Any, node_id: str) -> List[Dict[str, Any]]:
@@ -185,15 +204,25 @@ def index_read_nodes(
     resolved = _resolve_index_path(root, index_path)
     connection = open_read_only(resolved)
     try:
+        meta = _read_meta(connection)
         rows = []
         for node_id in node_ids:
             node = read_node(connection, node_id)
             if node is None:
                 raise NodeNotFound(f"node_id not found in index: {node_id}")
-            rows.append(_node_payload(node))
+            text = read_node_text(connection, node_id)
+            if text is None:
+                raise IndexCorrupt(f"indexed body is missing for node_id: {node_id}")
+            payload = _node_payload(node)
+            payload["text"] = text
+            rows.append(payload)
     finally:
         close(connection)
-    return {"status": "observed", "nodes": rows, "node_count": len(rows)}
+    return _attach_index_evidence(
+        {"status": "observed", "nodes": rows, "node_count": len(rows)},
+        meta,
+        resolved,
+    )
 
 
 def index_build(root: Path, apply: bool, index_path: Optional[Path] = None) -> Dict[str, Any]:

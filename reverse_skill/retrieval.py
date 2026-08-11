@@ -9,7 +9,7 @@ Mode semantics (frozen in index-contracts.json):
 
 - bm25   : rank-only. Union of unicode61 + trigram shortlists ordered by
            best (bm25 rank, node_id); short queries (< 3 chars) skip trigram
-           and use an exact structured-path stage instead.
+           and use exact structured matches plus a bounded substring scan.
 - tree   : structure/title navigation. Exact title/node_id matches rank first,
            then title substring (LIKE); each hit carries its ancestor chain and
            bounded children so callers can navigate the deterministic tree.
@@ -24,22 +24,17 @@ inject FTS syntax.
 
 from __future__ import annotations
 
-import re
 import sqlite3
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Sequence, Tuple
 
 from .index_store import (
     NODE_ID_RE,
+    IndexCorrupt,
     IndexError,
-    InvalidNodeId,
-    NodeNotFound,
     read_ancestors,
     read_children,
     read_node,
-    read_nodes,
 )
-
-_CJK_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
 
 
 def _fts_phrase(query: str) -> str:
@@ -65,8 +60,8 @@ def _bm25_shortlist(
             "ORDER BY rank ASC, node_id ASC LIMIT ?",
             (phrase, limit),
         ).fetchall()
-    except sqlite3.OperationalError:
-        return []
+    except sqlite3.OperationalError as exc:
+        raise IndexCorrupt(f"FTS query failed for {table}: {exc}") from exc
     return [(row["node_id"], float(row["rank"])) for row in rows]
 
 
@@ -97,15 +92,16 @@ def _hit_payload(connection: sqlite3.Connection, node: Dict[str, Any], contracts
 def _exact_structured_stage(
     connection: sqlite3.Connection, query: str, limit: int
 ) -> List[Tuple[str, float]]:
-    """Exact node_id or title matches; used for short IDs below trigram length."""
+    """Exact node_id, tree_path, or title matches."""
     hits: List[Tuple[str, float]] = []
     if NODE_ID_RE.match(query):
         node = read_node(connection, query)
         if node is not None:
             hits.append((node["node_id"], 0.0))
     rows = connection.execute(
-        "SELECT node_id FROM nodes WHERE title = ? ORDER BY node_id LIMIT ?",
-        (query, limit),
+        "SELECT node_id FROM nodes WHERE title = ? OR tree_path = ? "
+        "ORDER BY document_id, ordinal LIMIT ?",
+        (query, query, limit),
     ).fetchall()
     for index, row in enumerate(rows, start=1 if not hits else 0):
         if row["node_id"] not in {node_id for node_id, _ in hits}:
@@ -113,25 +109,44 @@ def _exact_structured_stage(
     return hits[:limit]
 
 
+def _short_query_stage(
+    connection: sqlite3.Connection, query: str, limit: int
+) -> List[Tuple[str, float]]:
+    """Exact structured hits followed by a bounded literal substring scan."""
+    hits = _exact_structured_stage(connection, query, limit)
+    seen = {node_id for node_id, _ in hits}
+    if len(hits) >= limit:
+        return hits
+    escaped = "%" + _like_escaped(query) + "%"
+    rows = connection.execute(
+        "SELECT f.node_id FROM fts_terms f "
+        "JOIN nodes n ON n.node_id = f.node_id "
+        "WHERE f.title LIKE ? ESCAPE '\\' OR f.body LIKE ? ESCAPE '\\' "
+        "ORDER BY n.document_id, n.ordinal LIMIT ?",
+        (escaped, escaped, limit),
+    ).fetchall()
+    for row in rows:
+        if row["node_id"] in seen:
+            continue
+        hits.append((row["node_id"], float(len(hits))))
+        seen.add(row["node_id"])
+        if len(hits) >= limit:
+            break
+    return hits
+
+
 def _tree_title_stage(
     connection: sqlite3.Connection, query: str, limit: int
 ) -> List[Tuple[str, float]]:
-    """Title navigation: exact titles first, then substring titles."""
-    hits: List[Tuple[str, float]] = []
-    rows = connection.execute(
-        "SELECT node_id FROM nodes WHERE title = ? ORDER BY node_id LIMIT ?",
-        (query, limit),
-    ).fetchall()
-    seen = set()
-    for index, row in enumerate(rows):
-        hits.append((row["node_id"], float(index)))
-        seen.add(row["node_id"])
+    """Structure navigation: exact id/path/title, then title substring."""
+    hits = _exact_structured_stage(connection, query, limit)
+    seen = {node_id for node_id, _ in hits}
     escaped = _like_escaped(query)
     if len(hits) < limit:
         remaining = limit - len(hits)
         rows = connection.execute(
             "SELECT node_id FROM nodes WHERE title LIKE ? ESCAPE '\\' "
-            "ORDER BY node_id LIMIT ?",
+            "ORDER BY document_id, ordinal LIMIT ?",
             ("%" + escaped + "%", remaining),
         ).fetchall()
         for index, row in enumerate(rows):
@@ -173,16 +188,23 @@ def retrieve(
     if mode not in contracts["retrieval_modes"]:
         raise IndexError(f"mode must be one of {contracts['retrieval_modes']}")
 
+    query = query.strip()
+    if not query:
+        raise IndexError("query must not be empty")
+
     shortlist_limit = top_k * int(limits["bm25_shortlist_expansion"])
     trigram_min = int(limits["trigram_min_query_length"])
-    query_len = len(query.strip())
+    query_len = len(query)
     stages: List[str] = []
 
     if mode == "bm25":
-        stages.append("exact_structured_path" if query_len < trigram_min else "unicode61_shortlist")
+        if query_len < trigram_min:
+            stages.extend(["exact_structured_path", "short_substring_scan"])
+        else:
+            stages.append("unicode61_shortlist")
         shortlists: List[List[Tuple[str, float]]] = []
         if query_len < trigram_min:
-            shortlists.append(_exact_structured_stage(connection, query, shortlist_limit))
+            shortlists.append(_short_query_stage(connection, query, shortlist_limit))
         else:
             shortlists.append(
                 _bm25_shortlist(connection, "fts_terms", query, shortlist_limit)
@@ -230,6 +252,7 @@ def retrieve(
             exact = bool(
                 node["title"] == query
                 or (NODE_ID_RE.match(query) and node["node_id"] == query)
+                or node["tree_path"] == query
             )
             payload["score"] = round(1.0 / (1.0 + position), 6)
             payload["score_components"] = {
@@ -248,10 +271,13 @@ def retrieve(
         }
 
     # hybrid: BM25 shortlist + tree expansion
-    stages.append("unicode61_shortlist" if query_len >= trigram_min else "exact_structured_path")
+    if query_len < trigram_min:
+        stages.extend(["exact_structured_path", "short_substring_scan"])
+    else:
+        stages.append("unicode61_shortlist")
     shortlists = []
     if query_len < trigram_min:
-        shortlists.append(_exact_structured_stage(connection, query, shortlist_limit))
+        shortlists.append(_short_query_stage(connection, query, shortlist_limit))
     else:
         shortlists.append(_bm25_shortlist(connection, "fts_terms", query, shortlist_limit))
         stages.append("trigram_shortlist")
@@ -282,16 +308,18 @@ def retrieve(
         if node is None:
             continue
         for ancestor in read_ancestors(connection, node_id):
-            if ancestor["node_id"] not in base_by_node:
-                base_by_node[ancestor["node_id"]] = base_by_node[node_id] * decay_ancestor
+            candidate_score = base_by_node[node_id] * decay_ancestor
+            if candidate_score > base_by_node.get(ancestor["node_id"], -1.0):
+                base_by_node[ancestor["node_id"]] = candidate_score
                 origin[ancestor["node_id"]] = {
                     "primary": "ancestor",
                     "base_score": base_by_node[node_id],
                     "expanded_from": node_id,
                 }
         for child in read_children(connection, node_id, limit=tree_max_children):
-            if child["node_id"] not in base_by_node:
-                base_by_node[child["node_id"]] = base_by_node[node_id] * decay_child
+            candidate_score = base_by_node[node_id] * decay_child
+            if candidate_score > base_by_node.get(child["node_id"], -1.0):
+                base_by_node[child["node_id"]] = candidate_score
                 origin[child["node_id"]] = {
                     "primary": "child",
                     "base_score": base_by_node[node_id],

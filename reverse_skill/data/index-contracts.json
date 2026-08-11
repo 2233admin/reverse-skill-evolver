@@ -29,9 +29,9 @@
   },
   "tree_path": {
     "format": "RELATIVE_PATH#SEGMENT/SEGMENT",
-    "preamble_segment": "(preamble)",
+    "preamble_segment": "~preamble",
     "separator": "/",
-    "note": "Segments are raw heading/symbol titles; duplicate (parent,title) pairs are disambiguated by the occurrence component of node_id, not by tree_path text."
+    "note": "Ordinary heading/symbol titles stay readable. In identity segments, '~', '/', and '@' are escaped as '~0', '~1', and '~2'; duplicate same-title siblings after the first receive an '@N' suffix. This makes every structural path collision-free."
   },
   "default_exclusions": {
     "directory_names": [

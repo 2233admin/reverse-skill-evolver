@@ -42,8 +42,8 @@ from .index_store import (
     delete_document_cascade,
     insert_document,
     insert_edge,
-    insert_fts_rows,
-    insert_node,
+    insert_fts_rows_bulk,
+    insert_nodes,
     load_contracts,
     node_id_for,
     open_read_only,
@@ -117,6 +117,8 @@ def scan_workspace(
     root: Path, contracts: Dict[str, Any]
 ) -> Tuple[List[ParsedDocument], List[SkippedFile]]:
     """Read-only deterministic scan; never follows symlinks."""
+    if root.is_symlink():
+        raise IndexError(f"workspace path must not be a symlink: {root}")
     exclusions = contracts["default_exclusions"]
     dir_names = set(exclusions["directory_names"])
     credential_patterns = list(exclusions["credential_file_patterns"])
@@ -130,7 +132,10 @@ def scan_workspace(
         for dirname in sorted(dirnames):
             candidate = Path(dirpath) / dirname
             rel_dir = os.path.relpath(candidate, root).replace(os.sep, "/")
-            if rel_dir in dir_names:
+            if candidate.is_symlink():
+                skipped.append(SkippedFile(rel_dir + "/", "symlink"))
+                continue
+            if dirname in dir_names:
                 skipped.append(SkippedFile(rel_dir + "/", "directory_excluded"))
                 continue
             if _is_virtualenv_dir(candidate, dirname):
@@ -247,7 +252,7 @@ def parse_markdown(relpath: str, lines: List[str]) -> List[NodeSpec]:
             title="(preamble)",
             start=1,
             end=max(line_count, 1),
-            tree_path="{}#(preamble)".format(relpath),
+            tree_path="{}#~preamble".format(relpath),
             occurrence=1,
             parent_index=0,
         )
@@ -256,11 +261,13 @@ def parse_markdown(relpath: str, lines: List[str]) -> List[NodeSpec]:
         return nodes
 
     # Section end lines: next heading with level <= current, else EOF.
+    # The reverse stack keeps strictly-deeper headings; a same-level heading
+    # to the right closes the current section (do NOT pop on equal levels).
     next_section_end: List[int] = [line_count] * len(headings)
     stack: List[Tuple[int, int]] = []
     for i in range(len(headings) - 1, -1, -1):
         level = headings[i]["level"]
-        while stack and stack[-1][0] >= level:
+        while stack and stack[-1][0] > level:
             stack.pop()
         if stack:
             next_section_end[i] = stack[-1][1] - 1
@@ -276,7 +283,7 @@ def parse_markdown(relpath: str, lines: List[str]) -> List[NodeSpec]:
             title="(preamble)",
             start=1,
             end=first_line - 1,
-            tree_path="{}#(preamble)".format(relpath),
+            tree_path="{}#~preamble".format(relpath),
             occurrence=1,
             parent_index=0,
         )
@@ -292,7 +299,7 @@ def parse_markdown(relpath: str, lines: List[str]) -> List[NodeSpec]:
         occurrence = occurrence_by_parent.get(key, 0) + 1
         occurrence_by_parent[key] = occurrence
         segments = _segment_chain(nodes, parent_index)
-        segments.append(heading["title"])
+        segments.append(_identity_segment(heading["title"], occurrence))
         tree_path = "{}#{}".format(relpath, "/".join(segments))
         node = NodeSpec(
             kind="heading",
@@ -310,13 +317,23 @@ def parse_markdown(relpath: str, lines: List[str]) -> List[NodeSpec]:
     return nodes
 
 
+def _identity_segment(title: str, occurrence: int) -> str:
+    """Return one collision-free, readable tree-path segment.
+
+    Ordinary titles stay unchanged. ``~``, ``/``, and ``@`` are escaped so
+    the ``@N`` duplicate-sibling suffix cannot collide with a literal title.
+    """
+    escaped = title.replace("~", "~0").replace("/", "~1").replace("@", "~2")
+    return escaped if occurrence == 1 else f"{escaped}@{occurrence}"
+
+
 def _segment_chain(nodes: List[NodeSpec], parent_index: int) -> List[str]:
-    """Titles from the root down to (excluding) the node at parent_index."""
+    """Identity segments from the root down through ``parent_index``."""
     chain: List[str] = []
     cursor = parent_index
     while cursor != 0:
         spec = nodes[cursor]
-        chain.append(spec.title)
+        chain.append(_identity_segment(spec.title, spec.occurrence))
         cursor = spec.parent_index if spec.parent_index is not None else 0
     chain.reverse()
     return chain
@@ -375,7 +392,7 @@ def parse_python(relpath: str, lines: List[str]) -> Tuple[List[NodeSpec], bool]:
             occurrence = occurrence_by_parent.get(key, 0) + 1
             occurrence_by_parent[key] = occurrence
             segments = _segment_chain(nodes, parent_index)
-            segments.append(name)
+            segments.append(_identity_segment(name, occurrence))
             tree_path = "{}#{}".format(relpath, "/".join(segments))
             spec = NodeSpec(
                 kind=kind,
@@ -539,6 +556,11 @@ def build_apply(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any]
         connection.row_factory = sqlite3.Row
         connection.isolation_level = None
         connection.execute("PRAGMA foreign_keys = ON")
+        # The file is disposable until atomic replace, so rollback-journal
+        # durability would only duplicate writes to a temporary artifact.
+        connection.execute("PRAGMA journal_mode = OFF")
+        connection.execute("PRAGMA synchronous = OFF")
+        connection.execute("PRAGMA temp_store = MEMORY")
         create_schema(connection)
         connection.execute("BEGIN IMMEDIATE")
         document_ids: Dict[str, int] = {}
@@ -554,15 +576,17 @@ def build_apply(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any]
                 },
             )
             document_ids[parsed.relpath] = document_id
+        materialized: Dict[str, List[Dict[str, Any]]] = {}
+        all_rows: List[Dict[str, Any]] = []
         for parsed in sorted(files, key=lambda item: item.relpath):
             document_id = document_ids[parsed.relpath]
             rows = _materialize_document(parsed, document_id)
-            _insert_document_rows(connection, rows)
+            materialized[parsed.relpath] = rows
+            all_rows.extend(rows)
+        _insert_document_rows(connection, all_rows)
         # Link edges resolve after every document's nodes exist (two-pass).
         for parsed in sorted(files, key=lambda item: item.relpath):
-            document_id = document_ids[parsed.relpath]
-            rows = _materialize_document(parsed, document_id)
-            _insert_link_edges(connection, parsed, rows, document_ids)
+            _insert_link_edges(connection, parsed, materialized[parsed.relpath], document_ids)
         root_hash = compute_root_hash((item.relpath, item.sha256) for item in files)
         set_meta(connection, META_SCHEMA_VERSION, SCHEMA_VERSION)
         set_meta(connection, META_INDEX_REVISION, "1")
@@ -608,11 +632,16 @@ def build_apply(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any]
 
 
 def _insert_document_rows(connection: sqlite3.Connection, rows: List[Dict[str, Any]]) -> None:
-    for row in rows:
-        insert_node(connection, row)
-        insert_fts_rows(connection, row["node_id"], row["title"], row["_body"])
-        if row["parent_id"] is not None:
-            insert_edge(connection, row["node_id"], row["parent_id"], "parent")
+    insert_nodes(connection, rows)
+    connection.executemany(
+        "INSERT INTO edges (source_node, target_node, kind) VALUES (?, ?, 'parent')",
+        [
+            (row["node_id"], row["parent_id"])
+            for row in rows
+            if row["parent_id"] is not None
+        ],
+    )
+    insert_fts_rows_bulk(connection, rows)
 
 
 def _stale_link_source_relpaths(
@@ -758,14 +787,12 @@ def update_plan(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any]
             row["key"]: row["value"]
             for row in connection.execute("SELECT key, value FROM index_meta")
         }
-        removed_node_count = _count_nodes_for_documents(
-            connection, sorted(set(current) - {item.relpath for item in files})
-        )
         touched = sorted(set(current) - {item.relpath for item in files}) + [
             item.relpath
             for item in files
             if item.relpath in current and current[item.relpath]["sha256"] != item.sha256
         ]
+        removed_node_count = _count_nodes_for_documents(connection, touched)
         stale_sources = _stale_link_source_relpaths(connection, touched)
     finally:
         close(connection)
@@ -802,11 +829,15 @@ def update_apply(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any
         ]
         removed = sorted(set(current) - {item.relpath for item in files})
         touched = removed + [item.relpath for item in changed]
-        removed_node_count = _count_nodes_for_documents(connection, removed)
+        removed_node_count = _count_nodes_for_documents(connection, touched)
         stale_sources = _stale_link_source_relpaths(connection, touched)
         for relpath in removed:
             delete_document_cascade(connection, current[relpath]["document_id"])
-        document_ids = {relpath: current[relpath]["document_id"] for relpath in current}
+        document_ids = {
+            relpath: current[relpath]["document_id"]
+            for relpath in current
+            if relpath not in removed
+        }
         parsed_by_relpath = {item.relpath: item for item in files}
         for item in added + changed:
             if item.relpath in current:
@@ -834,12 +865,7 @@ def update_apply(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any
         )
         if added or changed or removed:
             next_revision = str(int(meta.get(META_INDEX_REVISION, "0") or 0) + 1)
-            merged = {relpath: {"sha256": value["sha256"]} for relpath, value in current.items()}
-            for item in files:
-                merged[item.relpath] = {"sha256": item.sha256}
-            root_hash = compute_root_hash(
-                (relpath, value["sha256"]) for relpath, value in sorted(merged.items())
-            )
+            root_hash = compute_root_hash((item.relpath, item.sha256) for item in files)
             set_meta(connection, META_INDEX_REVISION, next_revision)
             set_meta(connection, META_ROOT_HASH, root_hash)
             set_meta(connection, META_BUILT_AT, str(int(time.time())))
@@ -900,12 +926,7 @@ def _delta_plan(
         for item in files
         if item.relpath in current and current[item.relpath]["sha256"] == item.sha256
     ]
-    merged = {relpath: {"sha256": value["sha256"]} for relpath, value in current.items()}
-    for item in files:
-        merged[item.relpath] = {"sha256": item.sha256}
-    root_hash = compute_root_hash(
-        (relpath, value["sha256"]) for relpath, value in sorted(merged.items())
-    )
+    root_hash = compute_root_hash((item.relpath, item.sha256) for item in files)
     return {
         "status": "planned",
         "operation": "update",

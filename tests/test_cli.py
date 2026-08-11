@@ -22,7 +22,7 @@ def test_help_and_version_are_available() -> None:
     assert help_result.returncode == 0
     assert "Commands:" in help_result.stdout
     assert version_result.returncode == 0
-    assert "2.0.0b3" in version_result.stdout
+    assert "2.0.0b4" in version_result.stdout
 
 
 def test_integrations_has_a_stable_json_shape() -> None:

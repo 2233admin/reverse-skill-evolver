@@ -190,7 +190,7 @@ def require_capability() -> Dict[str, Any]:
 
 def _connect(path: Path, *, read_only: bool) -> sqlite3.Connection:
     if read_only:
-        uri = "file:{}?mode=ro".format(path.as_posix())
+        uri = path.resolve().as_uri() + "?mode=ro"
         connection = sqlite3.connect(uri, uri=True, timeout=30.0)
         connection.row_factory = sqlite3.Row
         return connection
@@ -215,6 +215,21 @@ def _validate_schema(connection: sqlite3.Connection) -> None:
     if version != SCHEMA_VERSION:
         raise IndexSchemaIncompatible(
             f"index schema_version is {version!r}, expected {SCHEMA_VERSION!r}; rebuild the index"
+        )
+    required = {"documents", "nodes", "edges", "fts_terms", "fts_trigram"}
+    try:
+        present = {
+            row["name"]
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type IN ('table', 'view')"
+            )
+        }
+    except sqlite3.DatabaseError as exc:
+        raise IndexCorrupt(f"index schema cannot be inspected: {exc}") from exc
+    missing = sorted(required - present)
+    if missing:
+        raise IndexCorrupt(
+            "index schema is incomplete; missing object(s): " + ", ".join(missing)
         )
 
 
@@ -269,6 +284,14 @@ def read_node(connection: sqlite3.Connection, node_id: str) -> Optional[Dict[str
         (node_id,),
     ).fetchone()
     return dict(row) if row is not None else None
+
+
+def read_node_text(connection: sqlite3.Connection, node_id: str) -> Optional[str]:
+    """Return the indexed node body used by retrieval, or ``None`` if absent."""
+    row = connection.execute(
+        "SELECT body FROM fts_terms WHERE node_id = ? LIMIT 1", (node_id,)
+    ).fetchone()
+    return str(row["body"]) if row is not None else None
 
 
 def read_nodes(connection: sqlite3.Connection, node_ids: Iterable[str]) -> List[Dict[str, Any]]:
@@ -391,6 +414,33 @@ def insert_node(connection: sqlite3.Connection, node: Dict[str, Any]) -> None:
     )
 
 
+def insert_nodes(connection: sqlite3.Connection, nodes: Sequence[Dict[str, Any]]) -> None:
+    """Bulk insert already parent-before-child node rows."""
+    connection.executemany(
+        "INSERT INTO nodes (node_id, document_id, parent_id, depth, ordinal, title, kind, "
+        "start_line, end_line, body_sha256, tree_path, source_kind, symbol_kind) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [
+            (
+                node["node_id"],
+                node["document_id"],
+                node.get("parent_id"),
+                node["depth"],
+                node["ordinal"],
+                node["title"],
+                node["kind"],
+                node["start_line"],
+                node["end_line"],
+                node["body_sha256"],
+                node["tree_path"],
+                node["source_kind"],
+                node.get("symbol_kind"),
+            )
+            for node in nodes
+        ],
+    )
+
+
 def insert_edge(connection: sqlite3.Connection, source_node: str, target_node: str, kind: str) -> None:
     connection.execute(
         "INSERT OR IGNORE INTO edges (source_node, target_node, kind) VALUES (?, ?, ?)",
@@ -404,6 +454,19 @@ def insert_fts_rows(connection: sqlite3.Connection, node_id: str, title: str, bo
     )
     connection.execute(
         "INSERT INTO fts_trigram (node_id, title, body) VALUES (?, ?, ?)", (node_id, title, body)
+    )
+
+
+def insert_fts_rows_bulk(
+    connection: sqlite3.Connection, rows: Sequence[Dict[str, Any]]
+) -> None:
+    """Bulk insert both FTS projections for materialized node rows."""
+    values = [(row["node_id"], row["title"], row["_body"]) for row in rows]
+    connection.executemany(
+        "INSERT INTO fts_terms (node_id, title, body) VALUES (?, ?, ?)", values
+    )
+    connection.executemany(
+        "INSERT INTO fts_trigram (node_id, title, body) VALUES (?, ?, ?)", values
     )
 
 
