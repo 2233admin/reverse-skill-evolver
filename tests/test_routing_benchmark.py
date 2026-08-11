@@ -127,6 +127,34 @@ def test_quick_cases_are_a_subset_and_pass() -> None:
         assert selected == case["expect_local"], case["hint"]
 
 
+def test_index_assisted_route_candidate_is_advisory_and_gate_preserving(tmp_path) -> None:
+    """A prebuilt index may discover a registered route, never a free-form tool."""
+    import reverse_skill.routing as routing
+    from reverse_skill import index_build
+
+    skill = tmp_path / "skills" / "js-reverse"
+    skill.mkdir(parents=True)
+    (skill / "SKILL.md").write_text(
+        "# Browser workflow\n\nRecover a monotonic nonce derivation from a minified client.\n",
+        encoding="utf-8",
+    )
+    index_build.build_apply(tmp_path)
+
+    plan = routing.build_plan(
+        {
+            "task": "Recover a monotonic nonce derivation from a minified client",
+            "routing_index_root": str(tmp_path),
+        }
+    )
+
+    assert plan["route"]["base_id"] == "js-browser-signature"
+    assert plan["route"]["selected_by"] == "index_assisted_candidate"
+    assert plan["routing_index"]["status"] == "available"
+    assert plan["routing_index"]["candidates"][0]["route_id"] == "js-browser-signature"
+    assert "preflight" in plan
+    assert "authorization" in plan
+
+
 def _derive_expectation(crosswalk: dict, expect: str) -> str:
     """Mirror of the generator's crosswalk derivation (no router call)."""
     entry = crosswalk["routes"].get(expect, {})

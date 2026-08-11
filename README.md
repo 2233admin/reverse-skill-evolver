@@ -292,11 +292,39 @@ reverse-skill index update C:\path\to\project --apply
 
 Build and update only print a read-only plan unless `--apply` is explicit. Markdown gets a
 PageIndex-style heading tree and relative-link edges; Python gets AST symbol nodes; other text
-files remain file-level nodes. Retrieval modes are `bm25`, `tree`, and `hybrid`, backed by SQLite
+files remain file-level nodes. For the optional first multi-language profile, install the official
+language-pack wheel and explicitly populate a parser cache before indexing; the indexer never
+downloads grammars implicitly:
+
+```console
+python -m pip install -e ".[syntax]"
+reverse-skill index parsers --profile reverse-core --cache-dir C:\path\to\parser-cache --install
+reverse-skill index build C:\path\to\project --apply --syntax-profile reverse-core --parser-cache C:\path\to\parser-cache
+reverse-skill index update C:\path\to\project --apply --syntax-profile reverse-core --parser-cache C:\path\to\parser-cache
+```
+
+The `reverse-core` profile covers C/C++, Rust, Go, Java, Kotlin, C#, JavaScript, TypeScript,
+Smali, ASM, and x86asm. Its nested structures are normalized into the existing syntax/symbol
+node contract and stable IDs; missing wheels or cached grammars fail with `parser_unavailable`.
+Existing Markdown and Python parsers remain unchanged. Retrieval modes are `bm25`, `tree`, and `hybrid`, backed by SQLite
 FTS5 `unicode61` + `trigram`. Responses carry index revision, root hash, and retrieval stages;
 each hit carries stable node/path/line evidence and score components. `index status` reports whether workspace
-content has made the index stale. The provider-neutral Python facade is ready for a future MCP
-adapter; this Beta does not add another MCP server or claim Tree-sitter/SCIP semantics.
+content has made the index stale. The provider-neutral Python facade is also exposed through the
+optional official MCP 2.0 thin adapter (`python -m pip install -e ".[mcp]"`), with read-only
+`index_status`, `index_search`, `index_get_tree`, `index_read_nodes`, and `index_read_xrefs`; build/update
+stay in the CLI. IDA/DeepExtract can feed the same store through the explicit version-1 JSON adapter:
+`reverse-skill index import-ida C:\path\to\project --export export.json --apply`; full source
+updates preserve imported IDA functions and xref edges. To enable advisory route candidate discovery, explicitly build the package-root index and
+pass it to routing; the router never builds or downloads implicitly:
+
+```console
+reverse-skill index build C:\path\to\reverse-skill-evolver --apply
+reverse-skill route "recover a browser request signature" --routing-index-root C:\path\to\reverse-skill-evolver
+```
+
+The route index may discover only registered skills. Static route contracts, live capability probes,
+AIGX checks, and authorization remain authoritative; do not use a target-project index as the route
+catalog.
 
 ## 6.2 IDA Pro Chain
 

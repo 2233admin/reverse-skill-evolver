@@ -31,6 +31,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 from .aigx import inspect_project as inspect_aigx_project, run_aigx_json
+from .errors import ReverseSkillError
 from .teams_preflight import find_git_ida
 
 
@@ -1098,6 +1099,126 @@ def score_route(route: Dict[str, Any], task: Dict[str, Any], target_kind: str) -
     return {"route": route, "score": score, "signals": signals}
 
 
+def _skill_directory(skill_path: str) -> str:
+    parts = Path(skill_path.replace("\\", "/")).parts
+    return str(parts[0]) if parts else ""
+
+
+def discover_index_route_candidates(
+    task: Dict[str, Any], routes: Sequence[Dict[str, Any]]
+) -> Dict[str, Any]:
+    """Discover registered route candidates from an explicit local index.
+
+    This is advisory discovery only. The index is never built implicitly, and
+    the returned candidates do not carry capability or authorization claims.
+    The normal route score and all later preflight gates remain authoritative.
+    """
+    root_value = task.get("routing_index_root")
+    index_value = task.get("routing_index_path")
+    default_index = REPO_ROOT / ".reverse-skill" / "index" / "v1.sqlite3"
+    if root_value is None and index_value is None:
+        if not default_index.is_file():
+            return {
+                "status": "not_configured",
+                "query": task_text(task),
+                "candidates": [],
+                "reason": "routing_index_not_configured",
+            }
+        root_value = str(REPO_ROOT)
+    if root_value is None:
+        return {
+            "status": "blocked",
+            "query": task_text(task),
+            "candidates": [],
+            "reason": "routing_index_root_required",
+        }
+
+    root = Path(str(root_value)).expanduser()
+    index_path = Path(str(index_value)).expanduser() if index_value is not None else None
+    query = task_text(task).strip()
+    result: Dict[str, Any] = {
+        "status": "blocked",
+        "root": str(root),
+        "query": query,
+        "candidates": [],
+    }
+    if not query:
+        result["reason"] = "routing_index_query_empty"
+        return result
+
+    try:
+        from .index_api import index_search, index_status
+
+        freshness = index_status(root, index_path=index_path)
+        result["freshness"] = freshness
+        if freshness.get("status") != "observed":
+            result["reason"] = "routing_index_not_ready"
+            return result
+        if not freshness.get("fresh"):
+            result["reason"] = "routing_index_stale"
+            return result
+        search = index_search(root, query, "hybrid", top_k=8, index_path=index_path)
+    except (OSError, ReverseSkillError, ValueError) as exc:
+        result["reason"] = getattr(exc, "code", str(exc))
+        result["message"] = str(exc)
+        return result
+
+    skill_to_routes: Dict[str, List[str]] = {}
+    for route in routes:
+        route_id = str(route.get("id", ""))
+        skill = _skill_directory(str(route.get("primary_skill", "")))
+        if route_id and skill:
+            skill_to_routes.setdefault(skill, []).append(route_id)
+
+    candidates: Dict[str, Dict[str, Any]] = {}
+    for rank, hit in enumerate(as_list(search.get("hits"))):
+        if not isinstance(hit, dict):
+            continue
+        relative_path = str(hit.get("relative_path", "")).replace("\\", "/")
+        parts = Path(relative_path).parts
+        skill = parts[1] if len(parts) >= 2 and parts[0] == "skills" else ""
+        if not skill:
+            skill = parts[0] if parts and parts[0] in skill_to_routes else ""
+        for route_id in skill_to_routes.get(skill, []):
+            candidate = candidates.setdefault(
+                route_id,
+                {
+                    "route_id": route_id,
+                    "index_score": float(hit.get("score") or 0.0),
+                    "evidence": [],
+                },
+            )
+            candidate["index_score"] = max(
+                float(candidate["index_score"]), float(hit.get("score") or 0.0)
+            )
+            candidate["evidence"].append(
+                {
+                    "rank": rank,
+                    "node_id": hit.get("node_id"),
+                    "relative_path": relative_path,
+                    "title": hit.get("title"),
+                    "score": hit.get("score"),
+                }
+            )
+
+    result.update(
+        {
+            "status": "available",
+            "index_path": search.get("index_path"),
+            "index_revision": search.get("index_revision"),
+            "root_hash": search.get("root_hash"),
+            "mode": search.get("mode"),
+            "stages": search.get("stages", []),
+            "hit_count": search.get("hit_count", 0),
+            "candidates": sorted(
+                candidates.values(),
+                key=lambda item: (-float(item["index_score"]), str(item["route_id"])),
+            ),
+        }
+    )
+    return result
+
+
 def is_authorized(task: Dict[str, Any]) -> bool:
     scope = task.get("authorization_scope")
     if isinstance(scope, dict):
@@ -1360,18 +1481,39 @@ def build_plan(task: Dict[str, Any]) -> Dict[str, Any]:
         raise ValueError("routing.json has no macro_routes")
 
     target_kind = infer_target_kind(task)
+    routing_index = discover_index_route_candidates(task, routes)
     scored = [score_route(route, task, target_kind) for route in routes]
     scored = [item for item in scored if item["score"] >= 0]
     scored.sort(key=lambda item: item["score"], reverse=True)
     if not scored or scored[0]["score"] <= 0:
-        return {
-            "schema_version": 1,
-            "status": "no_route",
-            "target_kind": target_kind,
-            "task": task,
-            "reason": "no_target_or_intent_match",
-            "candidate_routes": [item["route"].get("id") for item in scored[:3]],
-        }
+        indexed_candidates = as_list(routing_index.get("candidates"))
+        indexed_route_id = (
+            str(indexed_candidates[0].get("route_id"))
+            if indexed_candidates and isinstance(indexed_candidates[0], dict)
+            else ""
+        )
+        indexed_route = next(
+            (route for route in routes if str(route.get("id", "")) == indexed_route_id),
+            None,
+        )
+        if indexed_route is not None:
+            selected = {
+                "route": indexed_route,
+                "score": 0,
+                "signals": ["index_assisted_candidate"],
+                "index_evidence": indexed_candidates[0],
+            }
+            scored = [selected, *scored]
+        else:
+            return {
+                "schema_version": 1,
+                "status": "no_route",
+                "target_kind": target_kind,
+                "task": task,
+                "reason": "no_target_or_intent_match",
+                "candidate_routes": [item["route"].get("id") for item in scored[:3]],
+                "routing_index": routing_index,
+            }
 
     selected = scored[0]
     route = selected["route"]
@@ -1634,7 +1776,15 @@ def build_plan(task: Dict[str, Any]) -> Dict[str, Any]:
             "skill_file": str(absolute_skill_path(selected_skill)),
             "score": selected["score"],
             "signals": selected["signals"],
-            "selected_by": "explicit_route_id" if task.get("route_id") else "deterministic_target_intent_score",
+            "selected_by": (
+                "explicit_route_id"
+                if task.get("route_id")
+                else (
+                    "index_assisted_candidate"
+                    if "index_assisted_candidate" in selected.get("signals", [])
+                    else "deterministic_target_intent_score"
+                )
+            ),
         },
         "preflight": {
             "required_capabilities": required,
@@ -1672,6 +1822,7 @@ def build_plan(task: Dict[str, Any]) -> Dict[str, Any]:
             "passed": is_authorized(task) if security_gate else True,
         },
         "project_intelligence": project_intelligence,
+        "routing_index": routing_index,
         "fallback": {
             "selected": fallback,
             "attempts": fallback_attempts,
@@ -1796,6 +1947,10 @@ def parse_task(args: argparse.Namespace) -> Dict[str, Any]:
         task["teams_worktree_contract_path"] = args.teams_worktree_contract
     if args.apply_teams_lab:
         task["teams_lab_apply"] = True
+    if args.routing_index_root:
+        task["routing_index_root"] = args.routing_index_root
+    if args.routing_index_path:
+        task["routing_index_path"] = args.routing_index_path
     if not task.get("task") and not task.get("intent") and not task.get("target_kind") and not task.get("input_path") and not task.get("search_query"):
         raise ValueError("provide --task, --json, --task-file, --target-kind, or --input-path")
     return task
@@ -1852,6 +2007,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--teams-contract", help="external JSON contract for the read-only IDA Teams collaboration planner")
     parser.add_argument("--teams-worktree-contract", help="external JSON contract for an isolated IDA Teams worktree lab")
     parser.add_argument("--apply-teams-lab", action="store_true", help="allow --execute to create the named isolated Teams lab")
+    parser.add_argument("--routing-index-root", help="package root containing an explicit prebuilt route index")
+    parser.add_argument("--routing-index-path", help="optional route index SQLite path")
     parser.add_argument("--execute", action="store_true", help="run an existing controlled entrypoint after checks")
     parser.add_argument("--pretty", action="store_true", help="pretty-print JSON")
     return parser

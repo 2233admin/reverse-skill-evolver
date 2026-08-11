@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import argparse
 import base64
 import json
 import re
+import sys
 import uuid
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Mapping
 
 import httpx
@@ -397,3 +400,111 @@ def probe_tool_count(port: int, timeout: float) -> int:
             return len(client.request("tools/list").get("tools") or [])
     except (McpProtocolError, McpTransportError):
         return -1
+
+
+def create_index_mcp_server() -> Any:
+    """Create the optional MCP 2.0 read-only index adapter.
+
+    The adapter deliberately delegates every operation to ``index_api``. It
+    exposes no build/update tools, so a client cannot mutate an index through
+    the first MCP surface.
+    """
+    try:
+        from mcp.server import MCPServer
+    except ImportError as exc:  # pragma: no cover - exercised by the CLI smoke
+        raise McpTransportError(
+            "MCP 2.0 adapter is unavailable; install the optional 'mcp' extra"
+        ) from exc
+
+    from . import __version__, index_api
+
+    server = MCPServer(
+        "reverse-skill-index",
+        description="Read-only deterministic reverse-skill workspace index",
+        version=__version__,
+    )
+
+    def optional_path(value: str | None) -> Path | None:
+        return Path(value) if value else None
+
+    @server.tool(
+        name="index_status",
+        description="Read index freshness, capability, and counts without building it.",
+        structured_output=True,
+    )
+    def index_status(root: str, index_path: str | None = None) -> dict[str, Any]:
+        return index_api.index_status(Path(root), optional_path(index_path))
+
+    @server.tool(
+        name="index_search",
+        description="Search the deterministic local index with BM25, tree, or hybrid retrieval.",
+        structured_output=True,
+    )
+    def index_search(
+        root: str,
+        query: str,
+        mode: str = "hybrid",
+        top_k: int | None = None,
+        index_path: str | None = None,
+    ) -> dict[str, Any]:
+        return index_api.index_search(
+            Path(root), query, mode, top_k, optional_path(index_path)
+        )
+
+    @server.tool(
+        name="index_get_tree",
+        description="Read one indexed node with its ancestors and bounded descendants.",
+        structured_output=True,
+    )
+    def index_get_tree(
+        root: str, node_id: str, index_path: str | None = None
+    ) -> dict[str, Any]:
+        return index_api.index_get_tree(Path(root), node_id, optional_path(index_path))
+
+    @server.tool(
+        name="index_read_nodes",
+        description="Read indexed node metadata and text by stable node IDs.",
+        structured_output=True,
+    )
+    def index_read_nodes(
+        root: str, node_ids: list[str], index_path: str | None = None
+    ) -> dict[str, Any]:
+        return index_api.index_read_nodes(
+            Path(root), node_ids, optional_path(index_path)
+        )
+
+    @server.tool(
+        name="index_read_xrefs",
+        description="Read incoming and outgoing IDA xrefs for one stable node.",
+        structured_output=True,
+    )
+    def index_read_xrefs(
+        root: str,
+        node_id: str,
+        direction: str = "both",
+        index_path: str | None = None,
+    ) -> dict[str, Any]:
+        return index_api.index_read_xrefs(
+            Path(root), node_id, direction, optional_path(index_path)
+        )
+
+    return server
+
+
+def mcp_main(argv: list[str] | None = None) -> int:
+    """Run the optional MCP adapter over stdio or Streamable HTTP."""
+    parser = argparse.ArgumentParser(description="Run the reverse-skill MCP 2.0 index adapter")
+    parser.add_argument(
+        "--transport",
+        choices=("stdio", "streamable-http"),
+        default="stdio",
+        help="MCP transport (legacy HTTP+SSE is intentionally not exposed)",
+    )
+    args = parser.parse_args(argv)
+    try:
+        server = create_index_mcp_server()
+    except McpTransportError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    server.run(args.transport)
+    return 0

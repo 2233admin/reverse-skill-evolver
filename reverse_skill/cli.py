@@ -311,6 +311,8 @@ def context_check(state: State, project_path: Path, targets: tuple[str, ...], ai
 @click.option("--teams-contract", type=click.Path(dir_okay=False, path_type=Path))
 @click.option("--teams-worktree-contract", type=click.Path(dir_okay=False, path_type=Path))
 @click.option("--apply-teams-lab", is_flag=True)
+@click.option("--routing-index-root", type=click.Path(file_okay=False, path_type=Path))
+@click.option("--routing-index-path", type=click.Path(dir_okay=False, path_type=Path))
 @click.option("--execute", is_flag=True, help="Execute only when every route gate passes.")
 @click.pass_obj
 def route_command(
@@ -334,6 +336,8 @@ def route_command(
     teams_contract: Path | None,
     teams_worktree_contract: Path | None,
     apply_teams_lab: bool,
+    routing_index_root: Path | None,
+    routing_index_path: Path | None,
     execute: bool,
 ) -> int:
     """Build a deterministic, fail-closed reverse/security dispatch plan."""
@@ -368,6 +372,8 @@ def route_command(
         "teams_contract_path": str(teams_contract) if teams_contract else None,
         "teams_worktree_contract_path": str(teams_worktree_contract) if teams_worktree_contract else None,
         "teams_lab_apply": True if apply_teams_lab else None,
+        "routing_index_root": str(routing_index_root) if routing_index_root else None,
+        "routing_index_path": str(routing_index_path) if routing_index_path else None,
     }
     contract.update({key: value for key, value in overlays.items() if value is not None})
     if authorization_scope:
@@ -448,13 +454,28 @@ def _workspace_path_argument() -> click.Path:
 @click.argument("path", type=_workspace_path_argument())
 @click.option("--apply", is_flag=True, help="Create or replace the index (default: read-only plan).")
 @click.option("--index-path", type=_index_path_option())
+@click.option("--syntax-profile", type=click.Choice(["reverse-core"]))
+@click.option("--parser-cache", type=click.Path(file_okay=False, path_type=Path))
 @click.pass_obj
-def index_build_command(state: State, path: Path, apply: bool, index_path: Path | None) -> int:
+def index_build_command(
+    state: State,
+    path: Path,
+    apply: bool,
+    index_path: Path | None,
+    syntax_profile: str | None,
+    parser_cache: Path | None,
+) -> int:
     """Plan or apply a full deterministic index build."""
     from .index_api import index_build as run_index_build
 
     try:
-        result = run_index_build(path, apply=apply, index_path=index_path)
+        result = run_index_build(
+            path,
+            apply=apply,
+            index_path=index_path,
+            syntax_profile=syntax_profile,
+            parser_cache=parser_cache,
+        )
     except ReverseSkillError as exc:
         return _emit_index_error(state, exc)
     emit(state, "index", result)
@@ -465,13 +486,113 @@ def index_build_command(state: State, path: Path, apply: bool, index_path: Path 
 @click.argument("path", type=_workspace_path_argument())
 @click.option("--apply", is_flag=True, help="Apply the incremental delta (default: read-only plan).")
 @click.option("--index-path", type=_index_path_option())
+@click.option("--syntax-profile", type=click.Choice(["reverse-core"]))
+@click.option("--parser-cache", type=click.Path(file_okay=False, path_type=Path))
 @click.pass_obj
-def index_update_command(state: State, path: Path, apply: bool, index_path: Path | None) -> int:
+def index_update_command(
+    state: State,
+    path: Path,
+    apply: bool,
+    index_path: Path | None,
+    syntax_profile: str | None,
+    parser_cache: Path | None,
+) -> int:
     """Plan or apply an incremental index update."""
     from .index_api import index_update as run_index_update
 
     try:
-        result = run_index_update(path, apply=apply, index_path=index_path)
+        result = run_index_update(
+            path,
+            apply=apply,
+            index_path=index_path,
+            syntax_profile=syntax_profile,
+            parser_cache=parser_cache,
+        )
+    except ReverseSkillError as exc:
+        return _emit_index_error(state, exc)
+    emit(state, "index", result)
+    return 0
+
+
+@index_group.command(name="parsers")
+@click.option("--profile", "profile_name", type=click.Choice(["reverse-core"]), default="reverse-core", show_default=True)
+@click.option("--cache-dir", type=click.Path(file_okay=False, path_type=Path), required=True)
+@click.option("--install", is_flag=True, help="Explicitly download the selected parser profile.")
+@click.pass_obj
+def index_parsers_command(
+    state: State,
+    profile_name: str,
+    cache_dir: Path,
+    install: bool,
+) -> int:
+    """Inspect or explicitly install the cache-only syntax parser profile."""
+    from .index_build import install_parsers, parser_status
+
+    try:
+        result = (
+            install_parsers(profile_name, cache_dir)
+            if install
+            else parser_status(profile_name, cache_dir)
+        )
+    except ReverseSkillError as exc:
+        return _emit_index_error(state, exc)
+    emit(state, "index", result)
+    return 0 if result.get("status") != "blocked" else 5
+
+
+@index_group.command(name="import-ida")
+@click.argument("path", type=_workspace_path_argument())
+@click.option(
+    "--export",
+    "export_path",
+    type=click.Path(exists=True, dir_okay=False, resolve_path=True, path_type=Path),
+    required=True,
+    help="Explicit versioned IDA JSON export; no IDA process is started.",
+)
+@click.option("--apply", is_flag=True, help="Replace the module's IDA layer transactionally.")
+@click.option("--index-path", type=_index_path_option())
+@click.pass_obj
+def index_import_ida_command(
+    state: State,
+    path: Path,
+    export_path: Path,
+    apply: bool,
+    index_path: Path | None,
+) -> int:
+    """Plan or explicitly import one IDA JSON export into the shared index."""
+    from .ida_ingest import import_export
+
+    try:
+        result = import_export(path, export_path, apply=apply, index_path=index_path)
+    except ReverseSkillError as exc:
+        return _emit_index_error(state, exc)
+    emit(state, "index", result)
+    return 0
+
+
+@index_group.command(name="xrefs")
+@click.argument("path", type=_workspace_path_argument())
+@click.argument("node_id")
+@click.option(
+    "--direction",
+    type=click.Choice(["incoming", "outgoing", "both"]),
+    default="both",
+    show_default=True,
+)
+@click.option("--index-path", type=_index_path_option())
+@click.pass_obj
+def index_xrefs_command(
+    state: State,
+    path: Path,
+    node_id: str,
+    direction: str,
+    index_path: Path | None,
+) -> int:
+    """Read incoming and/or outgoing IDA xrefs for one stable node."""
+    from .index_api import index_read_xrefs
+
+    try:
+        result = index_read_xrefs(path, node_id, direction, index_path=index_path)
     except ReverseSkillError as exc:
         return _emit_index_error(state, exc)
     emit(state, "index", result)

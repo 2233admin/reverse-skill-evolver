@@ -1,3 +1,4 @@
+import asyncio
 import json
 from typing import Any
 
@@ -8,6 +9,7 @@ from reverse_skill.errors import McpProtocolError
 from reverse_skill.mcp import (
     MODERN_VERSION,
     McpClient,
+    create_index_mcp_server,
     encode_header_value,
     encode_parameter_header,
 )
@@ -209,3 +211,78 @@ def test_invalid_modern_discovery_body_does_not_silently_fall_back() -> None:
 
     with pytest.raises(McpProtocolError, match="not valid JSON"):
         McpClient("http://mock/mcp", transport=httpx.MockTransport(handler))
+
+
+def test_mcp2_index_tools_match_the_direct_index_api(tmp_path) -> None:
+    mcp_server = pytest.importorskip("mcp.server")
+    if not hasattr(mcp_server, "MCPServer"):
+        pytest.skip("MCP 2.0 SDK is required for the in-memory adapter contract")
+    from reverse_skill import index_api, index_build
+    from reverse_skill.index_store import open_read_only
+
+    (tmp_path / "guide.md").write_text("# Common\n\nbody\n", encoding="utf-8")
+    index_build.build_apply(tmp_path)
+    expected_status = index_api.index_status(tmp_path)
+    expected_search = index_api.index_search(tmp_path, "Common", "hybrid", 5)
+    index_path = tmp_path / ".reverse-skill" / "index" / "v1.sqlite3"
+    connection = open_read_only(index_path)
+    try:
+        node_id = str(
+            connection.execute(
+                "SELECT n.node_id FROM nodes n "
+                "JOIN documents d ON d.document_id = n.document_id "
+                "ORDER BY d.relative_path, n.start_line, n.node_id"
+            ).fetchone()[0]
+        )
+    finally:
+        connection.close()
+    expected_tree = index_api.index_get_tree(tmp_path, node_id)
+    expected_nodes = index_api.index_read_nodes(tmp_path, [node_id])
+
+    async def exercise() -> tuple[
+        set[str], dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]
+    ]:
+        from mcp import Client
+
+        async with Client(create_index_mcp_server()) as client:
+            tools = await client.list_tools()
+            status = await client.call_tool(
+                "index_status", {"root": str(tmp_path)}
+            )
+            search = await client.call_tool(
+                "index_search",
+                {
+                    "root": str(tmp_path),
+                    "query": "Common",
+                    "mode": "hybrid",
+                    "top_k": 5,
+                },
+            )
+            tree = await client.call_tool(
+                "index_get_tree",
+                {"root": str(tmp_path), "node_id": node_id},
+            )
+            nodes = await client.call_tool(
+                "index_read_nodes",
+                {"root": str(tmp_path), "node_ids": [node_id]},
+            )
+            return (
+                {tool.name for tool in tools.tools},
+                dict(status.structured_content or {}),
+                dict(search.structured_content or {}),
+                dict(tree.structured_content or {}),
+                dict(nodes.structured_content or {}),
+            )
+
+    names, status, search, tree, nodes = asyncio.run(exercise())
+    assert names == {
+        "index_status",
+        "index_search",
+        "index_get_tree",
+        "index_read_nodes",
+        "index_read_xrefs",
+    }
+    assert status == expected_status
+    assert search == expected_search
+    assert tree == expected_tree
+    assert nodes == expected_nodes

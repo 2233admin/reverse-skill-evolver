@@ -103,6 +103,7 @@ def index_status(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any
         report["root_hash"] = meta.get(META_ROOT_HASH)
         report["built_at"] = meta.get(META_BUILT_AT)
         report["built_by"] = meta.get(META_BUILT_BY)
+        report["syntax_profile"] = meta.get("syntax_profile") or None
         report["counts"] = {
             "documents": int(
                 connection.execute("SELECT COUNT(*) AS n FROM documents").fetchone()["n"]
@@ -112,6 +113,21 @@ def index_status(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any
             "link_edges": int(
                 connection.execute(
                     "SELECT COUNT(*) AS n FROM edges WHERE kind = 'link'"
+                ).fetchone()["n"]
+            ),
+            "xref_edges": int(
+                connection.execute(
+                    "SELECT COUNT(*) AS n FROM edges WHERE kind = 'xref'"
+                ).fetchone()["n"]
+            ),
+            "ida_documents": int(
+                connection.execute(
+                    "SELECT COUNT(*) AS n FROM documents WHERE kind = 'ida'"
+                ).fetchone()["n"]
+            ),
+            "ida_nodes": int(
+                connection.execute(
+                    "SELECT COUNT(*) AS n FROM nodes WHERE source_kind = 'ida'"
                 ).fetchone()["n"]
             ),
             "fts_rows": int(
@@ -225,17 +241,50 @@ def index_read_nodes(
     )
 
 
-def index_build(root: Path, apply: bool, index_path: Optional[Path] = None) -> Dict[str, Any]:
+def index_read_xrefs(
+    root: Path,
+    node_id: str,
+    direction: str = "both",
+    index_path: Optional[Path] = None,
+) -> Dict[str, Any]:
+    """Read xref edges for one node without modifying the index."""
+    _require_root(root)
+    validate_node_id(node_id)
+    from .ida_ingest import read_xrefs
+
+    result = read_xrefs(root, node_id, direction=direction, index_path=index_path)
+    resolved = _resolve_index_path(root, index_path)
+    connection = open_read_only(resolved)
+    try:
+        meta = _read_meta(connection)
+    finally:
+        close(connection)
+    return _attach_index_evidence(result, meta, resolved)
+
+
+def index_build(
+    root: Path,
+    apply: bool,
+    index_path: Optional[Path] = None,
+    syntax_profile: Optional[str] = None,
+    parser_cache: Optional[Path] = None,
+) -> Dict[str, Any]:
     """Read-only plan (apply=False) or atomic create/replace (apply=True)."""
     _require_root(root)
     if apply:
-        return _build_engine.build_apply(root, index_path)
-    return _build_engine.build_plan(root, index_path)
+        return _build_engine.build_apply(root, index_path, syntax_profile, parser_cache)
+    return _build_engine.build_plan(root, index_path, syntax_profile, parser_cache)
 
 
-def index_update(root: Path, apply: bool, index_path: Optional[Path] = None) -> Dict[str, Any]:
+def index_update(
+    root: Path,
+    apply: bool,
+    index_path: Optional[Path] = None,
+    syntax_profile: Optional[str] = None,
+    parser_cache: Optional[Path] = None,
+) -> Dict[str, Any]:
     """Read-only delta plan (apply=False) or transactional update (apply=True)."""
     _require_root(root)
     if apply:
-        return _build_engine.update_apply(root, index_path)
-    return _build_engine.update_plan(root, index_path)
+        return _build_engine.update_apply(root, index_path, syntax_profile, parser_cache)
+    return _build_engine.update_plan(root, index_path, syntax_profile, parser_cache)

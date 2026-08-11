@@ -52,10 +52,40 @@
     "directory_excluded", "virtualenv", "symlink", "binary", "credential_file",
     "too_large", "read_error"
   ],
-  "document_kinds": ["markdown", "python", "text"],
-  "node_kinds": ["file", "heading", "preamble", "module", "class", "function", "async_function"],
-  "source_kinds": ["markdown", "python", "text"],
-  "edge_kinds": ["parent", "link"],
+  "document_kinds": ["markdown", "python", "syntax", "text", "ida"],
+  "node_kinds": ["file", "heading", "preamble", "module", "class", "function", "async_function", "symbol"],
+  "source_kinds": ["markdown", "python", "syntax", "text", "ida"],
+  "syntax_profiles": {
+    "reverse-core": {
+      "extensions": {
+        ".c": "c",
+        ".h": "c",
+        ".cc": "cpp",
+        ".cpp": "cpp",
+        ".cxx": "cpp",
+        ".hh": "cpp",
+        ".hpp": "cpp",
+        ".hxx": "cpp",
+        ".rs": "rust",
+        ".go": "go",
+        ".java": "java",
+        ".kt": "kotlin",
+        ".kts": "kotlin",
+        ".cs": "csharp",
+        ".js": "javascript",
+        ".jsx": "javascript",
+        ".mjs": "javascript",
+        ".ts": "typescript",
+        ".mts": "typescript",
+        ".cts": "typescript",
+        ".smali": "smali",
+        ".s": "asm",
+        ".asm": "asm",
+        ".x86asm": "x86asm"
+      }
+    }
+  },
+  "edge_kinds": ["parent", "link", "xref"],
   "evidence_fields": [
     "schema_version", "index_revision", "root_hash", "mode", "stages",
     "relative_path", "lines", "tree_path", "node_id", "content_sha256",
@@ -67,9 +97,11 @@
     "index_corrupt": "index file is not a readable SQLite database",
     "index_schema_incompatible": "index schema_version does not match this build",
     "index_capability_unavailable": "SQLite FTS5/trigram required by the schema is unavailable",
+    "parser_unavailable": "the requested syntax parser is not installed or not present in the approved cache",
     "index_blocked": "requested operation was blocked by a safety boundary",
     "node_not_found": "node_id does not exist in the index",
-    "invalid_node_id": "node_id does not match the frozen node_id regex"
+    "invalid_node_id": "node_id does not match the frozen node_id regex",
+    "ida_export_invalid": "the explicit IDA export is absent, malformed, unsafe, or has unresolved xrefs"
   },
   "score_model": {
     "bm25_rank_score": "1/(1+rank) where rank is the 0-based position after (bm25 rank, node_id) ordering",

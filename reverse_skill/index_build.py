@@ -35,6 +35,7 @@ from .index_store import (
     IndexError,
     IndexNotFound,
     IndexPathNotFound,
+    ParserUnavailable,
     atomically_replace,
     close,
     compute_root_hash,
@@ -79,7 +80,7 @@ class NodeSpec:
 @dataclass
 class ParsedDocument:
     relpath: str
-    kind: str  # markdown | python | text
+    kind: str  # markdown | python | syntax | text
     sha256: str
     line_count: int
     size_bytes: int
@@ -122,7 +123,10 @@ def _decode_text(data: bytes) -> str:
 
 
 def scan_workspace(
-    root: Path, contracts: Dict[str, Any]
+    root: Path,
+    contracts: Dict[str, Any],
+    syntax_profile: Optional[str] = None,
+    parser_cache: Optional[Path] = None,
 ) -> Tuple[List[ParsedDocument], List[SkippedFile]]:
     """Read-only deterministic scan; never follows symlinks."""
     if _is_link_like(root):
@@ -131,6 +135,9 @@ def scan_workspace(
     dir_names = set(exclusions["directory_names"])
     credential_patterns = list(exclusions["credential_file_patterns"])
     max_bytes = int(exclusions["max_file_bytes"])
+    syntax_extensions = _syntax_extensions(contracts, syntax_profile)
+    if syntax_profile is not None:
+        _require_parser_cache(parser_cache)
 
     files: List[ParsedDocument] = []
     skipped: List[SkippedFile] = []
@@ -177,11 +184,248 @@ def scan_workspace(
             if data and _looks_binary(data[:8192]):
                 skipped.append(SkippedFile(relpath, "binary"))
                 continue
-            files.append(_parse_file(relpath, data, stat.st_size))
+            files.append(
+                _parse_file(
+                    relpath,
+                    data,
+                    stat.st_size,
+                    language=syntax_extensions.get(Path(relpath).suffix.lower()),
+                    parser_cache=parser_cache,
+                )
+            )
     return files, skipped
 
 
-def _parse_file(relpath: str, data: bytes, size_bytes: int) -> ParsedDocument:
+def _syntax_extensions(
+    contracts: Dict[str, Any], profile: Optional[str]
+) -> Dict[str, str]:
+    if profile is None:
+        return {}
+    profiles = contracts.get("syntax_profiles", {})
+    definition = profiles.get(profile)
+    if not isinstance(definition, dict) or not isinstance(definition.get("extensions"), dict):
+        raise ParserUnavailable(f"unknown syntax profile: {profile}")
+    extensions: Dict[str, str] = {}
+    for suffix, language in definition["extensions"].items():
+        normalized_suffix = str(suffix).lower()
+        if not normalized_suffix.startswith(".") or not str(language):
+            raise ParserUnavailable(f"invalid syntax profile entry: {suffix!r}")
+        extensions[normalized_suffix] = str(language)
+    return extensions
+
+
+def _require_parser_cache(parser_cache: Optional[Path]) -> Path:
+    if parser_cache is None:
+        raise ParserUnavailable(
+            "syntax indexing requires an existing parser cache; "
+            "run 'index parsers --install --cache-dir PATH' first"
+        )
+    resolved = Path(parser_cache)
+    if _is_link_like(resolved) or not resolved.is_dir():
+        raise ParserUnavailable(f"parser cache is not an existing directory: {resolved}")
+    return resolved
+
+
+def _language_pack(parser_cache: Path, languages: Sequence[str]) -> Tuple[Any, set[str]]:
+    try:
+        import tree_sitter_language_pack as language_pack
+    except ImportError as exc:
+        raise ParserUnavailable(
+            "tree-sitter-language-pack is not installed; install the [syntax] extra"
+        ) from exc
+    try:
+        # The package treats PackConfig.languages as a pre-download request.
+        # Indexing is cache-only and read-only, so only configure the cache.
+        language_pack.configure(language_pack.PackConfig(cache_dir=str(parser_cache)))
+        downloaded = {str(item) for item in language_pack.downloaded_languages()}
+    except Exception as exc:
+        raise ParserUnavailable(
+            f"tree-sitter-language-pack cache cannot be opened: {parser_cache}"
+        ) from exc
+    missing = sorted(set(languages) - downloaded)
+    if missing:
+        raise ParserUnavailable(
+            "parser cache is missing language(s): " + ", ".join(missing)
+        )
+    return language_pack, downloaded
+
+
+def parser_status(
+    profile: str,
+    parser_cache: Path,
+    contracts: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    contracts = contracts or load_contracts()
+    extensions = _syntax_extensions(contracts, profile)
+    languages = sorted(set(extensions.values()))
+    report: Dict[str, Any] = {
+        "status": "observed",
+        "profile": profile,
+        "cache_dir": str(parser_cache),
+        "languages": languages,
+        "downloaded": [],
+        "missing": languages,
+    }
+    if _is_link_like(parser_cache) or not parser_cache.is_dir():
+        report["status"] = "blocked"
+        report["reason"] = "cache_not_found"
+        return report
+    try:
+        language_pack, downloaded = _language_pack(parser_cache, [])
+    except ParserUnavailable as exc:
+        report["status"] = "blocked"
+        report["reason"] = str(exc)
+        return report
+    del language_pack
+    report["downloaded"] = sorted(set(languages) & downloaded)
+    report["missing"] = sorted(set(languages) - downloaded)
+    report["ready"] = not report["missing"]
+    return report
+
+
+def install_parsers(
+    profile: str,
+    parser_cache: Path,
+    contracts: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    contracts = contracts or load_contracts()
+    extensions = _syntax_extensions(contracts, profile)
+    languages = sorted(set(extensions.values()))
+    resolved = Path(parser_cache)
+    if _is_link_like(resolved):
+        raise ParserUnavailable(f"refusing parser cache symlink or junction: {resolved}")
+    try:
+        if resolved.exists() and not resolved.is_dir():
+            raise ParserUnavailable(f"parser cache is not a directory: {resolved}")
+        resolved.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise ParserUnavailable(f"cannot create parser cache: {resolved}") from exc
+    try:
+        import tree_sitter_language_pack as language_pack
+    except ImportError as exc:
+        raise ParserUnavailable(
+            "tree-sitter-language-pack is not installed; install the [syntax] extra"
+        ) from exc
+    try:
+        language_pack.configure(language_pack.PackConfig(cache_dir=str(resolved)))
+        available_count = int(language_pack.download(languages))
+        downloaded = {str(item) for item in language_pack.downloaded_languages()}
+    except Exception as exc:
+        raise ParserUnavailable(
+            f"tree-sitter-language-pack parser installation failed: {exc}"
+        ) from exc
+    missing = sorted(set(languages) - downloaded)
+    if missing:
+        detail = (
+            "parser download did not complete "
+            f"(provider reports {available_count} requested language(s) available, "
+            f"cache contains {len(downloaded)})"
+        )
+        detail += ": " + ", ".join(missing)
+        raise ParserUnavailable(detail)
+    return {
+        "status": "applied",
+        "profile": profile,
+        "cache_dir": str(resolved),
+        "languages": languages,
+        "downloaded": sorted(downloaded),
+    }
+
+
+def _enum_text(value: Any, default: str) -> str:
+    raw = getattr(value, "value", value)
+    text = str(raw or default).strip().lower()
+    return text.rsplit(".", 1)[-1] or default
+
+
+def parse_tree_sitter(
+    relpath: str,
+    lines: List[str],
+    language: str,
+    parser_cache: Optional[Path],
+) -> List[NodeSpec]:
+    cache = _require_parser_cache(parser_cache)
+    language_pack, _ = _language_pack(cache, [language])
+    try:
+        result = language_pack.process(
+            "\n".join(lines),
+            language_pack.ProcessConfig(
+                language=language,
+                structure=True,
+                imports=False,
+                exports=False,
+            ),
+        )
+    except Exception as exc:
+        raise ParserUnavailable(
+            f"tree-sitter parser failed for {relpath} ({language})"
+        ) from exc
+
+    line_count = len(lines)
+    root = NodeSpec(
+        kind="file",
+        title=relpath,
+        start=1,
+        end=max(line_count, 1),
+        tree_path=relpath,
+        occurrence=1,
+        symbol_kind=language,
+    )
+    nodes: List[NodeSpec] = [root]
+
+    def visit(item: Any, parent_index: int) -> None:
+        span = getattr(item, "span", None)
+        if span is None:
+            raise ParserUnavailable(
+                f"tree-sitter returned a structural item without a span for {relpath}"
+            )
+        start = int(getattr(span, "start_line")) + 1
+        end = int(getattr(span, "end_line")) + 1
+        line_limit = max(line_count, 1)
+        if start < 1 or end < start or start > line_limit:
+            raise ParserUnavailable(
+                f"tree-sitter returned an invalid span for {relpath}: {start}-{end}"
+            )
+        end = min(end, line_limit)
+        kind = _enum_text(getattr(item, "kind", None), "symbol")
+        title = str(getattr(item, "name", None) or f"<{kind}>")
+        parent = nodes[parent_index]
+        occurrence = 1 + sum(
+            1
+            for candidate in nodes
+            if candidate.parent_index == parent_index and candidate.title == title
+        )
+        segments = _segment_chain(nodes, parent_index)
+        segments.append(_identity_segment(title, occurrence))
+        spec = NodeSpec(
+            kind="symbol",
+            title=title,
+            start=start,
+            end=end,
+            tree_path="{}#{}".format(relpath, "/".join(segments)),
+            occurrence=occurrence,
+            parent_index=parent_index,
+            symbol_kind=kind,
+        )
+        parent.children.append(len(nodes))
+        nodes.append(spec)
+        child_index = len(nodes) - 1
+        for child in getattr(item, "children", []) or []:
+            visit(child, child_index)
+
+    for item in getattr(result, "structure", []) or []:
+        visit(item, 0)
+    return nodes
+
+
+def _parse_file(
+    relpath: str,
+    data: bytes,
+    size_bytes: int,
+    *,
+    language: Optional[str] = None,
+    parser_cache: Optional[Path] = None,
+) -> ParsedDocument:
     sha256_hex = hashlib.sha256(data).hexdigest()
     text = _decode_text(data)
     lines = text.splitlines()
@@ -194,6 +438,9 @@ def _parse_file(relpath: str, data: bytes, size_bytes: int) -> ParsedDocument:
         nodes, failed = parse_python(relpath, lines)
         kind = "text" if failed else "python"
         return ParsedDocument(relpath, kind, sha256_hex, line_count, size_bytes, lines, nodes, failed)
+    if language is not None:
+        nodes = parse_tree_sitter(relpath, lines, language, parser_cache)
+        return ParsedDocument(relpath, "syntax", sha256_hex, line_count, size_bytes, lines, nodes)
     nodes = [
         NodeSpec(
             kind="file",
@@ -497,8 +744,12 @@ def _summary_of_skipped(skipped: List[SkippedFile], limit: int = 3) -> Dict[str,
     return {"total": len(skipped), "by_reason": counts, "examples": samples}
 
 
-def _collect_all(root: Path) -> Tuple[List[ParsedDocument], List[SkippedFile]]:
-    return scan_workspace(root, load_contracts())
+def _collect_all(
+    root: Path,
+    syntax_profile: Optional[str] = None,
+    parser_cache: Optional[Path] = None,
+) -> Tuple[List[ParsedDocument], List[SkippedFile]]:
+    return scan_workspace(root, load_contracts(), syntax_profile, parser_cache)
 
 
 def _kind_counts(files: List[ParsedDocument]) -> Dict[str, int]:
@@ -549,12 +800,17 @@ def _prepare_default_index_write_path(root: Path, resolved: Path) -> None:
         ) from exc
 
 
-def build_plan(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any]:
+def build_plan(
+    root: Path,
+    index_path: Optional[Path] = None,
+    syntax_profile: Optional[str] = None,
+    parser_cache: Optional[Path] = None,
+) -> Dict[str, Any]:
     """Read-only build plan: scan + parse, no writes, no index directory creation."""
     if not root.is_dir():
         raise IndexPathNotFound(f"workspace path is not a directory: {root}")
     require_capability()
-    files, skipped = _collect_all(root)
+    files, skipped = _collect_all(root, syntax_profile, parser_cache)
     resolved = _resolve_index_path(root, index_path)
     parse_failures = sum(1 for item in files if item.python_parse_failed)
     return {
@@ -564,6 +820,7 @@ def build_plan(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any]:
         "schema_version": SCHEMA_VERSION,
         "index_path": str(resolved),
         "index_exists": resolved.is_file(),
+        "syntax_profile": syntax_profile,
         "documents": {
             "scanned": len(files),
             "by_kind": _kind_counts(files),
@@ -577,12 +834,17 @@ def build_plan(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any]:
     }
 
 
-def build_apply(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any]:
+def build_apply(
+    root: Path,
+    index_path: Optional[Path] = None,
+    syntax_profile: Optional[str] = None,
+    parser_cache: Optional[Path] = None,
+) -> Dict[str, Any]:
     """Create or replace the index via a temporary database and atomic replace."""
     if not root.is_dir():
         raise IndexPathNotFound(f"workspace path is not a directory: {root}")
     require_capability()
-    files, skipped = _collect_all(root)
+    files, skipped = _collect_all(root, syntax_profile, parser_cache)
     resolved = _resolve_index_path(root, index_path)
     if index_path is None:
         _prepare_default_index_write_path(root, resolved)
@@ -632,12 +894,14 @@ def build_apply(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any]
         # Link edges resolve after every document's nodes exist (two-pass).
         for parsed in sorted(files, key=lambda item: item.relpath):
             _insert_link_edges(connection, parsed, materialized[parsed.relpath], document_ids)
+        ida_preserved = _preserve_ida_layer(resolved, connection)
         root_hash = compute_root_hash((item.relpath, item.sha256) for item in files)
         set_meta(connection, META_SCHEMA_VERSION, SCHEMA_VERSION)
         set_meta(connection, META_INDEX_REVISION, "1")
         set_meta(connection, META_ROOT_HASH, root_hash)
         set_meta(connection, META_BUILT_AT, str(int(time.time())))
         set_meta(connection, META_BUILT_BY, "build")
+        set_meta(connection, "syntax_profile", syntax_profile or "")
         connection.execute("COMMIT")
         close(connection)
         connection = None
@@ -665,6 +929,7 @@ def build_apply(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any]
         "applied": True,
         "schema_version": SCHEMA_VERSION,
         "index_path": str(resolved),
+        "syntax_profile": syntax_profile,
         "documents": {
             "indexed": len(files),
             "by_kind": _kind_counts(files),
@@ -674,8 +939,89 @@ def build_apply(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any]
         "skipped": _summary_of_skipped(skipped),
         "index_revision": 1,
         "root_hash": root_hash,
+        "ida_preserved": ida_preserved,
         "writes": {"insert_documents": len(files)},
     }
+
+
+def _preserve_ida_layer(
+    source_path: Path, destination: sqlite3.Connection
+) -> Dict[str, int]:
+    """Carry explicit IDA documents across a full source-index replacement."""
+    if not source_path.is_file():
+        return {"documents": 0, "nodes": 0, "edges": 0}
+    source = open_read_only(source_path)
+    copied_documents = copied_nodes = copied_edges = 0
+    try:
+        documents = source.execute(
+            "SELECT document_id, relative_path, kind, sha256, line_count, size_bytes "
+            "FROM documents WHERE kind = 'ida' ORDER BY relative_path"
+        ).fetchall()
+        for document in documents:
+            collision = destination.execute(
+                "SELECT document_id FROM documents WHERE relative_path = ?",
+                (document["relative_path"],),
+            ).fetchone()
+            if collision is not None:
+                raise IndexError(
+                    "full build cannot preserve IDA document because its relative path "
+                    f"collides with a source document: {document['relative_path']}"
+                )
+            document_id = insert_document(destination, dict(document))
+            old_nodes = source.execute(
+                "SELECT node_id, document_id, parent_id, depth, ordinal, title, kind, "
+                "start_line, end_line, body_sha256, tree_path, source_kind, symbol_kind "
+                "FROM nodes WHERE document_id = ? ORDER BY depth, ordinal, node_id",
+                (document["document_id"],),
+            ).fetchall()
+            node_ids = {str(row["node_id"]) for row in old_nodes}
+            if not node_ids:
+                raise IndexError(
+                    f"IDA document has no nodes and cannot be preserved: {document['relative_path']}"
+                )
+            placeholders = ",".join("?" for _ in node_ids)
+            node_collision = destination.execute(
+                f"SELECT node_id FROM nodes WHERE node_id IN ({placeholders}) LIMIT 1",
+                sorted(node_ids),
+            ).fetchone()
+            if node_collision is not None:
+                raise IndexError(
+                    f"full build cannot preserve IDA node id collision: {node_collision['node_id']}"
+                )
+            node_rows = [dict(row) for row in old_nodes]
+            for row in node_rows:
+                row["document_id"] = document_id
+            insert_nodes(destination, node_rows)
+            for row in node_rows:
+                if row["parent_id"] is not None:
+                    insert_edge(destination, row["node_id"], row["parent_id"], "parent")
+            edge_rows = source.execute(
+                "SELECT source_node, target_node, kind FROM edges "
+                f"WHERE source_node IN ({placeholders}) AND target_node IN ({placeholders})",
+                sorted(node_ids) + sorted(node_ids),
+            ).fetchall()
+            for edge in edge_rows:
+                insert_edge(destination, edge["source_node"], edge["target_node"], edge["kind"])
+            fts_rows = source.execute(
+                "SELECT node_id, title, body AS _body FROM fts_terms "
+                f"WHERE node_id IN ({placeholders}) ORDER BY node_id",
+                sorted(node_ids),
+            ).fetchall()
+            if len(fts_rows) != len(node_rows):
+                raise IndexError(
+                    f"IDA document has incomplete FTS rows: {document['relative_path']}"
+                )
+            insert_fts_rows_bulk(destination, [dict(row) for row in fts_rows])
+            for meta in source.execute(
+                "SELECT key, value FROM index_meta WHERE key LIKE 'ida_%'"
+            ).fetchall():
+                set_meta(destination, meta["key"], meta["value"])
+            copied_documents += 1
+            copied_nodes += len(node_rows)
+            copied_edges += len(edge_rows)
+    finally:
+        close(source)
+    return {"documents": copied_documents, "nodes": copied_nodes, "edges": copied_edges}
 
 
 def _insert_document_rows(connection: sqlite3.Connection, rows: List[Dict[str, Any]]) -> None:
@@ -846,7 +1192,30 @@ def _link_sources_for_added_documents(
     return sorted(sources)
 
 
-def update_plan(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any]:
+def _resolve_update_syntax(
+    meta: Dict[str, str],
+    syntax_profile: Optional[str],
+    parser_cache: Optional[Path],
+) -> Optional[str]:
+    stored = meta.get("syntax_profile", "")
+    requested = syntax_profile or ""
+    if stored != requested:
+        raise ParserUnavailable(
+            "syntax profile does not match the existing index; "
+            f"index={stored or 'none'}, requested={requested or 'none'}"
+        )
+    if stored:
+        _require_parser_cache(parser_cache)
+        return stored
+    return None
+
+
+def update_plan(
+    root: Path,
+    index_path: Optional[Path] = None,
+    syntax_profile: Optional[str] = None,
+    parser_cache: Optional[Path] = None,
+) -> Dict[str, Any]:
     """Read-only incremental delta plan against the existing index."""
     if not root.is_dir():
         raise IndexPathNotFound(f"workspace path is not a directory: {root}")
@@ -854,21 +1223,25 @@ def update_plan(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any]
     resolved = _resolve_index_path(root, index_path)
     if not resolved.is_file():
         raise IndexNotFound(f"index file does not exist: {resolved}; run 'index build --apply' first")
-    files, skipped = _collect_all(root)
     connection = open_read_only(resolved)
     try:
         current = read_all_documents(connection)
+        source_current = {
+            path: document for path, document in current.items() if document["kind"] != "ida"
+        }
         meta = {
             row["key"]: row["value"]
             for row in connection.execute("SELECT key, value FROM index_meta")
         }
-        touched = sorted(set(current) - {item.relpath for item in files}) + [
+        effective_profile = _resolve_update_syntax(meta, syntax_profile, parser_cache)
+        files, skipped = _collect_all(root, effective_profile, parser_cache)
+        touched = sorted(set(source_current) - {item.relpath for item in files}) + [
             item.relpath
             for item in files
-            if item.relpath in current and current[item.relpath]["sha256"] != item.sha256
+            if item.relpath in source_current and source_current[item.relpath]["sha256"] != item.sha256
         ]
         removed_node_count = _count_nodes_for_documents(connection, touched)
-        added_relpaths = [item.relpath for item in files if item.relpath not in current]
+        added_relpaths = [item.relpath for item in files if item.relpath not in source_current]
         stale_sources = sorted(
             set(_stale_link_source_relpaths(connection, touched))
             | set(_link_sources_for_added_documents(files, added_relpaths, touched))
@@ -876,11 +1249,16 @@ def update_plan(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any]
     finally:
         close(connection)
     return _delta_plan(
-        files, skipped, current, meta, resolved, removed_node_count, stale_sources, applied=False
+        files, skipped, source_current, meta, resolved, removed_node_count, stale_sources, applied=False
     )
 
 
-def update_apply(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any]:
+def update_apply(
+    root: Path,
+    index_path: Optional[Path] = None,
+    syntax_profile: Optional[str] = None,
+    parser_cache: Optional[Path] = None,
+) -> Dict[str, Any]:
     """Transactional incremental update: replace only added/changed/removed documents."""
     if not root.is_dir():
         raise IndexPathNotFound(f"workspace path is not a directory: {root}")
@@ -888,7 +1266,6 @@ def update_apply(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any
     resolved = _resolve_index_path(root, index_path)
     if not resolved.is_file():
         raise IndexNotFound(f"index file does not exist: {resolved}; run 'index build --apply' first")
-    files, skipped = _collect_all(root)
     if index_path is None:
         _prepare_default_index_write_path(root, resolved)
     connection = open_read_write(resolved)
@@ -901,13 +1278,18 @@ def update_apply(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any
             row["key"]: row["value"]
             for row in connection.execute("SELECT key, value FROM index_meta")
         }
-        added = [item for item in files if item.relpath not in current]
+        effective_profile = _resolve_update_syntax(meta, syntax_profile, parser_cache)
+        files, skipped = _collect_all(root, effective_profile, parser_cache)
+        source_current = {
+            path: document for path, document in current.items() if document["kind"] != "ida"
+        }
+        added = [item for item in files if item.relpath not in source_current]
         changed = [
             item
             for item in files
-            if item.relpath in current and current[item.relpath]["sha256"] != item.sha256
+            if item.relpath in source_current and source_current[item.relpath]["sha256"] != item.sha256
         ]
-        removed = sorted(set(current) - {item.relpath for item in files})
+        removed = sorted(set(source_current) - {item.relpath for item in files})
         touched = removed + [item.relpath for item in changed]
         removed_node_count = _count_nodes_for_documents(connection, touched)
         stale_sources = sorted(
@@ -921,7 +1303,7 @@ def update_apply(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any
             )
         )
         for relpath in removed:
-            delete_document_cascade(connection, current[relpath]["document_id"])
+            delete_document_cascade(connection, source_current[relpath]["document_id"])
         document_ids = {
             relpath: current[relpath]["document_id"]
             for relpath in current
@@ -929,8 +1311,8 @@ def update_apply(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any
         }
         parsed_by_relpath = {item.relpath: item for item in files}
         for item in added + changed:
-            if item.relpath in current:
-                delete_document_cascade(connection, current[item.relpath]["document_id"])
+            if item.relpath in source_current:
+                delete_document_cascade(connection, source_current[item.relpath]["document_id"])
             document_id = insert_document(
                 connection,
                 {
@@ -970,7 +1352,7 @@ def update_apply(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any
     close(connection)
 
     result = _delta_plan(
-        files, skipped, current, meta, resolved, removed_node_count, stale_sources, applied=True
+        files, skipped, source_current, meta, resolved, removed_node_count, stale_sources, applied=True
     )
     result["status"] = "applied"
     result["applied"] = True
