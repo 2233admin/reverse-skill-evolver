@@ -45,6 +45,7 @@
       "id_rsa", "id_dsa", "id_ecdsa", "id_ed25519",
       ".netrc", ".npmrc", "credentials", "credentials.json", "service-account.json"
     ],
+    "credential_patterns_case_insensitive": true,
     "max_file_bytes": 4194304
   },
   "skip_reasons": [

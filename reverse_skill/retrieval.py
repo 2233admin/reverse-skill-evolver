@@ -100,7 +100,7 @@ def _exact_structured_stage(
             hits.append((node["node_id"], 0.0))
     rows = connection.execute(
         "SELECT node_id FROM nodes WHERE title = ? OR tree_path = ? "
-        "ORDER BY document_id, ordinal LIMIT ?",
+        "ORDER BY node_id LIMIT ?",
         (query, query, limit),
     ).fetchall()
     for index, row in enumerate(rows, start=1 if not hits else 0):
@@ -122,7 +122,7 @@ def _short_query_stage(
         "SELECT f.node_id FROM fts_terms f "
         "JOIN nodes n ON n.node_id = f.node_id "
         "WHERE f.title LIKE ? ESCAPE '\\' OR f.body LIKE ? ESCAPE '\\' "
-        "ORDER BY n.document_id, n.ordinal LIMIT ?",
+        "ORDER BY f.node_id LIMIT ?",
         (escaped, escaped, limit),
     ).fetchall()
     for row in rows:
@@ -146,7 +146,7 @@ def _tree_title_stage(
         remaining = limit - len(hits)
         rows = connection.execute(
             "SELECT node_id FROM nodes WHERE title LIKE ? ESCAPE '\\' "
-            "ORDER BY document_id, ordinal LIMIT ?",
+            "ORDER BY node_id LIMIT ?",
             ("%" + escaped + "%", remaining),
         ).fetchall()
         for index, row in enumerate(rows):

@@ -23,7 +23,7 @@ import tempfile
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from .index_store import (
     META_BUILT_AT,
@@ -34,6 +34,7 @@ from .index_store import (
     SCHEMA_VERSION,
     IndexError,
     IndexNotFound,
+    IndexPathNotFound,
     atomically_replace,
     close,
     compute_root_hash,
@@ -47,6 +48,8 @@ from .index_store import (
     load_contracts,
     node_id_for,
     open_read_only,
+    open_read_write,
+    path_is_link_like,
     read_all_documents,
     require_capability,
     set_meta,
@@ -101,8 +104,13 @@ def _is_virtualenv_dir(path: Path, name: str) -> bool:
 
 
 def _is_credential_file(relpath: str, patterns: Sequence[str]) -> bool:
-    name = Path(relpath).name
-    return any(fnmatch.fnmatch(name, pattern) for pattern in patterns)
+    name = Path(relpath).name.casefold()
+    return any(fnmatch.fnmatchcase(name, pattern.casefold()) for pattern in patterns)
+
+
+def _is_link_like(path: Path) -> bool:
+    """Treat POSIX symlinks and Windows junctions as traversal boundaries."""
+    return path_is_link_like(path)
 
 
 def _looks_binary(head: bytes) -> bool:
@@ -117,8 +125,8 @@ def scan_workspace(
     root: Path, contracts: Dict[str, Any]
 ) -> Tuple[List[ParsedDocument], List[SkippedFile]]:
     """Read-only deterministic scan; never follows symlinks."""
-    if root.is_symlink():
-        raise IndexError(f"workspace path must not be a symlink: {root}")
+    if _is_link_like(root):
+        raise IndexPathNotFound(f"workspace path must not be a symlink or junction: {root}")
     exclusions = contracts["default_exclusions"]
     dir_names = set(exclusions["directory_names"])
     credential_patterns = list(exclusions["credential_file_patterns"])
@@ -132,7 +140,7 @@ def scan_workspace(
         for dirname in sorted(dirnames):
             candidate = Path(dirpath) / dirname
             rel_dir = os.path.relpath(candidate, root).replace(os.sep, "/")
-            if candidate.is_symlink():
+            if _is_link_like(candidate):
                 skipped.append(SkippedFile(rel_dir + "/", "symlink"))
                 continue
             if dirname in dir_names:
@@ -146,7 +154,7 @@ def scan_workspace(
         for filename in sorted(filenames):
             candidate = Path(dirpath) / filename
             relpath = os.path.relpath(candidate, root).replace(os.sep, "/")
-            if candidate.is_symlink():
+            if _is_link_like(candidate):
                 skipped.append(SkippedFile(relpath, "symlink"))
                 continue
             try:
@@ -507,10 +515,44 @@ def _resolve_index_path(root: Path, index_path: Optional[Path]) -> Path:
     return Path(index_path) if index_path is not None else default_index_path(root)
 
 
+def _prepare_default_index_write_path(root: Path, resolved: Path) -> None:
+    """Keep the implicit index target inside the real root without link traversal."""
+    root_absolute = Path(os.path.abspath(root))
+    target_absolute = Path(os.path.abspath(resolved))
+    try:
+        relative = target_absolute.relative_to(root_absolute)
+    except ValueError as exc:
+        raise IndexError(f"default index path escapes workspace root: {resolved}") from exc
+
+    cursor = root_absolute
+    for part in relative.parts[:-1]:
+        cursor /= part
+        if path_is_link_like(cursor):
+            raise IndexError(
+                f"default index path crosses a symlink or junction: {cursor}"
+            )
+        if cursor.exists() and not cursor.is_dir():
+            raise IndexError(f"default index parent is not a directory: {cursor}")
+    if path_is_link_like(target_absolute):
+        raise IndexError(
+            f"default index file must not be a symlink or junction: {target_absolute}"
+        )
+
+    target_absolute.parent.mkdir(parents=True, exist_ok=True)
+    root_real = root_absolute.resolve(strict=True)
+    parent_real = target_absolute.parent.resolve(strict=True)
+    try:
+        parent_real.relative_to(root_real)
+    except ValueError as exc:
+        raise IndexError(
+            f"default index parent resolves outside workspace root: {parent_real}"
+        ) from exc
+
+
 def build_plan(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any]:
     """Read-only build plan: scan + parse, no writes, no index directory creation."""
     if not root.is_dir():
-        raise IndexError(f"workspace path is not a directory: {root}")
+        raise IndexPathNotFound(f"workspace path is not a directory: {root}")
     require_capability()
     files, skipped = _collect_all(root)
     resolved = _resolve_index_path(root, index_path)
@@ -538,11 +580,14 @@ def build_plan(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any]:
 def build_apply(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any]:
     """Create or replace the index via a temporary database and atomic replace."""
     if not root.is_dir():
-        raise IndexError(f"workspace path is not a directory: {root}")
+        raise IndexPathNotFound(f"workspace path is not a directory: {root}")
     require_capability()
     files, skipped = _collect_all(root)
     resolved = _resolve_index_path(root, index_path)
-    resolved.parent.mkdir(parents=True, exist_ok=True)
+    if index_path is None:
+        _prepare_default_index_write_path(root, resolved)
+    else:
+        resolved.parent.mkdir(parents=True, exist_ok=True)
 
     temporary: Optional[Path] = None
     connection: Optional[sqlite3.Connection] = None
@@ -596,6 +641,8 @@ def build_apply(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any]
         connection.execute("COMMIT")
         close(connection)
         connection = None
+        if index_path is None:
+            _prepare_default_index_write_path(root, resolved)
         atomically_replace(temporary, resolved)
         temporary = None
     except Exception:
@@ -753,7 +800,8 @@ def _normalize_relpath(base_dir: str, target: str) -> Optional[str]:
 
 def _nodes_of_document(connection: sqlite3.Connection, document_id: int) -> List[Dict[str, Any]]:
     rows = connection.execute(
-        "SELECT node_id, title, kind FROM nodes WHERE document_id = ? ORDER BY ordinal",
+        "SELECT node_id, title, kind FROM nodes WHERE document_id = ? "
+        "ORDER BY start_line, depth, ordinal, node_id",
         (document_id,),
     ).fetchall()
     return [dict(row) for row in rows]
@@ -768,13 +816,40 @@ def _resolve_anchor(
         if row["kind"] in {"heading", "preamble"} and row["title"] == anchor:
             return row["node_id"]
     # Unknown anchor falls back to the file/module node (browser semantics).
-    return target_rows[0]["node_id"] if target_rows else None
+    for row in target_rows:
+        if row["kind"] in {"file", "module"} and row["title"] == relpath:
+            return row["node_id"]
+    return None
+
+
+def _link_sources_for_added_documents(
+    files: Sequence[ParsedDocument],
+    added_relpaths: Sequence[str],
+    skip_relpaths: Sequence[str],
+) -> List[str]:
+    """Find existing sources whose previously-unresolved link target was added."""
+    added = set(added_relpaths)
+    skipped = set(skip_relpaths) | added
+    if not added:
+        return []
+    sources: List[str] = []
+    for parsed in files:
+        if parsed.relpath in skipped or parsed.kind != "markdown":
+            continue
+        base_dir = Path(parsed.relpath).parent.as_posix()
+        for raw_target in _node_links("\n".join(parsed.lines)):
+            target_path, _, _ = raw_target.partition("#")
+            candidate = _normalize_relpath(base_dir, target_path.strip())
+            if candidate in added:
+                sources.append(parsed.relpath)
+                break
+    return sorted(sources)
 
 
 def update_plan(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any]:
     """Read-only incremental delta plan against the existing index."""
     if not root.is_dir():
-        raise IndexError(f"workspace path is not a directory: {root}")
+        raise IndexPathNotFound(f"workspace path is not a directory: {root}")
     require_capability()
     resolved = _resolve_index_path(root, index_path)
     if not resolved.is_file():
@@ -793,7 +868,11 @@ def update_plan(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any]
             if item.relpath in current and current[item.relpath]["sha256"] != item.sha256
         ]
         removed_node_count = _count_nodes_for_documents(connection, touched)
-        stale_sources = _stale_link_source_relpaths(connection, touched)
+        added_relpaths = [item.relpath for item in files if item.relpath not in current]
+        stale_sources = sorted(
+            set(_stale_link_source_relpaths(connection, touched))
+            | set(_link_sources_for_added_documents(files, added_relpaths, touched))
+        )
     finally:
         close(connection)
     return _delta_plan(
@@ -804,14 +883,15 @@ def update_plan(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any]
 def update_apply(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any]:
     """Transactional incremental update: replace only added/changed/removed documents."""
     if not root.is_dir():
-        raise IndexError(f"workspace path is not a directory: {root}")
+        raise IndexPathNotFound(f"workspace path is not a directory: {root}")
     require_capability()
     resolved = _resolve_index_path(root, index_path)
     if not resolved.is_file():
         raise IndexNotFound(f"index file does not exist: {resolved}; run 'index build --apply' first")
     files, skipped = _collect_all(root)
-    connection = sqlite3.connect(str(resolved), timeout=60.0)
-    connection.row_factory = sqlite3.Row
+    if index_path is None:
+        _prepare_default_index_write_path(root, resolved)
+    connection = open_read_write(resolved)
     connection.isolation_level = None
     connection.execute("PRAGMA foreign_keys = ON")
     try:
@@ -830,7 +910,16 @@ def update_apply(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any
         removed = sorted(set(current) - {item.relpath for item in files})
         touched = removed + [item.relpath for item in changed]
         removed_node_count = _count_nodes_for_documents(connection, touched)
-        stale_sources = _stale_link_source_relpaths(connection, touched)
+        stale_sources = sorted(
+            set(_stale_link_source_relpaths(connection, touched))
+            | set(
+                _link_sources_for_added_documents(
+                    files,
+                    [item.relpath for item in added],
+                    touched,
+                )
+            )
+        )
         for relpath in removed:
             delete_document_cascade(connection, current[relpath]["document_id"])
         document_ids = {

@@ -108,6 +108,13 @@ def test_status_on_missing_index_reports_absent_with_exit_zero(workspace: Path) 
     assert data["exists"] is False
 
 
+def test_invalid_workspace_uses_frozen_path_error(tmp_path: Path) -> None:
+    missing = tmp_path / "does-not-exist"
+    result = run_cli("index", "status", str(missing))
+    assert result.returncode == 5
+    assert json.loads(result.stdout)["error"]["code"] == "index_path_not_found"
+
+
 def test_index_path_override(workspace: Path, tmp_path: Path) -> None:
     custom = tmp_path / "custom" / "idx.sqlite3"
     result = run_cli("index", "build", str(workspace), "--apply", "--index-path", str(custom))
@@ -130,10 +137,15 @@ def test_retrieve_chinese_short_query_uses_exact_stage(workspace: Path) -> None:
     # "安装" is 2 chars: below the trigram minimum, so no trigram stage.
     assert data["stages"] == ["exact_structured_path", "short_substring_scan"]
     assert data["hit_count"] >= 1
-    first = data["hits"][0]
-    assert first["tree_path"] == "zh/guide.md#使用指南/安装"
+    expected_paths = {
+        "zh/guide.md#使用指南/安装",
+        "zh/guide.md#使用指南/安装@2",
+    }
+    exact = [hit for hit in data["hits"] if hit["tree_path"] in expected_paths]
+    assert {hit["tree_path"] for hit in exact} == expected_paths
+    assert [hit["node_id"] for hit in exact] == sorted(hit["node_id"] for hit in exact)
+    first = exact[0]
     assert first["score"] == 1.0
-    assert first["lines"] == {"start": 5, "end": 8}
     assert set(first) >= {
         "node_id",
         "relative_path",
@@ -282,6 +294,26 @@ def test_schema_incompatible_index_is_blocked(workspace: Path) -> None:
     result = run_cli("retrieve", str(workspace), "x", "--mode", "bm25")
     assert result.returncode == 5
     assert json.loads(result.stdout)["error"]["code"] == "index_schema_incompatible"
+
+    update = run_cli("index", "update", str(workspace), "--apply")
+    assert update.returncode == 5
+    assert json.loads(update.stdout)["error"]["code"] == "index_schema_incompatible"
+
+
+def test_parent_cycle_is_reported_as_corrupt(workspace: Path) -> None:
+    run_cli("index", "build", str(workspace), "--apply")
+    index_path = _index_path(workspace)
+    connection = sqlite3.connect(str(index_path))
+    node_id = connection.execute(
+        "SELECT node_id FROM nodes WHERE tree_path = 'en/api.md#API Reference/getItem'"
+    ).fetchone()[0]
+    connection.execute("UPDATE nodes SET parent_id = ? WHERE node_id = ?", (node_id, node_id))
+    connection.commit()
+    connection.close()
+
+    result = run_cli("index", "inspect", str(workspace), node_id)
+    assert result.returncode == 5
+    assert json.loads(result.stdout)["error"]["code"] == "index_corrupt"
 
 
 # --- Incremental update via CLI ---------------------------------------------

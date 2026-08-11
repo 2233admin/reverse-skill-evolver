@@ -70,7 +70,12 @@ def main(argv: List[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     root = args.root.resolve()
-    index_path = args.index_path or (Path(tempfile.mkdtemp(prefix="rs-bench-")) / "v1.sqlite3")
+    temporary_directory = None
+    if args.index_path is None:
+        temporary_directory = tempfile.TemporaryDirectory(prefix="rs-bench-")
+        index_path = Path(temporary_directory.name) / "v1.sqlite3"
+    else:
+        index_path = args.index_path
     print("== workspace ==")
     print("  " + json.dumps(_workspace_stats(root), ensure_ascii=False))
 
@@ -132,6 +137,8 @@ def main(argv: List[str] | None = None) -> int:
     print(f"  index_size_bytes={index_path.stat().st_size}")
     print(f"  build_apply_ms={build_ms * 1000:.1f}")
     print("  (raw numbers above; no smoothing, best of repeat)")
+    if temporary_directory is not None:
+        temporary_directory.cleanup()
     return 0
 
 

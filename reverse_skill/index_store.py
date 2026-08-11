@@ -27,7 +27,7 @@ import os
 import re
 import sqlite3
 from pathlib import Path
-from typing import Any, Dict, Iterable, Iterator, List, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 from .errors import ReverseSkillError
 
@@ -150,6 +150,14 @@ def default_index_path(root: Path) -> Path:
     return Path(root) / contracts["index_file"]["default_relative"]
 
 
+def path_is_link_like(path: Path) -> bool:
+    """Return true for a POSIX symlink or Windows directory junction."""
+    if path.is_symlink():
+        return True
+    is_junction = getattr(path, "is_junction", None)
+    return bool(is_junction and is_junction())
+
+
 def probe_capabilities() -> Dict[str, Any]:
     """Fail-closed probe: this SQLite build must support FTS5 unicode61 AND trigram."""
     if sqlite3.sqlite_version_info < (3, 34, 0):
@@ -231,6 +239,37 @@ def _validate_schema(connection: sqlite3.Connection) -> None:
         raise IndexCorrupt(
             "index schema is incomplete; missing object(s): " + ", ".join(missing)
         )
+    required_columns = {
+        "documents": {"document_id", "relative_path", "kind", "sha256", "line_count", "size_bytes"},
+        "nodes": {
+            "node_id", "document_id", "parent_id", "depth", "ordinal", "title", "kind",
+            "start_line", "end_line", "body_sha256", "tree_path", "source_kind", "symbol_kind",
+        },
+        "edges": {"source_node", "target_node", "kind"},
+        "fts_terms": {"node_id", "title", "body"},
+        "fts_trigram": {"node_id", "title", "body"},
+    }
+    for table, expected in required_columns.items():
+        try:
+            actual = {
+                row["name"]
+                for row in connection.execute(f'PRAGMA table_info("{table}")')
+            }
+        except sqlite3.DatabaseError as exc:
+            raise IndexCorrupt(f"index table {table!r} cannot be inspected: {exc}") from exc
+        missing_columns = sorted(expected - actual)
+        if missing_columns:
+            raise IndexCorrupt(
+                f"index table {table!r} is missing column(s): "
+                + ", ".join(missing_columns)
+            )
+    fts_rows = connection.execute(
+        "SELECT name, sql FROM sqlite_master WHERE name IN ('fts_terms', 'fts_trigram')"
+    ).fetchall()
+    for row in fts_rows:
+        definition = (row["sql"] or "").upper()
+        if "VIRTUAL TABLE" not in definition or "USING FTS5" not in definition:
+            raise IndexCorrupt(f"index object {row['name']!r} is not an FTS5 virtual table")
 
 
 def open_read_only(index_path: Path) -> sqlite3.Connection:
@@ -238,7 +277,29 @@ def open_read_only(index_path: Path) -> sqlite3.Connection:
     require_capability()
     if not index_path.is_file():
         raise IndexNotFound(f"index file does not exist: {index_path}; run 'index build --apply' first")
-    connection = _connect(index_path, read_only=True)
+    try:
+        connection = _connect(index_path, read_only=True)
+    except sqlite3.Error as exc:
+        raise IndexCorrupt(f"index file cannot be opened read-only: {exc}") from exc
+    try:
+        _validate_schema(connection)
+    except Exception:
+        connection.close()
+        raise
+    return connection
+
+
+def open_read_write(index_path: Path) -> sqlite3.Connection:
+    """Open an existing compatible index for an explicit transactional update."""
+    require_capability()
+    if path_is_link_like(index_path):
+        raise IndexError(f"refusing to update an index through a symlink or junction: {index_path}")
+    if not index_path.is_file():
+        raise IndexNotFound(f"index file does not exist: {index_path}; run 'index build --apply' first")
+    try:
+        connection = _connect(index_path, read_only=False)
+    except sqlite3.Error as exc:
+        raise IndexCorrupt(f"index file cannot be opened for update: {exc}") from exc
     try:
         _validate_schema(connection)
     except Exception:
@@ -304,7 +365,7 @@ def read_nodes(connection: sqlite3.Connection, node_ids: Iterable[str]) -> List[
         "n.start_line, n.end_line, n.body_sha256, n.tree_path, n.source_kind, n.symbol_kind, "
         "d.relative_path "
         f"FROM nodes n JOIN documents d ON d.document_id = n.document_id "
-        f"WHERE n.node_id IN ({placeholders})",
+        f"WHERE n.node_id IN ({placeholders}) ORDER BY n.node_id",
         ids,
     ).fetchall()
     return [dict(row) for row in rows]
@@ -333,11 +394,15 @@ def read_ancestors(connection: sqlite3.Connection, node_id: str) -> List[Dict[st
     """Return the ancestor chain root-first (excluding the node itself)."""
     ancestors: List[Dict[str, Any]] = []
     current = read_node(connection, node_id)
-    seen: set[str] = set()
+    seen: set[str] = {node_id}
     while current is not None and current["parent_id"] is not None:
         parent = read_node(connection, current["parent_id"])
-        if parent is None or parent["node_id"] in seen:
-            break
+        if parent is None:
+            raise IndexCorrupt(
+                f"node {current['node_id']} references missing parent {current['parent_id']}"
+            )
+        if parent["node_id"] in seen:
+            raise IndexCorrupt(f"cycle detected in node parent chain at {parent['node_id']}")
         ancestors.append(parent)
         seen.add(parent["node_id"])
         current = parent
@@ -350,7 +415,7 @@ def read_subtree(connection: sqlite3.Connection, node_id: str) -> List[Dict[str,
     rows = connection.execute(
         "WITH RECURSIVE subtree(node_id) AS ("
         "  SELECT ? "
-        "  UNION ALL "
+        "  UNION "
         "  SELECT n.node_id FROM nodes n JOIN subtree s ON n.parent_id = s.node_id"
         ") "
         "SELECT n.node_id, n.document_id, n.parent_id, n.depth, n.ordinal, n.title, n.kind, "
@@ -358,7 +423,7 @@ def read_subtree(connection: sqlite3.Connection, node_id: str) -> List[Dict[str,
         "d.relative_path "
         "FROM nodes n JOIN documents d ON d.document_id = n.document_id "
         "JOIN subtree s ON s.node_id = n.node_id "
-        "ORDER BY n.document_id, n.ordinal",
+        "ORDER BY n.start_line, n.depth, n.ordinal, n.node_id",
         (node_id,),
     ).fetchall()
     return [dict(row) for row in rows]
@@ -370,7 +435,8 @@ def read_link_targets(connection: sqlite3.Connection, node_id: str) -> List[Dict
         "FROM edges e "
         "JOIN nodes n ON n.node_id = e.target_node "
         "JOIN documents d ON d.document_id = n.document_id "
-        "WHERE e.source_node = ? AND e.kind = 'link'",
+        "WHERE e.source_node = ? AND e.kind = 'link' "
+        "ORDER BY d.relative_path, n.start_line, n.node_id",
         (node_id,),
     ).fetchall()
     return [dict(row) for row in rows]

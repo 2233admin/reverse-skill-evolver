@@ -290,8 +290,8 @@ reverse-skill index update C:\path\to\project --apply
 `build` / `update` 默认只输出只读计划，只有显式 `--apply` 才写索引。Markdown 建立
 PageIndex 风格标题树和相对链接边；Python 建立 AST 符号节点；其他文本只建立文件级节点。
 检索提供 `bm25`、`tree`、`hybrid` 三种模式，底层是 SQLite FTS5 `unicode61` +
-`trigram`。每个命中都携带稳定 node/path/行号、索引 revision、root hash、检索 stage 和
-可解释分数组件；`index status` 会报告工作区内容是否已经使索引过期。provider-neutral
+`trigram`。响应携带索引 revision、root hash 和检索 stage；每个命中携带稳定
+node/path/行号和可解释分数组件。`index status` 会报告工作区内容是否已经使索引过期。provider-neutral
 Python facade 已可供未来 MCP adapter 复用；本 Beta 不新增第二个 MCP server，也不宣称
 Tree-sitter/SCIP 语义能力。
 

@@ -20,7 +20,7 @@ from .index_store import (
     META_SCHEMA_VERSION,
     SCHEMA_VERSION,
     IndexCorrupt,
-    IndexError,
+    IndexPathNotFound,
     InvalidNodeId,
     NodeNotFound,
     close,
@@ -45,7 +45,7 @@ def _resolve_index_path(root: Path, index_path: Optional[Path]) -> Path:
 
 def _require_root(root: Path) -> None:
     if not root.is_dir():
-        raise IndexError(f"workspace path is not a directory: {root}")
+        raise IndexPathNotFound(f"workspace path is not a directory: {root}")
 
 
 def _node_payload(node: Dict[str, Any]) -> Dict[str, Any]:

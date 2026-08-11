@@ -26,7 +26,10 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Duplicate heading/symbol paths now use escaped structural segments plus `@N` sibling suffixes,
   preventing stable-ID collisions in repeated subtrees.
 - Nested excluded directories, removed-file root hashes, changed-document node accounting,
-  read-only URI escaping, and FTS failure handling now follow the fail-closed contract.
+  read-only URI escaping, update-time schema validation, FTS failure handling, and links whose
+  targets appear in a later incremental update now follow the fail-closed/incremental contract.
+- Default index writes now reject symlink/junction traversal outside the workspace, and retrieval
+  tie-breaking no longer depends on mutable SQLite document IDs after incremental updates.
 
 ### Changed
 - Beta version bumped to `2.0.0b4`; this is a Beta integration, not a formal release or tag.

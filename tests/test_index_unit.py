@@ -20,6 +20,7 @@ from reverse_skill.index_store import (
     SCHEMA_VERSION,
     IndexCapabilityUnavailable,
     IndexCorrupt,
+    IndexError as IndexStoreError,
     InvalidNodeId,
     compute_root_hash,
     load_contracts,
@@ -186,6 +187,7 @@ def test_scan_skips_excluded_dirs_env_binary_and_credentials(tmp_path: Path) -> 
     (tmp_path / "env").mkdir()
     (tmp_path / "env" / "pyvenv.cfg").write_text("home = x\n", encoding="utf-8")
     (tmp_path / ".env").write_text("SECRET=1\n", encoding="utf-8")
+    (tmp_path / ".ENV.PROD").write_text("SECRET=2\n", encoding="utf-8")
     (tmp_path / "blob.bin").write_bytes(b"\x00\x01\x02")
     (tmp_path / "ok.md").write_text("# OK\n", encoding="utf-8")
     (tmp_path / "big.txt").write_text("x" * (4 * 1024 * 1024 + 1), encoding="utf-8")
@@ -198,6 +200,7 @@ def test_scan_skips_excluded_dirs_env_binary_and_credentials(tmp_path: Path) -> 
     assert reasons.get(".venv/") == "directory_excluded"
     assert reasons.get("env/") == "virtualenv"
     assert reasons.get(".env") == "credential_file"
+    assert reasons.get(".ENV.PROD") == "credential_file"
     assert reasons.get("blob.bin") == "binary"
     assert reasons.get("big.txt") == "too_large"
 
@@ -212,6 +215,22 @@ def test_scan_skips_symlinks_without_following(tmp_path: Path) -> None:
     files, skipped = index_build.scan_workspace(tmp_path, load_contracts())
     assert [item.relpath for item in files] == ["real/a.md"]
     assert any(item.relpath == "link.md" and item.reason == "symlink" for item in skipped)
+
+
+def test_default_index_build_rejects_symlinked_parent(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    outside = tmp_path / "outside"
+    workspace.mkdir()
+    outside.mkdir()
+    (workspace / "README.md").write_text("# Safe\n", encoding="utf-8")
+    try:
+        (workspace / ".reverse-skill").symlink_to(outside, target_is_directory=True)
+    except OSError:
+        pytest.skip("directory symlink creation not permitted on this host")
+
+    with pytest.raises(IndexStoreError, match="symlink or junction"):
+        index_build.build_apply(workspace)
+    assert not (outside / "index" / "v1.sqlite3").exists()
 
 
 def test_scan_skips_excluded_directories_at_any_depth(tmp_path: Path) -> None:
@@ -384,6 +403,27 @@ def test_incremental_add_change_delete(tmp_path: Path) -> None:
     assert stored_root_hash == expected_root_hash
 
 
+def test_incremental_and_full_build_have_identical_tree_order(tmp_path: Path) -> None:
+    (tmp_path / "a.md").write_text("# Common\n\nalpha\n", encoding="utf-8")
+    (tmp_path / "b.md").write_text("# Common\n\nbeta\n", encoding="utf-8")
+    _build(tmp_path)
+
+    (tmp_path / "a.md").write_text("# Common\n\nalpha changed\n", encoding="utf-8")
+    index_build.update_apply(tmp_path)
+    incremental = index_api.index_search(tmp_path, "Common", "tree", top_k=10)
+
+    index_build.build_apply(tmp_path)
+    rebuilt = index_api.index_search(tmp_path, "Common", "tree", top_k=10)
+
+    def stable_hits(result):
+        return [
+            (hit["node_id"], hit["tree_path"], hit["score"])
+            for hit in result["hits"]
+        ]
+
+    assert stable_hits(incremental) == stable_hits(rebuilt)
+
+
 def test_facade_read_nodes_returns_body_and_index_evidence(tmp_path: Path) -> None:
     _write_workspace(tmp_path)
     index_path = _build(tmp_path)
@@ -479,6 +519,40 @@ def test_link_edges_follow_target_changes(tmp_path: Path) -> None:
         index_path,
     )
     assert [row[0] for row in link_targets] == ["zh/guide.md#使用指南/安装"]
+
+
+def test_incremental_add_resolves_previously_missing_link_target(tmp_path: Path) -> None:
+    (tmp_path / "source.md").write_text(
+        "# Source\n\n[Future](future.md#Target)\n", encoding="utf-8"
+    )
+    index_path = _build(tmp_path)
+    assert _query("SELECT target_node FROM edges WHERE kind = 'link'", index_path) == []
+
+    (tmp_path / "future.md").write_text("# Target\n\nNow present.\n", encoding="utf-8")
+    plan = index_build.update_plan(tmp_path)
+    assert plan["edges"]["link_rebuild_sources"] == ["source.md"]
+    index_build.update_apply(tmp_path)
+    targets = _query(
+        "SELECT n.tree_path FROM edges e JOIN nodes n ON n.node_id = e.target_node "
+        "WHERE e.kind = 'link'",
+        index_path,
+    )
+    assert targets == [("future.md#Target",)]
+
+
+def test_subtree_facade_preserves_document_order(tmp_path: Path) -> None:
+    _write_workspace(tmp_path)
+    index_path = _build(tmp_path)
+    file_node_id = _query(
+        "SELECT node_id FROM nodes WHERE tree_path = 'en/api.md'", index_path
+    )[0][0]
+    result = index_api.index_get_tree(tmp_path, file_node_id)
+    assert [node["title"] for node in result["descendants"]] == [
+        "(preamble)",
+        "API Reference",
+        "getItem",
+        "setItem",
+    ]
 
 
 def test_root_hash_contract() -> None:

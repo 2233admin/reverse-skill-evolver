@@ -293,8 +293,8 @@ reverse-skill index update C:\path\to\project --apply
 Build and update only print a read-only plan unless `--apply` is explicit. Markdown gets a
 PageIndex-style heading tree and relative-link edges; Python gets AST symbol nodes; other text
 files remain file-level nodes. Retrieval modes are `bm25`, `tree`, and `hybrid`, backed by SQLite
-FTS5 `unicode61` + `trigram`. Every hit carries stable node/path/line evidence, index revision,
-root hash, retrieval stages, and score components. `index status` reports whether workspace
+FTS5 `unicode61` + `trigram`. Responses carry index revision, root hash, and retrieval stages;
+each hit carries stable node/path/line evidence and score components. `index status` reports whether workspace
 content has made the index stale. The provider-neutral Python facade is ready for a future MCP
 adapter; this Beta does not add another MCP server or claim Tree-sitter/SCIP semantics.
 

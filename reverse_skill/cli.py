@@ -438,8 +438,14 @@ def _index_path_option() -> click.Path:
     return click.Path(dir_okay=False, path_type=Path)
 
 
+def _workspace_path_argument() -> click.Path:
+    # Let the facade emit the frozen index_path_not_found code instead of
+    # Click converting a missing workspace into a generic usage error.
+    return click.Path(file_okay=False, resolve_path=True, path_type=Path)
+
+
 @index_group.command(name="build")
-@click.argument("path", type=click.Path(exists=True, file_okay=False, resolve_path=True, path_type=Path))
+@click.argument("path", type=_workspace_path_argument())
 @click.option("--apply", is_flag=True, help="Create or replace the index (default: read-only plan).")
 @click.option("--index-path", type=_index_path_option())
 @click.pass_obj
@@ -456,7 +462,7 @@ def index_build_command(state: State, path: Path, apply: bool, index_path: Path 
 
 
 @index_group.command(name="update")
-@click.argument("path", type=click.Path(exists=True, file_okay=False, resolve_path=True, path_type=Path))
+@click.argument("path", type=_workspace_path_argument())
 @click.option("--apply", is_flag=True, help="Apply the incremental delta (default: read-only plan).")
 @click.option("--index-path", type=_index_path_option())
 @click.pass_obj
@@ -473,7 +479,7 @@ def index_update_command(state: State, path: Path, apply: bool, index_path: Path
 
 
 @index_group.command(name="status")
-@click.argument("path", type=click.Path(exists=True, file_okay=False, resolve_path=True, path_type=Path))
+@click.argument("path", type=_workspace_path_argument())
 @click.option("--index-path", type=_index_path_option())
 @click.pass_obj
 def index_status_command(state: State, path: Path, index_path: Path | None) -> int:
@@ -489,7 +495,7 @@ def index_status_command(state: State, path: Path, index_path: Path | None) -> i
 
 
 @index_group.command(name="inspect")
-@click.argument("path", type=click.Path(exists=True, file_okay=False, resolve_path=True, path_type=Path))
+@click.argument("path", type=_workspace_path_argument())
 @click.argument("node_id")
 @click.option("--index-path", type=_index_path_option())
 @click.pass_obj
@@ -506,7 +512,7 @@ def index_inspect_command(state: State, path: Path, node_id: str, index_path: Pa
 
 
 @cli.command(name="retrieve")
-@click.argument("path", type=click.Path(exists=True, file_okay=False, resolve_path=True, path_type=Path))
+@click.argument("path", type=_workspace_path_argument())
 @click.argument("query")
 @click.option(
     "--mode",
