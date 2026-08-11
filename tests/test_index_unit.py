@@ -193,10 +193,14 @@ def test_tree_sitter_normalizes_nested_structure_to_stable_nodes(tmp_path, monke
         span=SimpleNamespace(start_line=0, end_line=4),
         children=[child],
     )
+    def forbidden_init(config):
+        raise AssertionError("cache-only parser reads must not call provider init")
+
     fake_pack = SimpleNamespace(
         PackConfig=lambda **kwargs: SimpleNamespace(**kwargs),
         ProcessConfig=lambda **kwargs: SimpleNamespace(**kwargs),
-        init=lambda config: None,
+        configure=lambda config: None,
+        init=forbidden_init,
         downloaded_languages=lambda: ["c"],
         process=lambda source, config: SimpleNamespace(structure=[parent]),
     )
@@ -228,6 +232,25 @@ def test_tree_sitter_profile_requires_a_preinstalled_parser_cache(tmp_path: Path
     (tmp_path / "sample.c").write_text("int main(void) { return 0; }\n", encoding="utf-8")
     with pytest.raises(ParserUnavailable, match="existing parser cache"):
         index_build.scan_workspace(tmp_path, load_contracts(), "reverse-core")
+
+
+def test_tree_sitter_install_uses_provider_language_count(tmp_path: Path, monkeypatch) -> None:
+    fake_pack = SimpleNamespace(
+        PackConfig=lambda **kwargs: SimpleNamespace(**kwargs),
+        configure=lambda config: None,
+        download=lambda languages: len(languages),
+        downloaded_languages=lambda: ["c"],
+    )
+    monkeypatch.setitem(sys.modules, "tree_sitter_language_pack", fake_pack)
+
+    result = index_build.install_parsers(
+        "test",
+        tmp_path / "parser-cache",
+        {"syntax_profiles": {"test": {"extensions": {".c": "c"}}}},
+    )
+
+    assert result["status"] == "applied"
+    assert result["downloaded"] == ["c"]
 
 
 # --- Scanning / boundaries --------------------------------------------------

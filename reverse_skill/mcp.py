@@ -473,6 +473,21 @@ def create_index_mcp_server() -> Any:
             Path(root), node_ids, optional_path(index_path)
         )
 
+    @server.tool(
+        name="index_read_xrefs",
+        description="Read incoming and outgoing IDA xrefs for one stable node.",
+        structured_output=True,
+    )
+    def index_read_xrefs(
+        root: str,
+        node_id: str,
+        direction: str = "both",
+        index_path: str | None = None,
+    ) -> dict[str, Any]:
+        return index_api.index_read_xrefs(
+            Path(root), node_id, direction, optional_path(index_path)
+        )
+
     return server
 
 

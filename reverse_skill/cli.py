@@ -540,6 +540,65 @@ def index_parsers_command(
     return 0 if result.get("status") != "blocked" else 5
 
 
+@index_group.command(name="import-ida")
+@click.argument("path", type=_workspace_path_argument())
+@click.option(
+    "--export",
+    "export_path",
+    type=click.Path(exists=True, dir_okay=False, resolve_path=True, path_type=Path),
+    required=True,
+    help="Explicit versioned IDA JSON export; no IDA process is started.",
+)
+@click.option("--apply", is_flag=True, help="Replace the module's IDA layer transactionally.")
+@click.option("--index-path", type=_index_path_option())
+@click.pass_obj
+def index_import_ida_command(
+    state: State,
+    path: Path,
+    export_path: Path,
+    apply: bool,
+    index_path: Path | None,
+) -> int:
+    """Plan or explicitly import one IDA JSON export into the shared index."""
+    from .ida_ingest import import_export
+
+    try:
+        result = import_export(path, export_path, apply=apply, index_path=index_path)
+    except ReverseSkillError as exc:
+        return _emit_index_error(state, exc)
+    emit(state, "index", result)
+    return 0
+
+
+@index_group.command(name="xrefs")
+@click.argument("path", type=_workspace_path_argument())
+@click.argument("node_id")
+@click.option(
+    "--direction",
+    type=click.Choice(["incoming", "outgoing", "both"]),
+    default="both",
+    show_default=True,
+)
+@click.option("--index-path", type=_index_path_option())
+@click.pass_obj
+def index_xrefs_command(
+    state: State,
+    path: Path,
+    node_id: str,
+    direction: str,
+    index_path: Path | None,
+) -> int:
+    """Read incoming and/or outgoing IDA xrefs for one stable node."""
+    from .index_api import index_read_xrefs
+
+    try:
+        result = index_read_xrefs(path, node_id, direction, index_path=index_path)
+    except ReverseSkillError as exc:
+        return _emit_index_error(state, exc)
+    emit(state, "index", result)
+    return 0
+
+
 @index_group.command(name="status")
 @click.argument("path", type=_workspace_path_argument())
 @click.option("--index-path", type=_index_path_option())

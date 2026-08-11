@@ -5,7 +5,7 @@
 `codex/mcp2-tantivy-routing` is a local feature branch from Beta. The deterministic
 SQLite index, BM25/tree/hybrid retrieval, CLI, provider-neutral
 `reverse_skill.index_api`, and the first official MCP 2.0 thin adapter are now
-implemented. The adapter exposes only four read-only tools and delegates to
+implemented. The adapter exposes five read-only tools and delegates to
 `index_api`; the build/update operations remain outside MCP. Routing can now use
 an explicit fresh package index for advisory candidate discovery; static route
 selection, live capability checks, AIGX checks, and authorization remain the
@@ -51,9 +51,10 @@ TypeScript, Smali, ASM, and x86asm. Nested `StructureItem` results are normalize
 to the existing syntax/symbol/node-id contract, while Markdown and Python paths are
 unchanged.
 
-The remaining quality-workflow gaps are dependency locking and running the official
-AIGX validator; the repository's CI now installs and imports the MCP 2 and syntax
-provider extras on every supported host, without downloading grammars implicitly.
+The dependency graph is now pinned in `uv.lock`, and CI uses `uv sync --locked`.
+The official `aigx==1.2.0` validator runs as an explicit CI step. The repository's
+CI installs and imports the MCP 2 and syntax provider extras on every supported
+host, without downloading grammars implicitly.
 
 ## Why
 
@@ -69,20 +70,29 @@ the public index.
 - Existing Markdown and Python parsers remain byte-for-byte behavior compatible.
 - The normalization unit test produces stable nested nodes and IDs; real C/Smali
   grammar end-to-end fixtures remain unverified because the provider download
-  returned a non-zero result in this environment.
+  reports languages available but leaves the selected cache empty in this
+  environment; the importer remains fail-closed instead of treating that as a
+  usable parser cache.
 - Missing parser/cache reports `parser_unavailable`; no silent file-level success.
 - Parser installation is explicit, e.g. `index parsers --install --profile reverse-core`;
   indexing never downloads grammars implicitly.
-- Full pytest, `gates all`, `git diff --check`, benchmark, and isolated wheel
-  install pass. Official AIGX lint is not runnable here because its validator is
-  unavailable.
-- CI installs `[test,mcp,syntax]` and verifies both optional provider imports on
-  every supported Python/host matrix entry; grammar downloads remain explicit.
+- Full pytest, `gates all`, `git diff --check`, benchmark, isolated wheel install,
+  and official AIGX 1.2.0 validation pass locally.
+- CI installs `[test,mcp,syntax]` from `uv.lock`, verifies both optional provider
+  imports on every supported Python/host matrix entry, and runs official AIGX;
+  grammar downloads remain explicit.
 
 ## Open threads
 
-- IDA functions, addresses, xrefs, and decompiler output need a separate IDA
-  ingestion adapter into the same node/edge store; Tree-sitter does not parse binaries.
+- IDA functions, addresses, xrefs, and decompiler output now have an explicit
+  version-1 JSON ingestion adapter into the same node/edge store. Use
+  `reverse-skill index import-ida WORKSPACE --export EXPORT.json --apply` after
+  `index build --apply`; `index update` and full rebuild preserve imported IDA
+  documents. The export provider remains external (IDA/DeepExtract/idapy) and
+  must emit the frozen shape before ingestion.
+  The minimum shape is `{"schema_version":1,"module":"sample.exe","functions":[{"address":"0x401000","name":"entry","pseudocode":"...","xrefs_to":[]}]}`;
+  xref targets must be present in the same export, so unresolved graph edges
+  fail closed.
 - MCP build/update tools remain out of the first adapter. If added later, they must
   preserve plan-only defaults and require explicit apply semantics.
 

@@ -280,6 +280,7 @@ def test_mcp2_index_tools_match_the_direct_index_api(tmp_path) -> None:
         "index_search",
         "index_get_tree",
         "index_read_nodes",
+        "index_read_xrefs",
     }
     assert status == expected_status
     assert search == expected_search

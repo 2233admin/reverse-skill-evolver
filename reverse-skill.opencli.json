@@ -257,6 +257,28 @@
             ]
           },
           {
+            "name": "import-ida",
+            "description": "Plan or explicitly import one versioned IDA JSON export into the shared index.",
+            "arguments": [{ "name": "PATH", "required": true }],
+            "options": [
+              { "name": "--export", "arguments": [{ "name": "FILE", "required": true }] },
+              { "name": "--apply", "description": "Replace the module's IDA layer transactionally." },
+              { "name": "--index-path", "arguments": [{ "name": "FILE", "required": true }] }
+            ]
+          },
+          {
+            "name": "xrefs",
+            "description": "Read incoming and outgoing IDA xrefs for one stable node.",
+            "arguments": [
+              { "name": "PATH", "required": true },
+              { "name": "NODE_ID", "required": true }
+            ],
+            "options": [
+              { "name": "--direction", "arguments": [{ "name": "DIRECTION", "required": true, "acceptedValues": ["incoming", "outgoing", "both"] }] },
+              { "name": "--index-path", "arguments": [{ "name": "FILE", "required": true }] }
+            ]
+          },
+          {
             "name": "status",
             "description": "Report index existence, revision, root hash, and counts (read-only).",
             "arguments": [{ "name": "PATH", "required": true }],

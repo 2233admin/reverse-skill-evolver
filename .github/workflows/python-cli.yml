@@ -23,34 +23,39 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
 
-      - name: Install test and build dependencies
-        run: python -m pip install --upgrade pip build ".[test,mcp,syntax]"
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Install locked test and provider dependencies
+        run: uv sync --locked --extra test --extra mcp --extra syntax
+
+      - name: Run official AIGX validator
+        run: uv tool run --from aigx==1.2.0 aigx --root . --format json
 
       - name: Verify optional provider wheels
         run: >-
-          python -c "import tree_sitter_language_pack as language_pack;
+          uv run --locked python -c "import tree_sitter_language_pack as language_pack;
           assert language_pack.manifest_languages();
           import mcp.server;
           assert hasattr(mcp.server, 'MCPServer')"
 
       - name: Test package CLI
-        run: python -m pytest -q
+        run: uv run --locked python -m pytest -q
 
       - name: Test compatibility entrypoints
-        run: python -m unittest discover -s skills/scripts -p "test_*.py"
+        run: uv run --locked python -m unittest discover -s skills/scripts -p "test_*.py"
 
       - name: Run repository gates (Python only)
-        run: python -m reverse_skill gates all
+        run: uv run --locked python -m reverse_skill gates all
 
       - name: Run field-journal leak scan (Python only)
-        run: python -m reverse_skill gates leak-scan
+        run: uv run --locked python -m reverse_skill gates leak-scan
 
       - name: Build distributions
-        run: python -m build
+        run: uv run --locked python -m build
 
       - name: Verify packaged routing data
         run: >-
-          python -c "import glob,zipfile;
+          uv run --locked python -c "import glob,zipfile;
           names=zipfile.ZipFile(glob.glob('dist/*.whl')[0]).namelist();
           assert 'reverse_skill/data/routing.json' in names;
           assert 'reverse_skill/data/ida-plugin-capabilities.json' in names"

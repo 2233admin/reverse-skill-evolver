@@ -10,7 +10,8 @@ Schema v1 tables:
 - nodes      : stable node_id, parent_id, depth, ordinal, title, kind,
                start_line/end_line (exact 1-based), body_sha256, tree_path,
                source_kind, symbol_kind
-- edges      : parent edges plus Markdown relative-link edges (kind = parent|link)
+- edges      : parent, Markdown relative-link, and IDA xref edges
+               (kind = parent|link|xref)
 - fts_terms  : FTS5 unicode61 over (title, body)
 - fts_trigram: FTS5 trigram over (title, body) for Chinese/substring search
 
@@ -444,6 +445,37 @@ def read_link_targets(connection: sqlite3.Connection, node_id: str) -> List[Dict
         (node_id,),
     ).fetchall()
     return [dict(row) for row in rows]
+
+
+def _read_xrefs(
+    connection: sqlite3.Connection, node_id: str, *, incoming: bool
+) -> List[Dict[str, Any]]:
+    if incoming:
+        selected = "e.source_node AS node_id"
+        predicate = "e.target_node = ?"
+    else:
+        selected = "e.target_node AS node_id"
+        predicate = "e.source_node = ?"
+    rows = connection.execute(
+        f"SELECT {selected}, n.document_id, n.parent_id, n.depth, n.ordinal, n.title, "
+        "n.kind, n.start_line, n.end_line, n.body_sha256, n.tree_path, "
+        "n.source_kind, n.symbol_kind, d.relative_path "
+        "FROM edges e JOIN nodes n ON n.node_id = "
+        + ("e.source_node" if incoming else "e.target_node")
+        + " JOIN documents d ON d.document_id = n.document_id "
+        f"WHERE {predicate} AND e.kind = 'xref' "
+        "ORDER BY d.relative_path, n.start_line, n.node_id",
+        (node_id,),
+    ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def read_xref_targets(connection: sqlite3.Connection, node_id: str) -> List[Dict[str, Any]]:
+    return _read_xrefs(connection, node_id, incoming=False)
+
+
+def read_xref_sources(connection: sqlite3.Connection, node_id: str) -> List[Dict[str, Any]]:
+    return _read_xrefs(connection, node_id, incoming=True)
 
 
 def insert_document(connection: sqlite3.Connection, document: Dict[str, Any]) -> int:

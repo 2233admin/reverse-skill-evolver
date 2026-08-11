@@ -115,6 +115,21 @@ def index_status(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any
                     "SELECT COUNT(*) AS n FROM edges WHERE kind = 'link'"
                 ).fetchone()["n"]
             ),
+            "xref_edges": int(
+                connection.execute(
+                    "SELECT COUNT(*) AS n FROM edges WHERE kind = 'xref'"
+                ).fetchone()["n"]
+            ),
+            "ida_documents": int(
+                connection.execute(
+                    "SELECT COUNT(*) AS n FROM documents WHERE kind = 'ida'"
+                ).fetchone()["n"]
+            ),
+            "ida_nodes": int(
+                connection.execute(
+                    "SELECT COUNT(*) AS n FROM nodes WHERE source_kind = 'ida'"
+                ).fetchone()["n"]
+            ),
             "fts_rows": int(
                 connection.execute("SELECT COUNT(*) AS n FROM fts_terms").fetchone()["n"]
             ),
@@ -224,6 +239,27 @@ def index_read_nodes(
         meta,
         resolved,
     )
+
+
+def index_read_xrefs(
+    root: Path,
+    node_id: str,
+    direction: str = "both",
+    index_path: Optional[Path] = None,
+) -> Dict[str, Any]:
+    """Read xref edges for one node without modifying the index."""
+    _require_root(root)
+    validate_node_id(node_id)
+    from .ida_ingest import read_xrefs
+
+    result = read_xrefs(root, node_id, direction=direction, index_path=index_path)
+    resolved = _resolve_index_path(root, index_path)
+    connection = open_read_only(resolved)
+    try:
+        meta = _read_meta(connection)
+    finally:
+        close(connection)
+    return _attach_index_evidence(result, meta, resolved)
 
 
 def index_build(

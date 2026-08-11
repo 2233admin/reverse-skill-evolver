@@ -52,9 +52,9 @@
     "directory_excluded", "virtualenv", "symlink", "binary", "credential_file",
     "too_large", "read_error"
   ],
-  "document_kinds": ["markdown", "python", "syntax", "text"],
+  "document_kinds": ["markdown", "python", "syntax", "text", "ida"],
   "node_kinds": ["file", "heading", "preamble", "module", "class", "function", "async_function", "symbol"],
-  "source_kinds": ["markdown", "python", "syntax", "text"],
+  "source_kinds": ["markdown", "python", "syntax", "text", "ida"],
   "syntax_profiles": {
     "reverse-core": {
       "extensions": {
@@ -85,7 +85,7 @@
       }
     }
   },
-  "edge_kinds": ["parent", "link"],
+  "edge_kinds": ["parent", "link", "xref"],
   "evidence_fields": [
     "schema_version", "index_revision", "root_hash", "mode", "stages",
     "relative_path", "lines", "tree_path", "node_id", "content_sha256",
@@ -100,7 +100,8 @@
     "parser_unavailable": "the requested syntax parser is not installed or not present in the approved cache",
     "index_blocked": "requested operation was blocked by a safety boundary",
     "node_not_found": "node_id does not exist in the index",
-    "invalid_node_id": "node_id does not match the frozen node_id regex"
+    "invalid_node_id": "node_id does not match the frozen node_id regex",
+    "ida_export_invalid": "the explicit IDA export is absent, malformed, unsafe, or has unresolved xrefs"
   },
   "score_model": {
     "bm25_rank_score": "1/(1+rank) where rank is the 0-based position after (bm25 rank, node_id) ordering",

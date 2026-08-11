@@ -59,6 +59,11 @@
     <role>Define the installable Python CLI, supported runtimes, and packaged contract data.</role>
     <check>CTX-no-target-data ENG-regression-first</check>
   </file>
+  <file path="uv.lock" domain="distribution">
+    <role>Pin the Python dependency graph used by reproducible local and CI installs.</role>
+    <gotcha>Keep the lock target-free; do not persist host paths, credentials, or analysis data.</gotcha>
+    <check>CTX-no-target-data ENG-regression-first</check>
+  </file>
   <file path="reverse-skill.opencli.json" domain="distribution">
     <role>Describe the public CLI commands, arguments, options, and exit codes.</role>
     <check>CTX-no-target-data ENG-regression-first ROUTE-deterministic-entry</check>
@@ -487,5 +492,14 @@
   <file path="burp-mcp-full/README.md" domain="distribution">
     <role>Document the Burp MCP interface using only synthetic target examples.</role>
     <check>CTX-no-target-data ENG-no-credentials</check>
+  </file>
+  <file path="reverse_skill/ida_ingest.py" domain="execution">
+    <role>Validate explicit IDA JSON exports and materialize functions and xrefs into the shared SQLite index.</role>
+    <forbid pri="CRIT">Never accept host absolute paths, implicit IDA execution, or malformed/unresolved graph references; writes require an explicit apply operation.</forbid>
+    <check>ENG-fail-closed ENG-readonly-default ENG-regression-first CTX-no-target-data</check>
+  </file>
+  <file path="tests/test_ida_ingest.py" domain="testing">
+    <role>Lock the IDA export contract, stable address node IDs, transactional import, preservation, and xref queries.</role>
+    <check>ENG-regression-first ENG-fail-closed CTX-no-target-data</check>
   </file>
 </aigx-files>

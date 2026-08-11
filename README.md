@@ -310,9 +310,11 @@ Existing Markdown and Python parsers remain unchanged. Retrieval modes are `bm25
 FTS5 `unicode61` + `trigram`. Responses carry index revision, root hash, and retrieval stages;
 each hit carries stable node/path/line evidence and score components. `index status` reports whether workspace
 content has made the index stale. The provider-neutral Python facade is also exposed through the
-optional official MCP 2.0 thin adapter (`python -m pip install -e ".[mcp]"`), with only
-`index_status`, `index_search`, `index_get_tree`, and `index_read_nodes`; build/update stay in the
-CLI. To enable advisory route candidate discovery, explicitly build the package-root index and
+optional official MCP 2.0 thin adapter (`python -m pip install -e ".[mcp]"`), with read-only
+`index_status`, `index_search`, `index_get_tree`, `index_read_nodes`, and `index_read_xrefs`; build/update
+stay in the CLI. IDA/DeepExtract can feed the same store through the explicit version-1 JSON adapter:
+`reverse-skill index import-ida C:\path\to\project --export export.json --apply`; full source
+updates preserve imported IDA functions and xref edges. To enable advisory route candidate discovery, explicitly build the package-root index and
 pass it to routing; the router never builds or downloads implicitly:
 
 ```console

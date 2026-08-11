@@ -236,7 +236,7 @@ def _language_pack(parser_cache: Path, languages: Sequence[str]) -> Tuple[Any, s
     try:
         # The package treats PackConfig.languages as a pre-download request.
         # Indexing is cache-only and read-only, so only configure the cache.
-        language_pack.init(language_pack.PackConfig(cache_dir=str(parser_cache)))
+        language_pack.configure(language_pack.PackConfig(cache_dir=str(parser_cache)))
         downloaded = {str(item) for item in language_pack.downloaded_languages()}
     except Exception as exc:
         raise ParserUnavailable(
@@ -307,18 +307,21 @@ def install_parsers(
             "tree-sitter-language-pack is not installed; install the [syntax] extra"
         ) from exc
     try:
-        language_pack.init(language_pack.PackConfig(cache_dir=str(resolved)))
-        result_code = int(language_pack.download(languages))
+        language_pack.configure(language_pack.PackConfig(cache_dir=str(resolved)))
+        available_count = int(language_pack.download(languages))
         downloaded = {str(item) for item in language_pack.downloaded_languages()}
     except Exception as exc:
         raise ParserUnavailable(
             f"tree-sitter-language-pack parser installation failed: {exc}"
         ) from exc
     missing = sorted(set(languages) - downloaded)
-    if result_code != 0 or missing:
-        detail = f"parser download did not complete (provider return code {result_code})"
-        if missing:
-            detail += ": " + ", ".join(missing)
+    if missing:
+        detail = (
+            "parser download did not complete "
+            f"(provider reports {available_count} requested language(s) available, "
+            f"cache contains {len(downloaded)})"
+        )
+        detail += ": " + ", ".join(missing)
         raise ParserUnavailable(detail)
     return {
         "status": "applied",
@@ -891,6 +894,7 @@ def build_apply(
         # Link edges resolve after every document's nodes exist (two-pass).
         for parsed in sorted(files, key=lambda item: item.relpath):
             _insert_link_edges(connection, parsed, materialized[parsed.relpath], document_ids)
+        ida_preserved = _preserve_ida_layer(resolved, connection)
         root_hash = compute_root_hash((item.relpath, item.sha256) for item in files)
         set_meta(connection, META_SCHEMA_VERSION, SCHEMA_VERSION)
         set_meta(connection, META_INDEX_REVISION, "1")
@@ -935,8 +939,89 @@ def build_apply(
         "skipped": _summary_of_skipped(skipped),
         "index_revision": 1,
         "root_hash": root_hash,
+        "ida_preserved": ida_preserved,
         "writes": {"insert_documents": len(files)},
     }
+
+
+def _preserve_ida_layer(
+    source_path: Path, destination: sqlite3.Connection
+) -> Dict[str, int]:
+    """Carry explicit IDA documents across a full source-index replacement."""
+    if not source_path.is_file():
+        return {"documents": 0, "nodes": 0, "edges": 0}
+    source = open_read_only(source_path)
+    copied_documents = copied_nodes = copied_edges = 0
+    try:
+        documents = source.execute(
+            "SELECT document_id, relative_path, kind, sha256, line_count, size_bytes "
+            "FROM documents WHERE kind = 'ida' ORDER BY relative_path"
+        ).fetchall()
+        for document in documents:
+            collision = destination.execute(
+                "SELECT document_id FROM documents WHERE relative_path = ?",
+                (document["relative_path"],),
+            ).fetchone()
+            if collision is not None:
+                raise IndexError(
+                    "full build cannot preserve IDA document because its relative path "
+                    f"collides with a source document: {document['relative_path']}"
+                )
+            document_id = insert_document(destination, dict(document))
+            old_nodes = source.execute(
+                "SELECT node_id, document_id, parent_id, depth, ordinal, title, kind, "
+                "start_line, end_line, body_sha256, tree_path, source_kind, symbol_kind "
+                "FROM nodes WHERE document_id = ? ORDER BY depth, ordinal, node_id",
+                (document["document_id"],),
+            ).fetchall()
+            node_ids = {str(row["node_id"]) for row in old_nodes}
+            if not node_ids:
+                raise IndexError(
+                    f"IDA document has no nodes and cannot be preserved: {document['relative_path']}"
+                )
+            placeholders = ",".join("?" for _ in node_ids)
+            node_collision = destination.execute(
+                f"SELECT node_id FROM nodes WHERE node_id IN ({placeholders}) LIMIT 1",
+                sorted(node_ids),
+            ).fetchone()
+            if node_collision is not None:
+                raise IndexError(
+                    f"full build cannot preserve IDA node id collision: {node_collision['node_id']}"
+                )
+            node_rows = [dict(row) for row in old_nodes]
+            for row in node_rows:
+                row["document_id"] = document_id
+            insert_nodes(destination, node_rows)
+            for row in node_rows:
+                if row["parent_id"] is not None:
+                    insert_edge(destination, row["node_id"], row["parent_id"], "parent")
+            edge_rows = source.execute(
+                "SELECT source_node, target_node, kind FROM edges "
+                f"WHERE source_node IN ({placeholders}) AND target_node IN ({placeholders})",
+                sorted(node_ids) + sorted(node_ids),
+            ).fetchall()
+            for edge in edge_rows:
+                insert_edge(destination, edge["source_node"], edge["target_node"], edge["kind"])
+            fts_rows = source.execute(
+                "SELECT node_id, title, body AS _body FROM fts_terms "
+                f"WHERE node_id IN ({placeholders}) ORDER BY node_id",
+                sorted(node_ids),
+            ).fetchall()
+            if len(fts_rows) != len(node_rows):
+                raise IndexError(
+                    f"IDA document has incomplete FTS rows: {document['relative_path']}"
+                )
+            insert_fts_rows_bulk(destination, [dict(row) for row in fts_rows])
+            for meta in source.execute(
+                "SELECT key, value FROM index_meta WHERE key LIKE 'ida_%'"
+            ).fetchall():
+                set_meta(destination, meta["key"], meta["value"])
+            copied_documents += 1
+            copied_nodes += len(node_rows)
+            copied_edges += len(edge_rows)
+    finally:
+        close(source)
+    return {"documents": copied_documents, "nodes": copied_nodes, "edges": copied_edges}
 
 
 def _insert_document_rows(connection: sqlite3.Connection, rows: List[Dict[str, Any]]) -> None:
@@ -1141,19 +1226,22 @@ def update_plan(
     connection = open_read_only(resolved)
     try:
         current = read_all_documents(connection)
+        source_current = {
+            path: document for path, document in current.items() if document["kind"] != "ida"
+        }
         meta = {
             row["key"]: row["value"]
             for row in connection.execute("SELECT key, value FROM index_meta")
         }
         effective_profile = _resolve_update_syntax(meta, syntax_profile, parser_cache)
         files, skipped = _collect_all(root, effective_profile, parser_cache)
-        touched = sorted(set(current) - {item.relpath for item in files}) + [
+        touched = sorted(set(source_current) - {item.relpath for item in files}) + [
             item.relpath
             for item in files
-            if item.relpath in current and current[item.relpath]["sha256"] != item.sha256
+            if item.relpath in source_current and source_current[item.relpath]["sha256"] != item.sha256
         ]
         removed_node_count = _count_nodes_for_documents(connection, touched)
-        added_relpaths = [item.relpath for item in files if item.relpath not in current]
+        added_relpaths = [item.relpath for item in files if item.relpath not in source_current]
         stale_sources = sorted(
             set(_stale_link_source_relpaths(connection, touched))
             | set(_link_sources_for_added_documents(files, added_relpaths, touched))
@@ -1161,7 +1249,7 @@ def update_plan(
     finally:
         close(connection)
     return _delta_plan(
-        files, skipped, current, meta, resolved, removed_node_count, stale_sources, applied=False
+        files, skipped, source_current, meta, resolved, removed_node_count, stale_sources, applied=False
     )
 
 
@@ -1192,13 +1280,16 @@ def update_apply(
         }
         effective_profile = _resolve_update_syntax(meta, syntax_profile, parser_cache)
         files, skipped = _collect_all(root, effective_profile, parser_cache)
-        added = [item for item in files if item.relpath not in current]
+        source_current = {
+            path: document for path, document in current.items() if document["kind"] != "ida"
+        }
+        added = [item for item in files if item.relpath not in source_current]
         changed = [
             item
             for item in files
-            if item.relpath in current and current[item.relpath]["sha256"] != item.sha256
+            if item.relpath in source_current and source_current[item.relpath]["sha256"] != item.sha256
         ]
-        removed = sorted(set(current) - {item.relpath for item in files})
+        removed = sorted(set(source_current) - {item.relpath for item in files})
         touched = removed + [item.relpath for item in changed]
         removed_node_count = _count_nodes_for_documents(connection, touched)
         stale_sources = sorted(
@@ -1212,7 +1303,7 @@ def update_apply(
             )
         )
         for relpath in removed:
-            delete_document_cascade(connection, current[relpath]["document_id"])
+            delete_document_cascade(connection, source_current[relpath]["document_id"])
         document_ids = {
             relpath: current[relpath]["document_id"]
             for relpath in current
@@ -1220,8 +1311,8 @@ def update_apply(
         }
         parsed_by_relpath = {item.relpath: item for item in files}
         for item in added + changed:
-            if item.relpath in current:
-                delete_document_cascade(connection, current[item.relpath]["document_id"])
+            if item.relpath in source_current:
+                delete_document_cascade(connection, source_current[item.relpath]["document_id"])
             document_id = insert_document(
                 connection,
                 {
@@ -1261,7 +1352,7 @@ def update_apply(
     close(connection)
 
     result = _delta_plan(
-        files, skipped, current, meta, resolved, removed_node_count, stale_sources, applied=True
+        files, skipped, source_current, meta, resolved, removed_node_count, stale_sources, applied=True
     )
     result["status"] = "applied"
     result["applied"] = True

@@ -26,6 +26,7 @@ syntax = [
   "tree-sitter-language-pack>=1.14,<2",
 ]
 test = [
+  "build>=1.2,<2",
   "jsonschema>=4.23,<5",
   "pytest>=8,<10",
 ]
