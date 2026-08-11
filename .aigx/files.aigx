@@ -98,6 +98,18 @@
     <role>Provide bounded read-only workspace search through Python.</role>
     <check>ENG-readonly-default ENG-fail-closed</check>
   </file>
+  <file path="reverse_skill/index_store.py" domain="execution">
+    <role>Own the SQLite index truth: schema, FTS5/trigram capability gate, transactions, and atomic replace.</role>
+    <forbid pri="CRIT">Never persist host absolute paths, credentials, or target content in this repository; the database stores only root-relative paths and content facts.</forbid>
+    <gotcha pri="CRIT">Missing index, incompatible schema, or unavailable FTS5/trigram MUST block explicitly; never silently degrade to a subset index.</gotcha>
+    <check>ENG-fail-closed ENG-readonly-default ENG-regression-first CTX-no-target-data</check>
+  </file>
+  <file path="reverse_skill/index_build.py" domain="execution">
+    <role>Scan a workspace deterministically and plan/apply incremental index changes without following symlinks.</role>
+    <forbid pri="CRIT">Never auto-join the index to git, never mutate the target .gitignore, and never write outside the resolved index path.</forbid>
+    <gotcha>Markdown fenced-code lines must not be parsed as ATX headings; line ranges are exact 1-based; link edges from unchanged documents that point into changed targets must be rebuilt incrementally.</gotcha>
+    <check>ENG-fail-closed ENG-readonly-default ENG-regression-first CTX-no-target-data</check>
+  </file>
   <file path="reverse_skill/teams_preflight.py" domain="collaboration">
     <role>Probe newest-IDA Teams readiness without initializing a repository.</role>
     <check>ENG-readonly-default ENG-no-credentials ROUTE-capability-evidence</check>
