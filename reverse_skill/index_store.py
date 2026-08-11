@@ -69,6 +69,10 @@ class IndexCapabilityUnavailable(IndexError):
     code = "index_capability_unavailable"
 
 
+class ParserUnavailable(IndexError):
+    code = "parser_unavailable"
+
+
 class NodeNotFound(IndexError):
     code = "node_not_found"
 

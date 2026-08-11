@@ -454,13 +454,28 @@ def _workspace_path_argument() -> click.Path:
 @click.argument("path", type=_workspace_path_argument())
 @click.option("--apply", is_flag=True, help="Create or replace the index (default: read-only plan).")
 @click.option("--index-path", type=_index_path_option())
+@click.option("--syntax-profile", type=click.Choice(["reverse-core"]))
+@click.option("--parser-cache", type=click.Path(file_okay=False, path_type=Path))
 @click.pass_obj
-def index_build_command(state: State, path: Path, apply: bool, index_path: Path | None) -> int:
+def index_build_command(
+    state: State,
+    path: Path,
+    apply: bool,
+    index_path: Path | None,
+    syntax_profile: str | None,
+    parser_cache: Path | None,
+) -> int:
     """Plan or apply a full deterministic index build."""
     from .index_api import index_build as run_index_build
 
     try:
-        result = run_index_build(path, apply=apply, index_path=index_path)
+        result = run_index_build(
+            path,
+            apply=apply,
+            index_path=index_path,
+            syntax_profile=syntax_profile,
+            parser_cache=parser_cache,
+        )
     except ReverseSkillError as exc:
         return _emit_index_error(state, exc)
     emit(state, "index", result)
@@ -471,17 +486,58 @@ def index_build_command(state: State, path: Path, apply: bool, index_path: Path 
 @click.argument("path", type=_workspace_path_argument())
 @click.option("--apply", is_flag=True, help="Apply the incremental delta (default: read-only plan).")
 @click.option("--index-path", type=_index_path_option())
+@click.option("--syntax-profile", type=click.Choice(["reverse-core"]))
+@click.option("--parser-cache", type=click.Path(file_okay=False, path_type=Path))
 @click.pass_obj
-def index_update_command(state: State, path: Path, apply: bool, index_path: Path | None) -> int:
+def index_update_command(
+    state: State,
+    path: Path,
+    apply: bool,
+    index_path: Path | None,
+    syntax_profile: str | None,
+    parser_cache: Path | None,
+) -> int:
     """Plan or apply an incremental index update."""
     from .index_api import index_update as run_index_update
 
     try:
-        result = run_index_update(path, apply=apply, index_path=index_path)
+        result = run_index_update(
+            path,
+            apply=apply,
+            index_path=index_path,
+            syntax_profile=syntax_profile,
+            parser_cache=parser_cache,
+        )
     except ReverseSkillError as exc:
         return _emit_index_error(state, exc)
     emit(state, "index", result)
     return 0
+
+
+@index_group.command(name="parsers")
+@click.option("--profile", "profile_name", type=click.Choice(["reverse-core"]), default="reverse-core", show_default=True)
+@click.option("--cache-dir", type=click.Path(file_okay=False, path_type=Path), required=True)
+@click.option("--install", is_flag=True, help="Explicitly download the selected parser profile.")
+@click.pass_obj
+def index_parsers_command(
+    state: State,
+    profile_name: str,
+    cache_dir: Path,
+    install: bool,
+) -> int:
+    """Inspect or explicitly install the cache-only syntax parser profile."""
+    from .index_build import install_parsers, parser_status
+
+    try:
+        result = (
+            install_parsers(profile_name, cache_dir)
+            if install
+            else parser_status(profile_name, cache_dir)
+        )
+    except ReverseSkillError as exc:
+        return _emit_index_error(state, exc)
+    emit(state, "index", result)
+    return 0 if result.get("status") != "blocked" else 5
 
 
 @index_group.command(name="status")

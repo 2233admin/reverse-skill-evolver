@@ -24,7 +24,14 @@ jobs:
           cache: pip
 
       - name: Install test and build dependencies
-        run: python -m pip install --upgrade pip build ".[test]"
+        run: python -m pip install --upgrade pip build ".[test,mcp,syntax]"
+
+      - name: Verify optional provider wheels
+        run: >-
+          python -c "import tree_sitter_language_pack as language_pack;
+          assert language_pack.manifest_languages();
+          import mcp.server;
+          assert hasattr(mcp.server, 'MCPServer')"
 
       - name: Test package CLI
         run: python -m pytest -q

@@ -40,32 +40,44 @@ Primary references:
 - https://pypi.org/project/tree-sitter-language-pack/1.14.3/
 - https://github.com/xberg-io/tree-sitter-language-pack
 
-## Next action
+## Current result
 
-Integrate
-`tree-sitter-language-pack>=1.14,<2` behind the existing index builder for the
-first reverse-core profile:
-C, C++, Rust, Go, Java, Kotlin, C#, JavaScript, TypeScript, Smali, ASM, x86asm.
+`tree-sitter-language-pack>=1.14,<2` is now an optional `[syntax]` extra behind the
+existing index builder. The explicit `index parsers --install` command populates a
+caller-selected cache; build/update only read an already populated cache and fail
+closed with `parser_unavailable` when the wheel or grammar is missing. The first
+`reverse-core` profile covers C, C++, Rust, Go, Java, Kotlin, C#, JavaScript,
+TypeScript, Smali, ASM, and x86asm. Nested `StructureItem` results are normalized
+to the existing syntax/symbol/node-id contract, while Markdown and Python paths are
+unchanged.
+
+The remaining quality-workflow gaps are dependency locking and running the official
+AIGX validator; the repository's CI now installs and imports the MCP 2 and syntax
+provider extras on every supported host, without downloading grammars implicitly.
 
 ## Why
 
-`index_api` already owns validation, error codes, evidence, and SQLite access;
-the MCP layer must only translate transport calls. The language pack already
-extracts the structure we need, but its output must be normalized into the
-existing `NodeSpec`/stable-ID contract so third-party schema changes cannot
-leak into the public index.
+`index_api` owns validation, error codes, evidence, and SQLite access; the MCP
+layer only translates transport calls. The language pack is an extraction provider,
+not a second index or MCP surface, and its output is normalized before it reaches
+the public index.
 
 ## Acceptance evidence
 
 - MCP tools match direct `index_api` outputs and contain no duplicated business logic.
 - stdio and Streamable HTTP smoke tests pass on MCP 2.0; no new SSE transport.
 - Existing Markdown and Python parsers remain byte-for-byte behavior compatible.
-- C/C++ and Smali fixtures produce stable nested nodes after full and incremental builds.
+- The normalization unit test produces stable nested nodes and IDs; real C/Smali
+  grammar end-to-end fixtures remain unverified because the provider download
+  returned a non-zero result in this environment.
 - Missing parser/cache reports `parser_unavailable`; no silent file-level success.
-- Parser installation is explicit, e.g. `parsers install --profile reverse-core`;
+- Parser installation is explicit, e.g. `index parsers --install --profile reverse-core`;
   indexing never downloads grammars implicitly.
-- Full pytest, `gates all`, AIGX lint, `git diff --check`, benchmark, and isolated
-  wheel install pass.
+- Full pytest, `gates all`, `git diff --check`, benchmark, and isolated wheel
+  install pass. Official AIGX lint is not runnable here because its validator is
+  unavailable.
+- CI installs `[test,mcp,syntax]` and verifies both optional provider imports on
+  every supported Python/host matrix entry; grammar downloads remain explicit.
 
 ## Open threads
 

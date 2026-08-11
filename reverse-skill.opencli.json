@@ -231,7 +231,9 @@
             "arguments": [{ "name": "PATH", "required": true }],
             "options": [
               { "name": "--apply", "description": "Create or replace the index (default: read-only plan)." },
-              { "name": "--index-path", "arguments": [{ "name": "FILE", "required": true }] }
+              { "name": "--index-path", "arguments": [{ "name": "FILE", "required": true }] },
+              { "name": "--syntax-profile", "arguments": [{ "name": "PROFILE", "required": true, "acceptedValues": ["reverse-core"] }] },
+              { "name": "--parser-cache", "arguments": [{ "name": "DIRECTORY", "required": true }] }
             ]
           },
           {
@@ -240,7 +242,18 @@
             "arguments": [{ "name": "PATH", "required": true }],
             "options": [
               { "name": "--apply", "description": "Apply the incremental delta (default: read-only plan)." },
-              { "name": "--index-path", "arguments": [{ "name": "FILE", "required": true }] }
+              { "name": "--index-path", "arguments": [{ "name": "FILE", "required": true }] },
+              { "name": "--syntax-profile", "arguments": [{ "name": "PROFILE", "required": true, "acceptedValues": ["reverse-core"] }] },
+              { "name": "--parser-cache", "arguments": [{ "name": "DIRECTORY", "required": true }] }
+            ]
+          },
+          {
+            "name": "parsers",
+            "description": "Inspect or explicitly install the cache-only syntax parser profile.",
+            "options": [
+              { "name": "--profile", "arguments": [{ "name": "PROFILE", "required": true, "acceptedValues": ["reverse-core"] }] },
+              { "name": "--cache-dir", "arguments": [{ "name": "DIRECTORY", "required": true }] },
+              { "name": "--install", "description": "Explicitly download the selected parser profile." }
             ]
           },
           {

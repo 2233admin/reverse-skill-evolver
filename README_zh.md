@@ -289,11 +289,24 @@ reverse-skill index update C:\path\to\project --apply
 
 `build` / `update` 默认只输出只读计划，只有显式 `--apply` 才写索引。Markdown 建立
 PageIndex 风格标题树和相对链接边；Python 建立 AST 符号节点；其他文本只建立文件级节点。
+首批多语言结构解析使用官方 language-pack wheel，但必须显式安装并预热 parser cache，索引
+过程不会隐式下载 grammar：
+
+```console
+python -m pip install -e ".[syntax]"
+reverse-skill index parsers --profile reverse-core --cache-dir C:\path\to\parser-cache --install
+reverse-skill index build C:\path\to\project --apply --syntax-profile reverse-core --parser-cache C:\path\to\parser-cache
+reverse-skill index update C:\path\to\project --apply --syntax-profile reverse-core --parser-cache C:\path\to\parser-cache
+```
+
+`reverse-core` 覆盖 C/C++、Rust、Go、Java、Kotlin、C#、JavaScript、TypeScript、Smali、ASM、
+x86asm；解析结果归一化为现有 syntax/symbol 节点契约和稳定 ID。缺少 wheel 或 parser cache
+会明确返回 `parser_unavailable`，不会静默降级；既有 Markdown/Python 解析器保持不变。
 检索提供 `bm25`、`tree`、`hybrid` 三种模式，底层是 SQLite FTS5 `unicode61` +
 `trigram`。响应携带索引 revision、root hash 和检索 stage；每个命中携带稳定
 node/path/行号和可解释分数组件。`index status` 会报告工作区内容是否已经使索引过期。provider-neutral
-Python facade 已可供未来 MCP adapter 复用；本 Beta 不新增第二个 MCP server，也不宣称
-Tree-sitter/SCIP 语义能力。
+Python facade 已由官方 MCP 2 薄 adapter 复用；不新增第二个 MCP server，也不把 Tree-sitter
+冒充 SCIP 或完整语义分析器。
 
 ## 6.2 IDA Pro 链路
 

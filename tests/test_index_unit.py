@@ -5,6 +5,8 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+import sys
+from types import SimpleNamespace
 from pathlib import Path
 
 import pytest
@@ -22,6 +24,7 @@ from reverse_skill.index_store import (
     IndexCorrupt,
     IndexError as IndexStoreError,
     InvalidNodeId,
+    ParserUnavailable,
     compute_root_hash,
     load_contracts,
     node_id_for,
@@ -173,6 +176,58 @@ def test_python_syntax_error_falls_back_to_text_node() -> None:
     nodes, failed = parse_python("broken.py", lines)
     assert failed is True
     assert nodes[0].kind == "file"
+
+
+def test_tree_sitter_normalizes_nested_structure_to_stable_nodes(tmp_path, monkeypatch) -> None:
+    cache = tmp_path / "parser-cache"
+    cache.mkdir()
+    child = SimpleNamespace(
+        kind=SimpleNamespace(value="function"),
+        name="inner",
+        span=SimpleNamespace(start_line=2, end_line=2),
+        children=[],
+    )
+    parent = SimpleNamespace(
+        kind=SimpleNamespace(value="class"),
+        name="Outer",
+        span=SimpleNamespace(start_line=0, end_line=4),
+        children=[child],
+    )
+    fake_pack = SimpleNamespace(
+        PackConfig=lambda **kwargs: SimpleNamespace(**kwargs),
+        ProcessConfig=lambda **kwargs: SimpleNamespace(**kwargs),
+        init=lambda config: None,
+        downloaded_languages=lambda: ["c"],
+        process=lambda source, config: SimpleNamespace(structure=[parent]),
+    )
+    monkeypatch.setitem(sys.modules, "tree_sitter_language_pack", fake_pack)
+
+    nodes = index_build.parse_tree_sitter(
+        "src/sample.c", ["class Outer {", "  void f();", "  int inner;", "};", ""], "c", cache
+    )
+
+    assert [(node.kind, node.title, node.start, node.end) for node in nodes] == [
+        ("file", "src/sample.c", 1, 5),
+        ("symbol", "Outer", 1, 5),
+        ("symbol", "inner", 3, 3),
+    ]
+    assert nodes[2].parent_index == 1
+    assert nodes[1].tree_path == "src/sample.c#Outer"
+    assert nodes[2].tree_path == "src/sample.c#Outer/inner"
+    first_ids = [node_id_for("src/sample.c", node.tree_path, node.occurrence) for node in nodes]
+    second_ids = [
+        node_id_for("src/sample.c", node.tree_path, node.occurrence)
+        for node in index_build.parse_tree_sitter(
+            "src/sample.c", ["class Outer {", "changed", "int inner;", "};", ""], "c", cache
+        )
+    ]
+    assert first_ids == second_ids
+
+
+def test_tree_sitter_profile_requires_a_preinstalled_parser_cache(tmp_path: Path) -> None:
+    (tmp_path / "sample.c").write_text("int main(void) { return 0; }\n", encoding="utf-8")
+    with pytest.raises(ParserUnavailable, match="existing parser cache"):
+        index_build.scan_workspace(tmp_path, load_contracts(), "reverse-core")
 
 
 # --- Scanning / boundaries --------------------------------------------------

@@ -292,7 +292,21 @@ reverse-skill index update C:\path\to\project --apply
 
 Build and update only print a read-only plan unless `--apply` is explicit. Markdown gets a
 PageIndex-style heading tree and relative-link edges; Python gets AST symbol nodes; other text
-files remain file-level nodes. Retrieval modes are `bm25`, `tree`, and `hybrid`, backed by SQLite
+files remain file-level nodes. For the optional first multi-language profile, install the official
+language-pack wheel and explicitly populate a parser cache before indexing; the indexer never
+downloads grammars implicitly:
+
+```console
+python -m pip install -e ".[syntax]"
+reverse-skill index parsers --profile reverse-core --cache-dir C:\path\to\parser-cache --install
+reverse-skill index build C:\path\to\project --apply --syntax-profile reverse-core --parser-cache C:\path\to\parser-cache
+reverse-skill index update C:\path\to\project --apply --syntax-profile reverse-core --parser-cache C:\path\to\parser-cache
+```
+
+The `reverse-core` profile covers C/C++, Rust, Go, Java, Kotlin, C#, JavaScript, TypeScript,
+Smali, ASM, and x86asm. Its nested structures are normalized into the existing syntax/symbol
+node contract and stable IDs; missing wheels or cached grammars fail with `parser_unavailable`.
+Existing Markdown and Python parsers remain unchanged. Retrieval modes are `bm25`, `tree`, and `hybrid`, backed by SQLite
 FTS5 `unicode61` + `trigram`. Responses carry index revision, root hash, and retrieval stages;
 each hit carries stable node/path/line evidence and score components. `index status` reports whether workspace
 content has made the index stale. The provider-neutral Python facade is also exposed through the

@@ -8,7 +8,8 @@ version = "2.0.0b4"
 description = "Deterministic Python CLI for reverse-engineering routing and IDA MCP workflows"
 readme = "README.md"
 requires-python = ">=3.10"
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
 dependencies = [
   "click>=8.1,<9",
   "httpx>=0.27,<1",
@@ -20,6 +21,9 @@ ida-integrations = [
 ]
 mcp = [
   "mcp>=2,<3",
+]
+syntax = [
+  "tree-sitter-language-pack>=1.14,<2",
 ]
 test = [
   "jsonschema>=4.23,<5",

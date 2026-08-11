@@ -103,6 +103,7 @@ def index_status(root: Path, index_path: Optional[Path] = None) -> Dict[str, Any
         report["root_hash"] = meta.get(META_ROOT_HASH)
         report["built_at"] = meta.get(META_BUILT_AT)
         report["built_by"] = meta.get(META_BUILT_BY)
+        report["syntax_profile"] = meta.get("syntax_profile") or None
         report["counts"] = {
             "documents": int(
                 connection.execute("SELECT COUNT(*) AS n FROM documents").fetchone()["n"]
@@ -225,17 +226,29 @@ def index_read_nodes(
     )
 
 
-def index_build(root: Path, apply: bool, index_path: Optional[Path] = None) -> Dict[str, Any]:
+def index_build(
+    root: Path,
+    apply: bool,
+    index_path: Optional[Path] = None,
+    syntax_profile: Optional[str] = None,
+    parser_cache: Optional[Path] = None,
+) -> Dict[str, Any]:
     """Read-only plan (apply=False) or atomic create/replace (apply=True)."""
     _require_root(root)
     if apply:
-        return _build_engine.build_apply(root, index_path)
-    return _build_engine.build_plan(root, index_path)
+        return _build_engine.build_apply(root, index_path, syntax_profile, parser_cache)
+    return _build_engine.build_plan(root, index_path, syntax_profile, parser_cache)
 
 
-def index_update(root: Path, apply: bool, index_path: Optional[Path] = None) -> Dict[str, Any]:
+def index_update(
+    root: Path,
+    apply: bool,
+    index_path: Optional[Path] = None,
+    syntax_profile: Optional[str] = None,
+    parser_cache: Optional[Path] = None,
+) -> Dict[str, Any]:
     """Read-only delta plan (apply=False) or transactional update (apply=True)."""
     _require_root(root)
     if apply:
-        return _build_engine.update_apply(root, index_path)
-    return _build_engine.update_plan(root, index_path)
+        return _build_engine.update_apply(root, index_path, syntax_profile, parser_cache)
+    return _build_engine.update_plan(root, index_path, syntax_profile, parser_cache)
