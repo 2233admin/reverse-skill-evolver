@@ -4,7 +4,7 @@
   "info": {
     "title": "reverse-skill",
     "summary": "Route reverse-engineering work and operate local IDA MCP workflows from Python.",
-    "version": "2.0.0-beta.2",
+    "version": "2.0.0-beta.3",
     "license": { "identifier": "MIT" }
   },
   "command": {
@@ -185,6 +185,61 @@
         "description": "Close an IDA database session.",
         "arguments": [{ "name": "DATABASE", "required": true }],
         "options": [{ "name": "--no-save" }]
+      },
+      {
+        "name": "case",
+        "description": "Initialize and review frozen case packages (work/<case>/).",
+        "commands": [
+          {
+            "name": "init",
+            "description": "Create a work/<case>/ package with a frozen scope contract.",
+            "options": [
+              { "name": "--hint", "arguments": [{ "name": "TASK", "required": true }] },
+              { "name": "--case-name", "arguments": [{ "name": "NAME", "required": true }] },
+              { "name": "--preset", "arguments": [{ "name": "PRESET", "required": true }] },
+              { "name": "--network-profile", "arguments": [{ "name": "MODE", "required": true }] },
+              { "name": "--auth-status", "arguments": [{ "name": "STATUS", "required": true, "acceptedValues": ["pending", "granted", "denied", "unknown"] }] },
+              { "name": "--auth-basis", "arguments": [{ "name": "BASIS", "required": true }] },
+              { "name": "--evidence-of-auth", "arguments": [{ "name": "TEXT", "required": true }] },
+              { "name": "--target-url", "arguments": [{ "name": "URL", "required": true }] },
+              { "name": "--sample", "arguments": [{ "name": "FILE", "required": true }] },
+              { "name": "--in-scope-asset", "arguments": [{ "name": "ASSET", "required": true }], "repeatable": true },
+              { "name": "--package-root", "arguments": [{ "name": "DIRECTORY", "required": true }] }
+            ]
+          },
+          {
+            "name": "review",
+            "description": "Run a read-only Evidence Graph review of an existing case package.",
+            "arguments": [{ "name": "CASE_ROOT", "required": true }],
+            "options": [
+              { "name": "--format", "arguments": [{ "name": "FORMAT", "required": true, "acceptedValues": ["markdown", "json"] }] },
+              { "name": "--strict" },
+              { "name": "--verify-hashes" }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "gates",
+        "description": "Run repository quality gates (Python only, no PowerShell gates).",
+        "commands": [
+          {
+            "name": "leak-scan",
+            "description": "Scan field-journal/promotion text for un-anonymized sensitive info.",
+            "options": [
+              { "name": "--path", "arguments": [{ "name": "PATH", "required": true }] },
+              { "name": "--report-only" }
+            ]
+          },
+          { "name": "doc-facts", "description": "Verify README/OpenCLI/CLI surface and packaged-data drift." },
+          { "name": "version", "description": "Verify pyproject/package/OpenCLI/CHANGELOG version consistency." },
+          { "name": "routing-coherence", "description": "Verify routing.json integrity and referenced skill paths." },
+          {
+            "name": "all",
+            "description": "Run every repository gate and aggregate the result.",
+            "options": [{ "name": "--path", "arguments": [{ "name": "PATH", "required": true }] }]
+          }
+        ]
       }
     ]
   }

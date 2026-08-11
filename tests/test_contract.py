@@ -56,6 +56,8 @@ def test_opencli_description_matches_click_command_surface() -> None:
         "sessions",
         "call",
         "close",
+        "case",
+        "gates",
     }
 
     for command in description["command"]["commands"]:

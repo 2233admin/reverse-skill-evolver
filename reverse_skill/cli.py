@@ -15,6 +15,15 @@ import click
 
 from . import __version__
 from .aigx import inspect_project
+from .case import (
+    CaseContractError,
+    CasePackageError,
+    init_case,
+    normalize_network_profile,
+    render_markdown as render_case_review_markdown,
+    review_case,
+    validate_case_name,
+)
 from .errors import EnvironmentUnavailable, ReverseSkillError, ToolOperationError
 from .ida import find_latest_ida, ida_release_version, install_ida_mcp, start_server
 from .ida_capabilities import build_report as build_ida_capability_report
@@ -47,6 +56,8 @@ COMMAND_NAMES = {
     "sessions",
     "call",
     "close",
+    "case",
+    "gates",
 }
 
 
@@ -669,6 +680,174 @@ def close(state: State, database: str, no_save: bool) -> None:
     if output.get("success") is not True:
         raise ToolOperationError(f"idb_close failed: {output.get('error') or output.get('message')}")
     emit(state, "close", output)
+
+
+@cli.group(name="case")
+def case_group() -> None:
+    """Initialize and review frozen case packages (work/<case>/)."""
+
+
+@case_group.command(name="init")
+@click.option("--hint", required=True, help="One-line task description used for routing and case naming.")
+@click.option("--case-name", help="Case directory name (1-80 chars, no path separators).")
+@click.option("--preset", help="Preset: offline-sample | ctf-public | own-system.")
+@click.option("--network-profile", help="offline | lab_only | authorized_target_only | unrestricted_lab (aliases: lab, authorized, auth, offline_only).")
+@click.option("--auth-status", type=click.Choice(["pending", "granted", "denied", "unknown"]))
+@click.option("--auth-basis", help="written_contract | bug_bounty_scope | ctf_public | own_system | lab_only.")
+@click.option("--evidence-of-auth")
+@click.option("--target-url")
+@click.option("--sample", type=click.Path(dir_okay=False, path_type=Path))
+@click.option("--in-scope-asset", "in_scope_assets", multiple=True)
+@click.option("--package-root", type=click.Path(file_okay=False, path_type=Path), default=".", show_default=True)
+@click.pass_obj
+def case_init(
+    state: State,
+    hint: str,
+    case_name: str | None,
+    preset: str | None,
+    network_profile: str | None,
+    auth_status: str | None,
+    auth_basis: str | None,
+    evidence_of_auth: str | None,
+    target_url: str | None,
+    sample: Path | None,
+    in_scope_assets: tuple[str, ...],
+    package_root: Path,
+) -> int:
+    """Create a work/<case>/ package with a frozen scope contract."""
+    try:
+        result = init_case(
+            hint,
+            case_name,
+            preset=preset,
+            network_profile=network_profile,
+            auth_status=auth_status,
+            auth_basis=auth_basis,
+            evidence_of_auth=evidence_of_auth,
+            target_url=target_url,
+            sample=str(sample) if sample else None,
+            in_scope_assets=list(in_scope_assets),
+            package_root=str(package_root),
+        )
+    except CaseContractError as exc:
+        error = {"code": "case_contract_invalid", "message": str(exc)}
+        emit(state, "case", {"status": "invalid", "hint": hint}, error=error)
+        return 2
+    except CasePackageError as exc:
+        error = {"code": "case_create_failed", "message": str(exc)}
+        emit(state, "case", {"status": "failed", "hint": hint}, error=error)
+        return 5
+    emit(state, "case", result)
+    return 0
+
+
+@case_group.command(name="review")
+@click.argument("case_root", type=click.Path(file_okay=False, path_type=Path))
+@click.option("--format", "output_format", type=click.Choice(["markdown", "json"]), default="markdown", show_default=True)
+@click.option("--strict", is_flag=True, help="Treat warnings as handoff blockers.")
+@click.option("--verify-hashes", is_flag=True, help="Verify SHA-256 content_hash values against case-local artifacts.")
+@click.pass_obj
+def case_review(
+    state: State,
+    case_root: Path,
+    output_format: str,
+    strict: bool,
+    verify_hashes: bool,
+) -> int:
+    """Run a read-only Evidence Graph review of an existing case package."""
+    report = review_case(str(case_root), strict=strict, verify_hashes=verify_hashes)
+    failed = report["status"] == "FAIL"
+    errors = report["summary"]["errors"]
+    warnings = report["summary"]["warnings"]
+    detail = f"{errors} error(s), {warnings} warning(s)"
+    if failed and errors == 0 and warnings > 0:
+        detail = "strict mode treats warnings as handoff blockers: " + detail
+    error = None if not failed else {
+        "code": "case_review_failed",
+        "message": f"case review {report['status']}: {detail}",
+    }
+    if state.json_output:
+        data = {"format": output_format, "review": report}
+    elif output_format == "markdown":
+        data = render_case_review_markdown(report)
+    else:
+        data = report
+    emit(state, "case", data, error=error)
+    return 5 if failed else 0
+
+
+def _emit_gate_result(state: State, name: str, result: dict[str, Any]) -> int:
+    failed = result.get("status") == "findings"
+    error = None if not failed else {
+        "code": "gate_failed",
+        "message": f"{name} gate found issues: {len(result.get('failures') or [])} failure(s)",
+    }
+    emit(state, name, result, error=error)
+    return 5 if failed else 0
+
+
+@cli.group(name="gates")
+def gates_group() -> None:
+    """Run repository quality gates (Python only, no PowerShell gates)."""
+
+
+@gates_group.command(name="leak-scan")
+@click.option("--path", "scan_path", default="skills/field-journal", show_default=True)
+@click.option("--report-only", is_flag=True, help="Report findings without a failing exit code.")
+@click.pass_obj
+def gates_leak_scan(state: State, scan_path: str, report_only: bool) -> int:
+    """Scan field-journal/promotion text for un-anonymized sensitive info."""
+    from .gates import leak_scan as run_leak_scan
+
+    result = run_leak_scan(scan_path, report_only=report_only)
+    if report_only:
+        emit(state, "gates", result)
+        return 0
+    return _emit_gate_result(state, "leak-scan", result)
+
+
+@gates_group.command(name="doc-facts")
+@click.pass_obj
+def gates_doc_facts(state: State) -> int:
+    """Verify README/OpenCLI/CLI surface and packaged-data drift."""
+    from .gates import doc_facts as run_doc_facts_gate
+
+    return _emit_gate_result(state, "doc-facts", run_doc_facts_gate())
+
+
+@gates_group.command(name="version")
+@click.pass_obj
+def gates_version(state: State) -> int:
+    """Verify pyproject/package/OpenCLI/CHANGELOG version consistency."""
+    from .gates import version_consistency as run_version_gate
+
+    return _emit_gate_result(state, "version", run_version_gate())
+
+
+@gates_group.command(name="routing-coherence")
+@click.pass_obj
+def gates_routing_coherence(state: State) -> int:
+    """Verify routing.json integrity and referenced skill paths."""
+    from .gates import routing_coherence as run_routing_coherence_gate
+
+    return _emit_gate_result(state, "routing-coherence", run_routing_coherence_gate())
+
+
+@gates_group.command(name="all")
+@click.option("--path", "scan_path", default="skills/field-journal", show_default=True)
+@click.pass_obj
+def gates_all(state: State, scan_path: str) -> int:
+    """Run every repository gate and aggregate the result."""
+    from .gates import run_all
+
+    result = run_all(leak_path=scan_path)
+    failed = result.get("status") == "findings"
+    error = None if not failed else {
+        "code": "gate_failed",
+        "message": "gates failed: " + ", ".join(result.get("failures") or []),
+    }
+    emit(state, "gates", result, error=error)
+    return 5 if failed else 0
 
 
 def main(argv: list[str] | None = None) -> int:
