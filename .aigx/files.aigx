@@ -110,6 +110,16 @@
     <gotcha>Markdown fenced-code lines must not be parsed as ATX headings; line ranges are exact 1-based; link edges from unchanged documents that point into changed targets must be rebuilt incrementally.</gotcha>
     <check>ENG-fail-closed ENG-readonly-default ENG-regression-first CTX-no-target-data</check>
   </file>
+  <file path="reverse_skill/retrieval.py" domain="execution">
+    <role>Implement deterministic BM25 / tree / hybrid retrieval over the frozen schema without vector databases.</role>
+    <gotcha>bm25 only ranks; tree navigates structure/titles; hybrid merges deterministically with explainable score components; short IDs below the trigram minimum use the exact structured path stage.</gotcha>
+    <check>ENG-fail-closed ENG-readonly-default ENG-regression-first CTX-no-target-data</check>
+  </file>
+  <file path="reverse_skill/index_api.py" domain="execution">
+    <role>Expose the provider-neutral JSON facade (index_status, index_search, index_get_tree, index_read_nodes, index_build, index_update) shared by CLI and future MCP adapters.</role>
+    <gotcha>No click, argparse, or broker imports here; only stdlib and the index modules.</gotcha>
+    <check>ENG-fail-closed ENG-readonly-default ENG-regression-first CTX-no-target-data</check>
+  </file>
   <file path="reverse_skill/teams_preflight.py" domain="collaboration">
     <role>Probe newest-IDA Teams readiness without initializing a repository.</role>
     <check>ENG-readonly-default ENG-no-credentials ROUTE-capability-evidence</check>

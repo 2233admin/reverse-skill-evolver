@@ -220,6 +220,58 @@
         ]
       },
       {
+        "name": "index",
+        "description": "Build and maintain the deterministic SQLite document index (PageIndex-style tree + FTS5; no vector database).",
+        "commands": [
+          {
+            "name": "build",
+            "description": "Plan or apply a full deterministic index build.",
+            "arguments": [{ "name": "PATH", "required": true }],
+            "options": [
+              { "name": "--apply", "description": "Create or replace the index (default: read-only plan)." },
+              { "name": "--index-path", "arguments": [{ "name": "FILE", "required": true }] }
+            ]
+          },
+          {
+            "name": "update",
+            "description": "Plan or apply an incremental index update.",
+            "arguments": [{ "name": "PATH", "required": true }],
+            "options": [
+              { "name": "--apply", "description": "Apply the incremental delta (default: read-only plan)." },
+              { "name": "--index-path", "arguments": [{ "name": "FILE", "required": true }] }
+            ]
+          },
+          {
+            "name": "status",
+            "description": "Report index existence, revision, root hash, and counts (read-only).",
+            "arguments": [{ "name": "PATH", "required": true }],
+            "options": [{ "name": "--index-path", "arguments": [{ "name": "FILE", "required": true }] }]
+          },
+          {
+            "name": "inspect",
+            "description": "Inspect one node plus its ancestors and bounded subtree (read-only).",
+            "arguments": [
+              { "name": "PATH", "required": true },
+              { "name": "NODE_ID", "required": true }
+            ],
+            "options": [{ "name": "--index-path", "arguments": [{ "name": "FILE", "required": true }] }]
+          }
+        ]
+      },
+      {
+        "name": "retrieve",
+        "description": "Ranked read-only retrieval from the deterministic index.",
+        "arguments": [
+          { "name": "PATH", "required": true },
+          { "name": "QUERY", "required": true }
+        ],
+        "options": [
+          { "name": "--mode", "arguments": [{ "name": "MODE", "required": true, "acceptedValues": ["bm25", "tree", "hybrid"] }] },
+          { "name": "--top-k", "arguments": [{ "name": "COUNT", "required": true }] },
+          { "name": "--index-path", "arguments": [{ "name": "FILE", "required": true }] }
+        ]
+      },
+      {
         "name": "gates",
         "description": "Run repository quality gates (Python only, no PowerShell gates).",
         "commands": [
