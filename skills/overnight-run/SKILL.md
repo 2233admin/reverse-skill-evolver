@@ -10,8 +10,10 @@ description: Unattended overnight autonomous run contract for reverse-skill-evol
 ## ACTION REQUIRED
 
 1. `NOW`: 填满 `OVERNIGHT.md` 全部 slot（至少 `DEADLINE` / `SPEC_FILE` / `ALLOWED_COMPONENTS` / `BANNED_PATTERNS` 四个"需要思考"的 slot），删掉不启用的 Phase。
-2. `NOW`: 运行 `scripts/validate-slots.ps1 -TemplatePath <已填模板副本>` 冒烟 slot 质量；失败 → 回去补填，**不带病出发**。
-3. `NEXT`: 运行 `scripts/new-overnight.ps1`（需传 `-LintCmd` / `-BannedPatterns` / `-TargetModule`）脚手架 `.night/` 五文件 + `night` 分支 + pre-commit hook（基线封存、红线、lint 从"每轮自觉执行"变为"物理上无法提交"）。
+2. `NOW`: 校验已填模板的 slot 质量。PowerShell 脚手架已移除（PowerShell 仅作系统壳），
+   slot 校验与 `.night/` 脚手架工具尚未 Python 化（已知缺口）；手工检查 `DEADLINE` /
+   `SPEC_FILE` / `ALLOWED_COMPONENTS` / `BANNED_PATTERNS` 四个"需要思考"的 slot 是否填满，失败 → 回去补填，**不带病出发**。
+3. `NEXT`: 手工建立 `.night/` 工作区（仓库外机器本地）并封存基线；红线与 lint 由 `OVERNIGHT.md` 模板契约保证（Python 门禁可用 `reverse-skill gates`）。
 4. `ACT`: 把已填模板**整份**作为唯一指令来源投给 agent，独立运行至 `{{DEADLINE}}`。运行期间不得打断。
 5. `END`: 早上 review：先读外部 `.night/REPORT.md`（§7 阅读顺序）。目标证据不入包；只有目标无关、脱敏且有 fixture/回归的通用抽象，才按 `references/evolver-mapping.md` 进入 promotion gate；**未过 gate 不得写 field-journal 或改 stable 路由**。
 
@@ -45,7 +47,7 @@ MUST NOT 用于：需要中途人工决策的任务、含外部写操作（推�
 | `.night/REPORT.md` 增量书写 | TraceCard 的步骤级证据 + 失败归因 |
 | Phase 结局 | 记忆分层：oracle 通过 → `validated/`；有潜力未回归 → `candidate/`；失败/异常 → `forensic/` |
 | 早上 review + promotion gate | `evolution/promotion-record.template.yaml`；未过 gate 不得改 `routing.md` / `routing.json` / 子 skill / manifest |
-| `.night/` 产物 | 仓库外机器本地工作区，**不参与** `fleet-sync.ps1`；仅经 gate 的目标无关通用模式可另行进入 field-journal |
+| `.night/` 产物 | 仓库外机器本地工作区，不参与自动同步；仅经 gate 的目标无关通用模式可另行进入 field-journal |
 
 详细映射见 `references/evolver-mapping.md`；一份可直接照抄的填充示例见 `references/example-filled.md`（对 reverse-skill-evolver 自身跑一夜的 dogfood）。
 
@@ -54,9 +56,7 @@ MUST NOT 用于：需要中途人工决策的任务、含外部写操作（推�
 - `OVERNIGHT.md` — 契约全文（v2，唯一规范副本）
 - `references/evolver-mapping.md` — slot ↔ evolution 概念映射
 - `references/example-filled.md` — 狗粮示例（对本仓自身跑一夜）
-- `schemas/overnight-slots.schema.json` — slot 类型定义
-- `scripts/validate-slots.ps1` — 已填模板冒烟校验
-- `scripts/new-overnight.ps1` — Phase 0 机械步骤脚手架（`.night/` 五文件 + `night` 分支 + hook）
+- `schemas/overnight-slots.schema.json` — slot 类型定义（slot 校验脚本已随 PowerShell 移除，属已知 Python 化缺口）
 
 ## 任务完成自检
 

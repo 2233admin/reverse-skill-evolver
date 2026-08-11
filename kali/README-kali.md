@@ -197,7 +197,7 @@ bash kali/scripts/bootstrap-reverse.sh idapro --start-services
 
 | 维度 | Windows 版 | Kali 版 |
 |------|-----------|---------|
-| 脚本语言 | PowerShell (.ps1) | Bash (.sh) |
+| 自动化实现 | Python（`reverse_skill/`、`reverse-skill` CLI，无项目 PowerShell 脚本） | Bash（`kali/scripts/*.sh`） |
 | 包管理 | winget / GitHub Release ZIP | apt / pip / npm / GitHub Release tar.gz |
 | 路径分隔符 | `\` | `/` |
 | 环境变量 | `%USERPROFILE%` | `$HOME` |
@@ -285,4 +285,4 @@ bash kali/scripts/bootstrap-reverse.sh r2
 
 ### Q: 我想同时在 Windows 和 Kali 上用这套系统
 
-没问题。`skills/` 目录通过 Git 同步，但只同步通用先例与经 gate 晋级的目标无关模式；目标 trace 与运行证据始终留在外部 runtime。执行脚本时 Windows 用 `skills/scripts/*.ps1`，Kali 用 `kali/scripts/*.sh`。
+没问题。`skills/` 目录通过 Git 同步，但只同步通用先例与经 gate 晋级的目标无关模式；目标 trace 与运行证据始终留在外部 runtime。自动化统一走 Python 主链（`reverse-skill` CLI 跨平台）；Kali 侧的 `kali/scripts/*.sh` 是平台兼容面，Windows 侧不再分发 PowerShell 项目脚本。

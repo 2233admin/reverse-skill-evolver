@@ -70,6 +70,7 @@ AI社区：https://linux.do
     ├── attack-chain\            # 多阶段攻击链编排
     ├── binary-diff\             # 跨版本符号迁移
     ├── browser-automation\      # 浏览器+桌面自动化（Playwright+OpenReverse）
+    ├── case-review\             # 案件交接前 Evidence Graph 审查（scope/timeline/workitems/evidence/findings/paths）
     ├── diagram-generator\       # 图表生成（Mermaid/Graphviz/PlantUML）
     ├── docs-generator\          # 技术文档/报告生成
     ├── edr-bypass-re\           # EDR 绕过逆向（红队投递）
@@ -289,6 +290,9 @@ reverse-skill start
 reverse-skill status
 reverse-skill tools
 reverse-skill integrations
+reverse-skill case init --hint "<任务>" --preset offline-sample
+reverse-skill case review work/<case> --verify-hashes --strict
+reverse-skill gates all
 ```
 
 `register` 通过 `codex mcp add ... --url ...` 写入 Codex 配置；新任务启动时即可直接使用 `idapro` MCP 工具。`start` 会自动选择本机最高版本的有效 IDA，健康服务已存在时直接复用，只有服务不可达时才清理陈旧进程并重启。
@@ -375,18 +379,16 @@ http://localhost:23816/mcp
 - 不表示它已经被 Claude / Cursor / Cline 注册并启用
 - 如果没在 MCP 客户端里启用，它对 AI 是不可调用的
 
-## 6.5 APK 脚本链路
+## 6.5 APK 脚本链
 
-常用脚本：
-
-- `apk-reverse\scripts\decode.ps1`
-- `apk-reverse\scripts\frida-run.ps1`
-- `apk-reverse\scripts\rebuild-sign-install.ps1`
-- `apk-reverse\scripts\manifest-summary.ps1`
+APK 执行链尚未 Python 化：`reverse-skill route` 对 `apk-android` 返回
+`python_entrypoint_not_available`（显式 blocked，不伪造可用）。APK 任务请使用
+`jadx` / `apktool` / `frida` CLI 按 `apk-reverse/SKILL.md` 工作流操作；本包不再分发
+PowerShell 项目脚本。
 
 迁移后先验证：
 
-```powershell
+```console
 jadx --version
 apktool --version
 adb version
@@ -542,19 +544,13 @@ anything-analyzer、jshook 等其他服务仍需分别注册；`idapro` 的注�
 - `routing.md`
 - `capability-graph.json`
 - `tool-index.md`
-- `refresh-tool-index.ps1`
 
 路径改成新的安装位置。
 
 ### 8.4 工具索引
 
-迁移后请重新执行：
-
-```powershell
-powershell -File "<你的 skill 根目录>\scripts\refresh-tool-index.ps1"
-```
-
-不要直接相信随包附带的 `tool-index.md`，因为那是上一台机器扫出来的。
+工具索引只是旧诊断快照，非必需：标准 CLI 做实时 Python 发现（`reverse-skill route`、
+`reverse-skill integrations`）。不要直接信任随包附带的 `tool-index.md`，它来自上一台机器的扫描结果。
 
 ---
 
@@ -588,11 +584,14 @@ reverse-skill tools
 
 ### 9.3 工具索引
 
-```powershell
-powershell -File "<你的 skill 根目录>\scripts\refresh-tool-index.ps1"
+工具索引是旧资产；CLI 实时发现能力：
+
+```console
+reverse-skill route "<任务>"
+reverse-skill integrations
 ```
 
-然后确认 `tool-index.md` 至少正确反映：
+然后确认实时发现至少包含：
 
 - `jadx`
 - `apktool`
@@ -798,7 +797,7 @@ powershell -File "<你的 skill 根目录>\scripts\refresh-tool-index.ps1"
 | 检查项 | 更新条件 | 目标文件 |
 |--------|---------|---------|
 | 路由矩阵 | 新场景或新路径通过 promotion gate | `routing.md` + `routing.json` |
-| 工具索引 | 发现了新工具或现有工具路径变化 | 执行 `refresh-tool-index.ps1` 刷新 `tool-index.*` 和 `capability-graph.json` |
+| 工具索引 | 发现了新工具或现有工具路径变化 | 依赖 CLI 实时发现（`reverse-skill route` / `integrations`）；`tool-index.*` 仅作旧诊断快照 |
 | Bootstrap manifest | 发现了新的可自动安装的工具 | `scripts/bootstrap-manifest.json` |
 | 子 skill 文档 | 发现了某个 skill 的工作流需要补充 | 对应 `SKILL.md` |
 | 反模式/陷阱 | 发现了容易踩的坑 | 对应 skill 目录下新建或追加 `pitfalls.md` |
@@ -1101,7 +1100,7 @@ AI 在开始新任务时，必须先检查 `field-journal/_index.md`：
 
 4. 不需要手动加 PATH，本包脚本会自动扫描 build-tools 目录
 
-**安装完成后运行 `refresh-tool-index.ps1` 刷新索引。**
+**安装完成后用实时 CLI 发现验证（`reverse-skill integrations` / `route`）；tool-index 是旧资产。**
 ```
 
 ### 17.4 端口冲突处理
@@ -1130,7 +1129,7 @@ AI: 好的，我帮你把 MCP 配置改成 http://localhost:3000/mcp，并验证
 | bootstrap 失败，原因不明 | 输出已知信息 + 建议用户检查网络/权限，等确认 |
 | 服务端口不一致 | 询问实际端口，帮用户更新配置 |
 | 反复失败（同一工具失败 2 次） | 明确告知"自动安装无法完成"，给出完整手动步骤，不再重试 |
-| 用户确认已手动安装 | 重新运行 `refresh-tool-index.ps1` 验证，然后继续任务 |
+| 用户确认已手动安装 | 重新运行实时发现（`reverse-skill integrations`）验证，然后继续任务 |
 
 ---
 

@@ -18,7 +18,8 @@ It does not replace `apk-reverse`, `ida-reverse`, `js-reverse`, `pentest-tools`,
 ## ACTION REQUIRED
 
 1. `NOW`: Create or update a task-local GOAL using `goal.template.yaml` before choosing a route.
-2. `NOW`: Read `../capability-graph.json` if present; otherwise run `../scripts/refresh-tool-index.ps1` and use the generated graph.
+2. `NOW`: Read `../capability-graph.json` if present; otherwise rely on live CLI discovery
+   (`reverse-skill integrations` / `plugins inventory`) and the packaged routing data.
 3. `NEXT`: Use `../routing.json` for machine routing and `../routing.md` for human-readable fallback context.
 4. `ACT`: Route to the selected child skill and record each material decision in a TraceCard.
 5. `END`: Classify the result through the promotion gate before changing stable routing or skill docs.
@@ -144,10 +145,4 @@ Use `promotion-record.template.yaml`. If evidence is incomplete, keep the entry 
 
 ## Fleet Sync
 
-This repo can run on more than one machine in the operator's fleet. Target-specific session artifacts remain outside this repository and are never fleet-synced. Only reviewed, target-free generic candidates plus machine capability evidence may use the explicit sync workflow.
-
-Run `skills/scripts/fleet-sync.ps1 -RemotePath <remote-repo-path> -Direction Pull|Push` only after a
-generic candidate passes the anonymization and regression entry checks, or to align capability evidence. The script only copies files that do not
-already exist on the destination by filename (collision-safe additive merge) -- it never
-overwrites and never deletes on either side. Filename collisions are reported, not resolved
-automatically; resolve by hand and re-run.
+This repo can run on more than one machine in the operator's fleet. Target-specific session artifacts remain outside this repository and are never fleet-synced. Only reviewed, target-free generic candidates plus machine capability evidence may use the explicit sync workflow. The former `fleet-sync.ps1` helper was removed (PowerShell only as a system shell); cross-machine sync is an explicit operator action (git push/pull or scp), never automatic.

@@ -36,6 +36,6 @@
 - **分支纪律** ↔ 禁止改写历史：`night` 集成分支 + 弃置分支原样保留 = 早上 review 的最小可审计单元。
 - **基线封存** ↔ 被度量者不保管度量：hook 物理拦截对 `BASELINE.md` 的修改，不依赖 agent 自觉。
 
-## fleet-sync 边界
+## 跨机同步边界
 
-`.night/` 是仓库外机器本地工作区，**不**随 `fleet-sync.ps1` 同步。目标证据不得进入 field-journal；只有目标无关、脱敏且通过 fixture/回归与 promotion review 的通用模式，才可进入 `field-journal/{validated,candidate,forensic}/` 并显式同步。
+`.night/` 是仓库外机器本地工作区，**不**随任何自动同步。目标证据不得进入 field-journal；只有目标无关、脱敏且通过 fixture/回归与 promotion review 的通用模式，才可进入 `field-journal/{validated,candidate,forensic}/` 并显式同步（原 `fleet-sync.ps1` 已移除，同步是操作员显式动作）。

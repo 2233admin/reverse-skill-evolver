@@ -72,6 +72,7 @@ At present, it is recommended to understand the whole package as two layers:
     ├── attack-chain\            # Multi-stage attack-chain orchestration
     ├── binary-diff\             # Cross-version symbol migration
     ├── browser-automation\      # Browser + desktop automation (Playwright + OpenReverse)
+    ├── case-review\             # Evidence Graph review for case handoff (scope/timeline/workitems/evidence/findings/paths)
     ├── diagram-generator\       # Diagram generation (Mermaid / Graphviz / PlantUML)
     ├── docs-generator\          # Technical document/report generation
     ├── edr-bypass-re\           # EDR bypass reverse engineering (red-team delivery)
@@ -291,6 +292,9 @@ reverse-skill start
 reverse-skill status
 reverse-skill tools
 reverse-skill integrations
+reverse-skill case init --hint "<task>" --preset offline-sample
+reverse-skill case review work/<case> --verify-hashes --strict
+reverse-skill gates all
 ```
 
 `register` writes the Codex configuration through `codex mcp add ... --url ...`, so a new task can use the native `idapro` MCP tools directly. `start` selects the newest valid local IDA installation, preserves an existing healthy service, and only cleans up stale processes when the service is unavailable.
@@ -379,16 +383,14 @@ Notes:
 
 ## 6.5 APK Script Chain
 
-Common scripts:
-
-- `apk-reverse\scripts\decode.ps1`
-- `apk-reverse\scripts\frida-run.ps1`
-- `apk-reverse\scripts\rebuild-sign-install.ps1`
-- `apk-reverse\scripts\manifest-summary.ps1`
+APK 执行链尚未 Python 化：`reverse-skill route` 对 `apk-android` 返回
+`python_entrypoint_not_available`（显式 blocked，不伪造可用）。APK 任务请使用
+`jadx` / `apktool` / `frida` CLI 按 `apk-reverse/SKILL.md` 工作流操作；本包不再分发
+PowerShell 项目脚本。
 
 After migration, verify first:
 
-```powershell
+```console
 jadx --version
 apktool --version
 adb version
@@ -541,16 +543,11 @@ After migrating the package, update all old paths pointing to:
 - `routing.md`
 - `capability-graph.json`
 - `tool-index.md`
-- `refresh-tool-index.ps1`
 
 ### 8.4 Tool Index
 
-After migration, run again:
-
-```powershell
-powershell -File "<your skill root>\scripts\refresh-tool-index.ps1"
-```
-
+Tool index is a legacy diagnostic snapshot and is not required: the standard CLI
+performs live Python discovery (`reverse-skill route`, `reverse-skill integrations`).
 Do not directly trust the bundled `tool-index.md`, because it was scanned on a previous machine.
 
 ---
@@ -585,11 +582,14 @@ reverse-skill tools
 
 ### 9.3 Tool Index
 
-```powershell
-powershell -File "<your skill root>\scripts\refresh-tool-index.ps1"
+Tool index is legacy; the CLI discovers capabilities live:
+
+```console
+reverse-skill route "<task>"
+reverse-skill integrations
 ```
 
-Then confirm that `tool-index.md` correctly reflects at least:
+Then confirm that live discovery reports at least:
 
 - `jadx`
 - `apktool`
@@ -795,7 +795,7 @@ After writing a log, the AI should also check whether the following files need t
 | Check Item | Update Condition | Target File |
 |------------|------------------|-------------|
 | Routing matrix | A new scenario type or routing path passed promotion | `routing.md` + `routing.json` |
-| Tool index | A new tool was discovered or an existing tool path changed | Run `refresh-tool-index.ps1` to refresh `tool-index.*` and `capability-graph.json` |
+| Tool index | A new tool was discovered or an existing tool path changed | Rely on live CLI discovery (`reverse-skill route` / `integrations`); `tool-index.*` is legacy |
 | Bootstrap manifest | A new auto-installable tool was discovered | `scripts/bootstrap-manifest.json` |
 | Sub-skill documentation | A workflow in a skill needs supplementation | Corresponding `SKILL.md` |
 | Anti-patterns / pitfalls | An easily repeated pitfall was found | Create or append `pitfalls.md` in the corresponding skill directory |
@@ -1099,7 +1099,7 @@ When automatic installation fails, the AI must tell the user in the following fo
 
 4. You do not need to manually add them to PATH. This package’s scripts will automatically scan the build-tools directory.
 
-**After installation, run `refresh-tool-index.ps1` to refresh the index.**
+**After installation, verify with live CLI discovery (`reverse-skill integrations` / `route`); tool-index is legacy.**
 ```
 
 ### 17.4 Port Conflict Handling
@@ -1128,7 +1128,7 @@ AI: Got it. I will update the MCP configuration to http://localhost:3000/mcp and
 | Bootstrap fails for an unknown reason | Output known information + suggest checking network/permissions, then wait for confirmation |
 | Service port mismatch | Ask for the actual port and help update configuration |
 | Repeated failure (same tool fails twice) | Clearly state that automatic installation cannot complete, provide full manual steps, and stop retrying |
-| User confirms manual installation | Re-run `refresh-tool-index.ps1` to verify, then continue the task |
+| User confirms manual installation | Re-run live discovery (`reverse-skill integrations`) to verify, then continue the task |
 
 ---
 

@@ -181,9 +181,7 @@ sysmon64.exe -i sysmonconfig.xml
 
 ### 自举命令
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "&lt;SKILL_ROOT&gt;\skills\scripts\bootstrap-reverse.ps1" -Capability @('pe-sieve','syswhispers3','sysmon') -StartServices
-```
+工具安装由用户显式选择（`bootstrap-manifest.json` 只作元数据；不再分发 `bootstrap-reverse.ps1` 项目脚本）。按需手动安装 `pe-sieve` / `syswhispers3` / `sysmon` 后再重跑 route。
 
 ## 路由上下文
 

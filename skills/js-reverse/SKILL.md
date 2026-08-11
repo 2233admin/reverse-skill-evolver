@@ -212,12 +212,11 @@ description: 在使用 js-reverse-mcp 做前端 JavaScript 逆向时使用，适
 
 ### 自举方式
 
-```powershell
-# 注册 jshookmcp 到 MCP 配置
-powershell -File "<skill-root>\scripts\bootstrap-reverse.ps1" -Capability @('jshookmcp')
+工具安装由用户显式选择（`bootstrap-manifest.json` 只作元数据；不再分发 `bootstrap-reverse.ps1` 项目脚本）：
 
-# 注册并启动 anything-analyzer
-powershell -File "<skill-root>\scripts\bootstrap-reverse.ps1" -Capability @('anything-analyzer') -StartServices
+```console
+# 注册 jshookmcp 到 MCP 配置：按官方方式安装后，用 reverse-skill plugins inventory 确认
+# 注册并启动 anything-analyzer：按官方方式安装后，用 reverse-skill integrations 确认
 ```
 
 ### 注意事项

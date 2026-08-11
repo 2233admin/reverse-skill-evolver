@@ -27,12 +27,13 @@ description: 在 CLI 环境下做 Android APK 逆向时使用。适用于 APK �
 
 ## 优先使用脚本的场景
 
-以下流程高频且参数容易出错，优先用 skill 自带脚本：
+以下流程高频且参数容易出错。项目 PowerShell 脚本已移除（PowerShell 仅作系统壳）；按
+`reverse-engineering` 通用方法论或直接 CLI 操作，工具为 `jadx` / `apktool` / `frida`：
 
-- 一次性完成 `jadx + apktool` 落盘并产出摘要：`scripts/decode.ps1`
-- Frida 设备检查、进程列举、spawn/attach 注入：`scripts/frida-run.ps1`
-- 重建、对齐、签名、安装 APK：`scripts/rebuild-sign-install.ps1`
-- 快速抽取 Manifest 关键组件与权限：`scripts/manifest-summary.ps1`
+- 一次性完成 `jadx + apktool` 落盘并产出摘要：`jadx -d out <apk>` / `apktool d <apk>`
+- Frida 设备检查、进程列举、spawn/attach 注入：`frida-ps -U` / `frida -U -f <pkg>`
+- 重建、对齐、签名、安装 APK：`apktool b` + `apksigner` + `adb install`
+- 快速抽取 Manifest 关键组件与权限：`aapt dump badging <apk>` / `apkanalyzer manifest print`
 
 以下一行命令保持直接调用，不单独封装：
 
@@ -44,71 +45,36 @@ description: 在 CLI 环境下做 Android APK 逆向时使用。适用于 APK �
 
 ## 自带脚本
 
-### `scripts/decode.ps1`
+项目 PowerShell 脚本已移除（PowerShell 仅作系统壳）；以下高频流程直接用 CLI 等价命令：
 
-用途：
+### 解码（原 `scripts/decode.ps1`）
 
-- 统一跑 `jadx` 和 `apktool`
-- 默认在原 APK 同目录创建任务输出目录
-- 输出 `package`、`java_files`、`smali_dirs`、`so_files` 等摘要
-- 兼容 `jadx` 部分反编译错误但仍然有可用产物的情况
-
-示例：
-
-```powershell
-pwsh -File "<skill-root>\apk-reverse\scripts\decode.ps1" -ApkPath "D:\DOWNLOAD\app.apk" -Clean
-pwsh -File "<skill-root>\apk-reverse\scripts\decode.ps1" -ApkPath "D:\DOWNLOAD\app.apk" -Name demo -SkipJadx
+```console
+jadx -d out "<app.apk>"                 # Java 反编译
+apktool d "<app.apk>" -o apktool_out    # smali/资源解包
 ```
 
-### `scripts/frida-run.ps1`
+### Frida 设备/进程/注入（原 `scripts/frida-run.ps1`）
 
-用途：
-
-- 统一 Frida 的设备、进程、spawn/attach 入口
-- 避免手写参数时混淆 `-f`、`-n`、`-U`
-
-示例：
-
-```powershell
-pwsh -File "<skill-root>\apk-reverse\scripts\frida-run.ps1" -ListDevices
-pwsh -File "<skill-root>\apk-reverse\scripts\frida-run.ps1" -Usb -ListProcesses
-pwsh -File "<skill-root>\apk-reverse\scripts\frida-run.ps1" -Usb -Spawn -Package com.example.app -ScriptPath "D:\hooks\test.js"
+```console
+frida-ps -U                    # 设备进程列表
+frida -U -f com.example.app -l test.js   # spawn + 注入
 ```
 
-### `scripts/rebuild-sign-install.ps1`
+### 重建-签名-安装（原 `scripts/rebuild-sign-install.ps1`）
 
-用途：
-
-- `apktool b` 重建 APK
-- `zipalign` 对齐
-- `apksigner` 签名与验签
-- 可选直接 `adb install`
-
-示例：
-
-```powershell
-pwsh -File "<skill-root>\apk-reverse\scripts\rebuild-sign-install.ps1" -ProjectDir "C:\work\apktool_out" -Clean
-pwsh -File "<skill-root>\apk-reverse\scripts\rebuild-sign-install.ps1" -ProjectDir "C:\work\apktool_out" -Install -Reinstall -DeviceSerial "127.0.0.1:7555"
+```console
+apktool b apktool_out -o rebuilt.apk
+zipalign -f 4 rebuilt.apk aligned.apk
+apksigner sign --ks debug.keystore --out signed.apk aligned.apk
+adb install -r signed.apk
 ```
 
-说明：
+### Manifest 摘要（原 `scripts/manifest-summary.ps1`）
 
-- 默认生成并复用调试 keystore
-- 默认输出到 `ProjectDir` 同目录，便于和原始包、解包目录放在一起
-
-### `scripts/manifest-summary.ps1`
-
-用途：
-
-- 抽取包名
-- 列权限
-- 列 activity/service/receiver/provider
-- 标出主启动 activity
-
-示例：
-
-```powershell
-pwsh -File "<skill-root>\apk-reverse\scripts\manifest-summary.ps1" -ManifestPath "C:\work\apktool_out\AndroidManifest.xml"
+```console
+aapt dump badging "<app.apk>"          # 包名/权限/入口
+apkanalyzer manifest print "<app.apk>"
 ```
 
 如果要分析 `.so`、`lib/arm64-v8a/*.so`、`lib/armeabi-v7a/*.so`，再结合：
@@ -250,10 +216,12 @@ adb pull /data/local/tmp/file .
 apktool b apktool_out -o rebuilt.apk
 ```
 
-或者直接用脚本闭环：
+或者直接用命令闭环：
 
-```powershell
-pwsh -File "<skill-root>\apk-reverse\scripts\rebuild-sign-install.ps1" -ProjectDir "apktool_out" -Install -Reinstall -DeviceSerial "127.0.0.1:7555"
+```console
+apktool b apktool_out -o rebuilt.apk
+apksigner sign --ks debug.keystore --out signed.apk rebuilt.apk
+adb install -r signed.apk
 ```
 
 说明：
@@ -280,7 +248,7 @@ pwsh -File "<skill-root>\apk-reverse\scripts\rebuild-sign-install.ps1" -ProjectD
 建议：
 
 - 简单一次性命令直接用 `frida-*`
-- 需要稳定复用的注入流程优先走 `scripts/frida-run.ps1`
+- 需要稳定复用的注入流程按上文 `frida -U -f <pkg> -l <script>` 命令组织
 
 ### 6. Native `.so` 分流
 

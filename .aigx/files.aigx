@@ -114,6 +114,75 @@
     <role>Package the canonical route table for installed CLI use outside the source checkout.</role>
     <check>CTX-no-target-data ROUTE-deterministic-entry</check>
   </file>
+  <file path="reverse_skill/data/case-contracts.json" domain="distribution">
+    <role>Freeze the machine-readable case package contracts (enums, presets, ID patterns, hash, review statuses).</role>
+    <check>CTX-no-target-data ENG-regression-first</check>
+  </file>
+  <file path="reverse_skill/data/upstream-route-crosswalk.json" domain="distribution">
+    <role>Record the explicit R0-R40 crosswalk from the upstream routing benchmark to stable route/skill ids.</role>
+    <gotcha>Rejected domains must stay mapped_route=null; do not paper over them with new keywords.</gotcha>
+    <check>CTX-no-target-data ENG-regression-first</check>
+  </file>
+  <file path="reverse_skill/case.py" domain="execution">
+    <role>Implement the canonical Python case package init/review chain (scope contract, network normalization, SHA-256 fixity, fail-closed path escape protection).</role>
+    <check>ENG-fail-closed ENG-readonly-default ENG-regression-first</check>
+  </file>
+  <file path="reverse_skill/gates.py" domain="execution">
+    <role>Implement Python repository gates (leak-scan, doc-facts, version, routing-coherence) without PowerShell/PSParser.</role>
+    <check>ENG-regression-first ENG-python-primary</check>
+  </file>
+  <file path="tests/data/routing-benchmark.json" domain="testing">
+    <role>Freeze the 163-case upstream routing benchmark as an independent black-box fixture with expect_local route ids.</role>
+    <check>ENG-regression-first CTX-no-target-data</check>
+  </file>
+  <file path="tests/test_routing_benchmark.py" domain="testing">
+    <role>Lock routing selection against the frozen black-box benchmark and the crosswalk.</role>
+    <check>ENG-regression-first ROUTE-deterministic-entry</check>
+  </file>
+  <file path="tests/test_case_unit.py" domain="testing">
+    <role>Lock case contracts, network normalization, name validation, and path escape protection.</role>
+    <check>ENG-regression-first ENG-fail-closed</check>
+  </file>
+  <file path="tests/test_case_review.py" domain="testing">
+    <role>Lock the case init/review CLI surface (black-box, synthetic packages only).</role>
+    <check>ENG-regression-first ENG-fail-closed</check>
+  </file>
+  <file path="tests/test_gates.py" domain="testing">
+    <role>Lock leak-scan, doc-facts, version, and routing-coherence gate behavior.</role>
+    <check>ENG-regression-first ENG-python-primary</check>
+  </file>
+  <file path="scripts/regenerate_routing_benchmark.py" domain="testing">
+    <role>Reproduce the benchmark fixture migration from the upstream clone for review.</role>
+    <check>ENG-regression-first CTX-no-target-data</check>
+  </file>
+  <file path="skills/ops/scope-contract.md" domain="collaboration">
+    <role>Document the frozen scope contract and network profile normalization for humans.</role>
+    <gotcha>Mirror reverse_skill/data/case-contracts.json; never introduce parallel enums.</gotcha>
+    <check>CTX-no-target-data ENG-fail-closed</check>
+  </file>
+  <file path="skills/ops/timeline-workitem.md" domain="collaboration">
+    <role>Document the timeline/workitem conventions and the case review handoff gate.</role>
+    <gotcha>Mirror the frozen contracts; timeline stays append-only.</gotcha>
+    <check>CTX-no-target-data ENG-regression-first</check>
+  </file>
+  <file path="skills/ops/evidence-finding-path.md" domain="collaboration">
+    <role>Document Evidence→Finding→Path contracts and SHA-256 fixity verification.</role>
+    <gotcha>artifact_path escaping the case root is an error, never a warning.</gotcha>
+    <check>CTX-no-target-data ENG-fail-closed</check>
+  </file>
+  <file path="skills/case-review/SKILL.md" domain="routing">
+    <role>Define the Evidence Graph review workflow using the packaged Python reviewer.</role>
+    <check>ENG-readonly-default ENG-fail-closed ROUTE-oracle-required</check>
+  </file>
+  <file path="docs/UPSTREAM-DOMAIN-COVERAGE.md" domain="reporting">
+    <role>Record the adopted/superseded/rejected matrix for upstream top-level modules and DSL-VM.</role>
+    <gotcha>Registered modules are not implemented capabilities; never claim tool ability without an execution chain.</gotcha>
+    <check>CTX-no-target-data CTX-runtime-separation</check>
+  </file>
+  <file path="CHANGELOG.md" domain="distribution">
+    <role>Record beta release facts for the Python main chain.</role>
+    <check>CTX-no-target-data</check>
+  </file>
   <file path="reverse_skill/data/ida-plugin-capabilities.json" domain="distribution">
     <role>Package stable plugin workflow metadata for installed CLI use.</role>
     <check>CTX-no-target-data ROUTE-capability-evidence</check>
@@ -302,14 +371,6 @@
     <role>Define generic reverse-engineering routes and evidence requirements.</role>
     <check>ROUTE-blocked-no-execute ROUTE-oracle-required ENG-readonly-default</check>
   </file>
-  <file path="skills/scripts/lib/ToolDiscovery.ps1" domain="discovery">
-    <role>Discover portable tool capabilities without claiming unverified readiness.</role>
-    <check>ROUTE-capability-evidence ENG-readonly-default</check>
-  </file>
-  <file path="skills/scripts/refresh-tool-index.ps1" domain="discovery">
-    <role>Refresh host-local tool evidence while keeping generated paths untracked.</role>
-    <check>CTX-no-target-data CTX-runtime-separation ROUTE-capability-evidence</check>
-  </file>
   <file path="skills/ida-reverse/references/ida-plugin-capabilities.json" domain="discovery">
     <role>Declare stable plugin capability metadata without host installation results.</role>
     <check>CTX-no-target-data ROUTE-capability-evidence</check>
@@ -341,10 +402,6 @@
   <file path="skills/scripts/cli_search.py" domain="discovery">
     <role>Provide bounded read-only source search with health-aware rg fallback.</role>
     <check>ENG-readonly-default ENG-fail-closed</check>
-  </file>
-  <file path="skills/scripts/refresh-ida-capabilities.ps1" domain="discovery">
-    <role>Invoke the read-only IDA capability graph refresh wrapper.</role>
-    <check>CTX-no-target-data ROUTE-capability-evidence ENG-readonly-default</check>
   </file>
   <file path="skills/scripts/test_cli_search.py" domain="testing">
     <role>Lock read-only CLI search behavior and missing-path failures.</role>

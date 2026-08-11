@@ -42,9 +42,9 @@ Windows 常见可执行文件：
 
 ## 内置资源
 
-这个 skill 自带两个资源，优先复用，不要每次临时组织一套重复命令。
+这个 skill 自带 Kali 侧 `scripts/recon.sh`，优先复用，不要每次临时组织一套重复命令。Windows 侧无项目脚本（PowerShell 仅作系统壳）。
 
-### `scripts/recon.ps1`
+### `scripts/recon.sh`（Kali）
 
 标准侦察脚本，适合先做第一轮概况分析。会输出：
 

@@ -27,11 +27,26 @@ flowchart TD
 | 层 | 主要文件 | 职责 |
 |---|---|---|
 | 上下文 | `.aigx/*.aigx` | 稳定项目规则、concerns 与编辑边界 |
-| 路由 | `skills/scripts/route_task.py`, `skills/routing.json` | 确定性选路、preflight、受控 dispatch |
+| 路由 | `skills/scripts/route_task.py`, `skills/routing.json`, `reverse_skill/routing.py` | 确定性选路、preflight、受控 dispatch |
+| 案件 | `reverse_skill/case.py`, `reverse_skill/data/case-contracts.json` | case init/review：scope 契约、network 归一化、SHA-256 fixity、路径逃逸 fail-closed |
+| 门禁 | `reverse_skill/gates.py`, `reverse-skill gates` | leak-scan / doc-facts / version / routing-coherence（纯 Python，无 PowerShell 门禁） |
 | 能力 | `refresh_ida_capabilities.py`, manifests, tool discovery | 区分 installed、compatible、loaded、verified |
 | 工作流 | `skills/*/SKILL.md` | 具体逆向、安全、协作与报告流程 |
 | 运行时 | 仓库外 session/worktree/lab | 目标路径、凭据、IDB、trace、可变证据 |
 | 进化 | `skills/evolution/`, `field-journal/{candidate,validated,forensic}` | 仅承载目标无关、脱敏、经 gate 的通用模式 |
+
+## Python 质量门禁
+
+仓库门禁全部由 Python 实现并通过 `reverse-skill gates` 调用（CI 亦如此）：
+
+- `gates leak-scan`：field-journal / promotion 候选的敏感信息扫描（IP/邮箱/手机/JWT/密钥）
+- `gates doc-facts`：README/OpenCLI/CLI 命令面与打包数据（`reverse_skill/data/*.json`）漂移检查
+- `gates version`：pyproject / 包版本 / OpenCLI / CHANGELOG 一致性
+- `gates routing-coherence`：`skills/routing.json` 合法性、被引用 skill 路径存在性、crosswalk 引用存在性
+- `gates all`：聚合全部门禁
+
+PowerShell 只保留为 Windows 系统壳（`ENG-python-primary`）；本仓库不再分发项目 PowerShell
+脚本，PowerShell 不作为项目入口、路由器、适配器或质量门禁。
 
 ## 多平台
 
@@ -39,8 +54,12 @@ Windows 与 Kali 共用同一 AIGX genome、router、routing data 和 child skil
 
 | 环境 | 启动桥 | 工具脚本 |
 |---|---|---|
-| Windows | `RULES.md` | `skills/scripts/*.ps1` 与 Python wrappers |
+| Windows | `RULES.md` | Python 主链（`reverse_skill/`、`reverse-skill` CLI），无项目 PowerShell 脚本 |
 | Kali Linux | `kali/RULES-kali.md` | `kali/scripts/*.sh` |
+
+PowerShell 只作为 Windows 系统壳使用（用户手动跑命令）；本仓库**不再分发任何项目 PowerShell
+脚本**（入口、路由器、适配器、门禁均已 Python 化）。`kali/scripts/*.sh` 是 Kali 侧兼容面，
+同样不参与受控路由执行。
 
 平台 bootstrap 不能绕过 route gate。缺少工具时 route 应显式 blocked；安装或外部服务启动必须仍符合当前任务权限与副作用边界。
 

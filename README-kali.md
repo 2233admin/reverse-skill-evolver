@@ -66,7 +66,7 @@ sudo bash kali/scripts/quick-setup.sh
 | 安装 nmap/sqlmap/hashcat | 需要 winget/手动 | **已预装** |
 | MCP 工具安装 | npm/Docker/手动配 | **apt install 一行** |
 | 包管理 | winget + GitHub ZIP | **apt 统一** |
-| 脚本语言 | PowerShell | **Bash** |
+| 自动化实现 | Python 主链（`reverse-skill` CLI） | **Bash**（`kali/scripts/*.sh`） |
 | 权限问题 | UAC/管理员 | **root 无障碍** |
 | SecLists/字典 | 手动下载 | **apt install seclists** |
 
