@@ -391,29 +391,6 @@ def insert_document(connection: sqlite3.Connection, document: Dict[str, Any]) ->
     return int(cursor.lastrowid)
 
 
-def insert_node(connection: sqlite3.Connection, node: Dict[str, Any]) -> None:
-    connection.execute(
-        "INSERT INTO nodes (node_id, document_id, parent_id, depth, ordinal, title, kind, "
-        "start_line, end_line, body_sha256, tree_path, source_kind, symbol_kind) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (
-            node["node_id"],
-            node["document_id"],
-            node.get("parent_id"),
-            node["depth"],
-            node["ordinal"],
-            node["title"],
-            node["kind"],
-            node["start_line"],
-            node["end_line"],
-            node["body_sha256"],
-            node["tree_path"],
-            node["source_kind"],
-            node.get("symbol_kind"),
-        ),
-    )
-
-
 def insert_nodes(connection: sqlite3.Connection, nodes: Sequence[Dict[str, Any]]) -> None:
     """Bulk insert already parent-before-child node rows."""
     connection.executemany(
@@ -445,15 +422,6 @@ def insert_edge(connection: sqlite3.Connection, source_node: str, target_node: s
     connection.execute(
         "INSERT OR IGNORE INTO edges (source_node, target_node, kind) VALUES (?, ?, ?)",
         (source_node, target_node, kind),
-    )
-
-
-def insert_fts_rows(connection: sqlite3.Connection, node_id: str, title: str, body: str) -> None:
-    connection.execute(
-        "INSERT INTO fts_terms (node_id, title, body) VALUES (?, ?, ?)", (node_id, title, body)
-    )
-    connection.execute(
-        "INSERT INTO fts_trigram (node_id, title, body) VALUES (?, ?, ?)", (node_id, title, body)
     )
 
 
