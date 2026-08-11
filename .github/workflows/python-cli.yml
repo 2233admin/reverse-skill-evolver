@@ -32,6 +32,12 @@ jobs:
       - name: Test compatibility entrypoints
         run: python -m unittest discover -s skills/scripts -p "test_*.py"
 
+      - name: Run repository gates (Python only)
+        run: python -m reverse_skill gates all
+
+      - name: Run field-journal leak scan (Python only)
+        run: python -m reverse_skill gates leak-scan
+
       - name: Build distributions
         run: python -m build
 

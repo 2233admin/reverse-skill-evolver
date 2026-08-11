@@ -105,8 +105,7 @@
       "installDir": "%LOCALAPPDATA%\\ms-playwright",
       "docsUrl": "https://github.com/nicepkg/agent-browser",
       "canAutoInstall": true,
-      "verifyCommand": "agent-browser",
-      "setupScript": "%SKILL_ROOT%\\browser-automation\\scripts\\setup.ps1"
+      "verifyCommand": "agent-browser"
     },
     {
       "name": "ghidra-mcp",

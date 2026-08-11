@@ -1270,7 +1270,7 @@ def build_entrypoint(
     reason = "skill_requires_workflow_execution"
 
     if module == "apk-reverse":
-        # The legacy decoder is PowerShell-only. Keep the route descriptive
+        # APK execution is not yet Pythonized. Keep the route descriptive
         # until a Python implementation exists instead of invoking a second
         # shell contract from the standard CLI.
         reason = "python_entrypoint_not_available"

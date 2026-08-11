@@ -2,16 +2,16 @@
 
 一份**已填好的** OVERNIGHT.md 应用实例：目标是对 reverse-skill-evolver 自身做一次无人值守过夜运行——收敛 evolution 控制面的规范形 + 路由一致性。把这份填充应用到 `OVERNIGHT.md` 的副本上即可投给 agent。
 
-> 本示例的 `TEST_CMD` 使用 `skills/scripts/verify-routing-coherence.ps1`（本仓路由一致性校验，作为过夜运行的回归门）。`LINT_CMD` 为全部 `.ps1` 语法解析检查。
+> 本示例的 `TEST_CMD` 使用 `python -m reverse_skill gates routing-coherence`（本仓路由一致性校验的 Python 门禁，作为过夜运行的回归门）。`LINT_CMD` 为 Python 语法编译检查（项目自动化全 Python，无 PowerShell 门禁）。
 
 ## 已填 slot
 
 | Slot | 填充值 | 为什么这么填 |
 |---|---|---|
 | `{{DEADLINE}}` | `2026-08-08T08:00:00+08:00` | 次日早上 8 点停机 |
-| `{{TEST_CMD}}` | `powershell -NoProfile -ExecutionPolicy Bypass -File skills/scripts/verify-routing-coherence.ps1` | 全仓路由一致性：routing.json 合法 + 所有被引用 skill 路径存在 |
-| `{{LINT_CMD}}` | `powershell -NoProfile -Command "$e=@(); Get-ChildItem skills -Recurse -Filter *.ps1 \| ForEach-Object { $null=[System.Management.Automation.Language.Parser]::ParseFile($_.FullName,[ref]$null,[ref]$err); if($err.Count){ $e += $_.Name+': '+$err[0].Message } }; if($e.Count){ $e \| Write-Error; exit 1 }"` | 全部 `.ps1` 语法解析（PS 5.1 兼容） |
-| `{{LOC_CMD}}` | `powershell -NoProfile -Command "(Get-ChildItem skills -Recurse -Include *.ps1,*.md,*.json \| Get-Content \| Where-Object { $_ -notmatch '^\s*$' -and $_ -notmatch '^\s*(#\|//\|<!--)' }).Count"` | 非注释非空行数 |
+| `{{TEST_CMD}}` | `python -m reverse_skill gates routing-coherence` | 全仓路由一致性（Python 门禁）：routing.json 合法 + 所有被引用 skill 路径存在 |
+| `{{LINT_CMD}}` | `python -m compileall -q reverse_skill skills/scripts scripts` | Python 语法编译检查（项目自动化全 Python） |
+| `{{LOC_CMD}}` | `python -c "import pathlib; print(sum(1 for p in pathlib.Path('skills').rglob('*') if p.is_file() and p.suffix in {'.py','.md','.json'} and any(not l.strip().startswith(('#','//','<!--')) and l.strip() for l in p.read_text(encoding='utf-8',errors='ignore').splitlines())))"` | 非注释非空行数（Python） |
 | `{{BENCH_CMD}}` / `{{PERF_METRICS}}` / `{{PERF_TOLERANCE}}` | 无（本仓无性能面） | 删除基准节与对应 slot |
 | `{{ISSUE_LIST}}` | ① routing.json 缺 overnight-run 路由 ② evolution schemas 无配套校验器 ③ field-journal 分层目录空、无 validated 先例 | Phase 1 目标（triage 后按把握度修） |
 | `{{TARGET_MODULE}}` | `skills/evolution` + `skills/routing.json` + `skills/routing.md` | 控制面 + 路由双表 |

