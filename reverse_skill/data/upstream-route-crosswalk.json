@@ -1,0 +1,340 @@
+{
+  "schema_version": 1,
+  "frozen": "2026-08-11",
+  "upstream": {
+    "repo": "https://github.com/zhaoxuya520/reverse-skill",
+    "ref": "main@50187aa6c8683c4767a763ae16686970d69c79c2",
+    "source": "skills/config/routing.json"
+  },
+  "description": "Explicit crosswalk from upstream routing ids R0-R40 to stable reverse-skill route/skill ids. status=adopted (module migrated), superseded (domain handled by a different stable route), rejected (module not adopted; benchmark cases expect no_route unless the hint independently matches an adopted route). mapped_route=null means the upstream domain has no stable route in this package.",
+  "routes": {
+    "R0": {
+      "label": "General reverse-engineering",
+      "upstream_skill": "reverse-engineering/SKILL.md",
+      "mapped_route": null,
+      "mapped_skill": "reverse-engineering/SKILL.md",
+      "status": "superseded",
+      "note": "Our router is target-oriented, not fallback-oriented; generic RE hints route by artifact kind (native-binary) or no_route. reverse-engineering/SKILL.md remains the general methodology entry in case init."
+    },
+    "R1": {
+      "label": "APK reverse",
+      "upstream_skill": "apk-reverse/SKILL.md",
+      "mapped_route": "apk-android",
+      "mapped_skill": "apk-reverse/SKILL.md",
+      "status": "adopted",
+      "note": "Direct mapping; root-detection/certificate-pinning-only hints without android/apk context may no_route."
+    },
+    "R2": {
+      "label": "Mobile reverse (Android+iOS)",
+      "upstream_skill": "mobile-reverse/SKILL.md",
+      "mapped_route": "mobile-reverse",
+      "mapped_skill": "mobile-reverse/SKILL.md",
+      "status": "adopted",
+      "note": "iphone/jailbreak-only hints without mobile/ios/ipa context may no_route (no keyword fallback added)."
+    },
+    "R3": {
+      "label": "JS / frontend reverse",
+      "upstream_skill": "js-reverse/SKILL.md",
+      "mapped_route": "js-browser-signature",
+      "mapped_skill": "js-reverse/SKILL.md",
+      "status": "adopted",
+      "note": "Packet-capture hints (抓包/replay) supersede to protocol-pcap in our router."
+    },
+    "R4": {
+      "label": "DSL VM reverse",
+      "upstream_skill": "reverse-engineering/dsl-vm-reverse/SKILL.md",
+      "mapped_route": null,
+      "mapped_skill": null,
+      "status": "rejected",
+      "note": "Upstream module is a thin SKILL.md-only reference; no execution chain. Registered in docs/UPSTREAM-DOMAIN-COVERAGE.md."
+    },
+    "R5": {
+      "label": ".NET reverse",
+      "upstream_skill": "dotnet-reverse/SKILL.md",
+      "mapped_route": null,
+      "mapped_skill": null,
+      "status": "rejected",
+      "note": "Thin module (SKILL.md + references); no execution chain; not adopted."
+    },
+    "R6": {
+      "label": "IDA reverse",
+      "upstream_skill": "ida-reverse/SKILL.md",
+      "mapped_route": "native-binary",
+      "mapped_skill": "ida-reverse/SKILL.md",
+      "status": "adopted",
+      "note": "Direct mapping; native-binary is the stable IDA/native analysis route."
+    },
+    "R7": {
+      "label": "radare2",
+      "upstream_skill": "radare2/SKILL.md",
+      "mapped_route": "native-binary",
+      "mapped_skill": "radare2/SKILL.md",
+      "status": "superseded",
+      "note": "radare2 is a native-binary sub-toolchain in our router (explicit_toolchain_requested); no standalone radare2 route id."
+    },
+    "R8": {
+      "label": "Firmware pentest",
+      "upstream_skill": "firmware-pentest/SKILL.md",
+      "mapped_route": "firmware-pentest",
+      "mapped_skill": "firmware-pentest/SKILL.md",
+      "status": "adopted",
+      "note": "Direct mapping."
+    },
+    "R9": {
+      "label": "Malware analysis",
+      "upstream_skill": "malware-analysis/SKILL.md",
+      "mapped_route": "malware-analysis",
+      "mapped_skill": "malware-analysis/SKILL.md",
+      "status": "adopted",
+      "note": "Direct mapping; sigma-only hints stay with malware-analysis today (documented divergence from upstream R27)."
+    },
+    "R10": {
+      "label": "Attack chain",
+      "upstream_skill": "attack-chain/SKILL.md",
+      "mapped_route": "active-security-assessment",
+      "mapped_skill": "pentest-tools/SKILL.md",
+      "status": "superseded",
+      "note": "attack-chain/SKILL.md exists in our tree but is not a routed id; full-pentest hints route to the security-assessment route."
+    },
+    "R11": {
+      "label": "Pentest tools",
+      "upstream_skill": "pentest-tools/SKILL.md",
+      "mapped_route": "active-security-assessment",
+      "mapped_skill": "pentest-tools/SKILL.md",
+      "status": "adopted",
+      "note": "Report-writing hints (write pentest report) supersede to docs-generator in our router."
+    },
+    "R12": {
+      "label": "API security",
+      "upstream_skill": "api-security/SKILL.md",
+      "mapped_route": "api-security",
+      "mapped_skill": "api-security/SKILL.md",
+      "status": "adopted",
+      "note": "越权/接口安全-only hints may no_route (no keyword fallback added)."
+    },
+    "R13": {
+      "label": "Supply chain",
+      "upstream_skill": "supply-chain-security/SKILL.md",
+      "mapped_route": "supply-chain-security",
+      "mapped_skill": "supply-chain-security/SKILL.md",
+      "status": "adopted",
+      "note": "Direct mapping."
+    },
+    "R14": {
+      "label": "LLM / Agent security",
+      "upstream_skill": "llm-security/SKILL.md",
+      "mapped_route": "llm-security",
+      "mapped_skill": "llm-security/SKILL.md",
+      "status": "adopted",
+      "note": "LLM 越狱-only hints may no_route (no keyword fallback added)."
+    },
+    "R15": {
+      "label": "Binary diff / symbol migrate",
+      "upstream_skill": "binary-diff/SKILL.md",
+      "mapped_route": "patch-diff",
+      "mapped_skill": "binary-diff/SKILL.md",
+      "status": "adopted",
+      "note": "Direct mapping through the patch-diff route."
+    },
+    "R16": {
+      "label": "Patch-diff / N-day",
+      "upstream_skill": "patch-diff-exploit/SKILL.md",
+      "mapped_route": "patch-diff",
+      "mapped_skill": "patch-diff-exploit/SKILL.md",
+      "status": "adopted",
+      "note": "Direct mapping through the patch-diff route."
+    },
+    "R17": {
+      "label": "Pwn chain",
+      "upstream_skill": "pwn-chain/SKILL.md",
+      "mapped_route": "pwn-chain",
+      "mapped_skill": "pwn-chain/SKILL.md",
+      "status": "adopted",
+      "note": "Direct mapping."
+    },
+    "R18": {
+      "label": "EDR bypass RE",
+      "upstream_skill": "edr-bypass-re/SKILL.md",
+      "mapped_route": "edr-bypass-re",
+      "mapped_skill": "edr-bypass-re/SKILL.md",
+      "status": "adopted",
+      "note": "Direct mapping."
+    },
+    "R19": {
+      "label": "Browser / desktop automation",
+      "upstream_skill": "browser-automation/SKILL.md",
+      "mapped_route": "js-browser-signature",
+      "mapped_skill": "js-reverse/SKILL.md",
+      "status": "superseded",
+      "note": "browser-automation/SKILL.md exists but is not a routed id; browser hints route to the JS/frontend route."
+    },
+    "R20": {
+      "label": "Docs generator",
+      "upstream_skill": "docs-generator/SKILL.md",
+      "mapped_route": "docs-generator",
+      "mapped_skill": "docs-generator/SKILL.md",
+      "status": "adopted",
+      "note": "Direct mapping."
+    },
+    "R21": {
+      "label": "Protocol reverse",
+      "upstream_skill": "protocol-reverse/SKILL.md",
+      "mapped_route": "protocol-pcap",
+      "mapped_skill": "reverse-engineering/platforms.md",
+      "status": "superseded",
+      "note": "protocol-reverse module not adopted; protocol/pcap/wireshark hints route to protocol-pcap or protocol-source-implementation."
+    },
+    "R22": {
+      "label": "Ghidra reverse",
+      "upstream_skill": "ghidra-reverse/SKILL.md",
+      "mapped_route": "ghidra-reverse",
+      "mapped_skill": "ghidra-reverse/SKILL.md",
+      "status": "adopted",
+      "note": "Tie-breaks with native-binary on 反编译/IDA-replacement hints go to native-binary (existing priority semantics preserved)."
+    },
+    "R23": {
+      "label": "Cloud / K8s",
+      "upstream_skill": "cloud-k8s/SKILL.md",
+      "mapped_route": null,
+      "mapped_skill": null,
+      "status": "rejected",
+      "note": "Thin module; no execution chain; not adopted."
+    },
+    "R24": {
+      "label": "Windows / AD",
+      "upstream_skill": "windows-ad/SKILL.md",
+      "mapped_route": null,
+      "mapped_skill": null,
+      "status": "rejected",
+      "note": "Thin module; no execution chain; not adopted."
+    },
+    "R25": {
+      "label": "Digital forensics",
+      "upstream_skill": "digital-forensics/SKILL.md",
+      "mapped_route": null,
+      "mapped_skill": null,
+      "status": "rejected",
+      "note": "Thin module; no execution chain; not adopted."
+    },
+    "R26": {
+      "label": "Code audit / SAST",
+      "upstream_skill": "code-audit/SKILL.md",
+      "mapped_route": null,
+      "mapped_skill": null,
+      "status": "rejected",
+      "note": "Thin module; no execution chain; not adopted."
+    },
+    "R27": {
+      "label": "Threat hunting",
+      "upstream_skill": "threat-hunting/SKILL.md",
+      "mapped_route": null,
+      "mapped_skill": null,
+      "status": "rejected",
+      "note": "Thin module; sigma hints currently route to malware-analysis (documented divergence, upstream moved sigma to R27)."
+    },
+    "R28": {
+      "label": "OT / ICS",
+      "upstream_skill": "ot-ics/SKILL.md",
+      "mapped_route": null,
+      "mapped_skill": null,
+      "status": "rejected",
+      "note": "Thin module; no execution chain; not adopted."
+    },
+    "R29": {
+      "label": "Wi-Fi / wireless",
+      "upstream_skill": "wifi-wireless/SKILL.md",
+      "mapped_route": null,
+      "mapped_skill": null,
+      "status": "rejected",
+      "note": "Thin module; no execution chain; not adopted."
+    },
+    "R30": {
+      "label": "Browser extension reverse",
+      "upstream_skill": "browser-extension-reverse/SKILL.md",
+      "mapped_route": "js-browser-signature",
+      "mapped_skill": "js-reverse/SKILL.md",
+      "status": "superseded",
+      "note": "browser-extension-reverse module not adopted; extension hints containing 浏览器 route to the JS/frontend route."
+    },
+    "R31": {
+      "label": "macOS / Mach-O reverse",
+      "upstream_skill": "macos-reverse/SKILL.md",
+      "mapped_route": null,
+      "mapped_skill": null,
+      "status": "rejected",
+      "note": "Thin module; no execution chain; not adopted."
+    },
+    "R32": {
+      "label": "Thick client security",
+      "upstream_skill": "thick-client/SKILL.md",
+      "mapped_route": null,
+      "mapped_skill": null,
+      "status": "rejected",
+      "note": "Thin module; 安全测试 hints route to active-security-assessment (documented divergence)."
+    },
+    "R33": {
+      "label": "Go / Rust reverse",
+      "upstream_skill": "go-rust-reverse/SKILL.md",
+      "mapped_route": "native-binary",
+      "mapped_skill": "ida-reverse/SKILL.md",
+      "status": "superseded",
+      "note": "go-rust-reverse module not adopted; go/rust binary hints route by artifact kind (native-binary) or malware-analysis."
+    },
+    "R34": {
+      "label": "Hardware / debug interfaces",
+      "upstream_skill": "hardware-security/SKILL.md",
+      "mapped_route": null,
+      "mapped_skill": null,
+      "status": "rejected",
+      "note": "Thin module; no execution chain; not adopted."
+    },
+    "R35": {
+      "label": "Database security",
+      "upstream_skill": "database-security/SKILL.md",
+      "mapped_route": null,
+      "mapped_skill": null,
+      "status": "rejected",
+      "note": "Thin module; no execution chain; not adopted."
+    },
+    "R36": {
+      "label": "Email / phishing analysis",
+      "upstream_skill": "email-security/SKILL.md",
+      "mapped_route": null,
+      "mapped_skill": null,
+      "status": "rejected",
+      "note": "Thin module; no execution chain; not adopted."
+    },
+    "R37": {
+      "label": "Identity federation (SAML/OIDC)",
+      "upstream_skill": "identity-federation/SKILL.md",
+      "mapped_route": null,
+      "mapped_skill": null,
+      "status": "rejected",
+      "note": "Thin module; no execution chain; not adopted."
+    },
+    "R38": {
+      "label": "RF / SDR research",
+      "upstream_skill": "radio-sdr/SKILL.md",
+      "mapped_route": null,
+      "mapped_skill": null,
+      "status": "rejected",
+      "note": "Thin module; no execution chain; not adopted."
+    },
+    "R39": {
+      "label": "Diagram generation",
+      "upstream_skill": "diagram-generator/SKILL.md",
+      "mapped_route": "diagram-generator",
+      "mapped_skill": "diagram-generator/SKILL.md",
+      "status": "adopted",
+      "note": "Direct mapping; mermaid-时序图-only hints may no_route (no keyword fallback added)."
+    },
+    "R40": {
+      "label": "Case evidence review",
+      "upstream_skill": "case-review/SKILL.md",
+      "mapped_route": "case-review",
+      "mapped_skill": "case-review/SKILL.md",
+      "status": "adopted",
+      "note": "case-review module adopted with full Python execution chain (reverse-skill case review); new stable route id case-review added."
+    }
+  }
+}
