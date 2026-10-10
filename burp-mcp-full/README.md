@@ -6,6 +6,8 @@
 
 ### 1. 编译扩展
 
+需要安装 **JDK 21**，并设置 `JAVA_HOME`（或将 `java` 加入 `PATH`）。仓库包含固定版本 **Gradle 8.7** 的标准 Wrapper，无需预装 Gradle；首次构建需要联网下载 Gradle 发行包及 Maven 依赖。发行包通过 Wrapper 中固定的 SHA-256 校验。
+
 **Windows**:
 ```cmd
 cd burp-mcp-full
@@ -15,8 +17,19 @@ build.bat
 **Linux / Kali / macOS**:
 ```bash
 cd burp-mcp-full
-chmod +x build.sh
-./build.sh
+./gradlew jar
+```
+
+Windows 的 `build.bat` 同样调用 Wrapper 的 `jar` 任务，可从任意工作目录启动，不会覆盖 `JAVA_HOME`。两种方式均生成 `build/libs/burp-mcp-full.jar`；源码、依赖与构建配置未变化时，再次构建会将 `compileJava` 和 `jar` 标为 `UP-TO-DATE`，不重复编译或打包。不要在重复构建前运行 `clean`，否则会删除增量构建输出。
+
+运行回归检查（`check` 包含确定性的 `schedulerRegressionTest`）：
+
+```cmd
+gradlew.bat check
+```
+
+```bash
+./gradlew check
 ```
 
 ### 2. 加载到 Burp
@@ -52,8 +65,8 @@ Burp Suite → Extensions → Add → Java → 选择 build/libs/burp-mcp-full.j
 | `send_request` | 通过 Burp 发送 HTTP 请求 | `method`, `url`, `body`, `headers` |
 | `send_to_repeater` | 发送请求到 Repeater | `request`, `tab_name` |
 | `send_to_intruder` | 发送请求到 Intruder | `request` |
-| `intruder_attack` | **自动化枚举攻击** | `url_template`, `from`, `to`, `pad_digits`, `method`, `headers`, `success_indicator`, `success_length_not` |
-| `intruder_attack_async` | 有界并发枚举；每次最多 50 个在途请求，协调等待上限 120 秒 | `url_template`, `from`, `to`, `threads`；超限返回部分结果与 `timed_out: true`。底层请求的响应读取有超时，建连阶段仍由 Burp 控制 |
+| `intruder_attack` | **自动化顺序枚举攻击**；协调等待上限 120 秒，超限返回 `timed_out: true` | `url_template`, `from`, `to`, `pad_digits`, `method`, `headers`, `success_indicator`, `success_length_not`。响应超时使用剩余时限；建连阶段仍由 Burp 控制，取消不保证终止底层请求。该时限不适用于 `send_request` / Repeater 单次请求 |
+| `intruder_attack_async` | 有界并发枚举；每次最多 50 个在途请求，协调等待上限 120 秒 | `url_template`, `from`, `to`, `threads`；超限返回部分结果与 `timed_out: true`。响应超时使用剩余时限；建连阶段仍由 Burp 控制，取消不保证终止底层请求 |
 | `sitemap` | 查看站点地图 | `url_prefix`, `limit` |
 | `intercept_toggle` | 开关拦截 | `enable` |
 | `encode` | 编码（Base64/URL） | `input`, `type` |
@@ -73,11 +86,17 @@ Burp Suite → Extensions → Add → Java → 选择 build/libs/burp-mcp-full.j
 
 ### 方法 2：从源码构建
 
-```bash
+```cmd
 cd burp-mcp-full
 gradlew.bat jar
-# 输出: build/libs/burp-mcp-full.jar
 ```
+
+```bash
+cd burp-mcp-full
+./gradlew jar
+```
+
+输出：`build/libs/burp-mcp-full.jar`。
 
 ## MCP 配置
 

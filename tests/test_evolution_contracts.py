@@ -376,7 +376,14 @@ def test_omp_subprocess_failures_preserve_diagnostics(monkeypatch: pytest.Monkey
         evolution._omp("task", "system", 7)
 
 
+def test_windows_limit_is_not_applied_to_non_windows_argv(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(evolution.sys, "platform", "linux")
+    monkeypatch.setattr(evolution, "MAX_WINDOWS_COMMAND_UNITS", 1)
+    evolution._check_windows_argv(["omp", "valid on this platform"])
+
+
 def test_windows_limit_counts_serialized_quotes_utf16_and_nul(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(evolution.sys, "platform", "win32")
     args = ["C:/Program Files/OMP/omp.exe", 'quotes "\\" and emoji 🦄']
     units = len(evolution.subprocess.list2cmdline(args).encode("utf-16-le")) // 2 + 1
     monkeypatch.setattr(evolution, "MAX_WINDOWS_COMMAND_UNITS", units)
@@ -387,6 +394,7 @@ def test_windows_limit_counts_serialized_quotes_utf16_and_nul(monkeypatch: pytes
 
 
 def test_oversized_windows_candidate_rejected_before_any_model_call(evolution_inputs: dict[str, Path], monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(evolution.sys, "platform", "win32")
     # Byte-size passes, but Windows doubles embedded quotes in serialized argv.
     evolution_inputs["candidate"].write_text('"' * 20_000, encoding="utf-8")
     monkeypatch.setattr(evolution, "_omp", lambda *_: pytest.fail("must reject before baseline"))
@@ -396,6 +404,7 @@ def test_oversized_windows_candidate_rejected_before_any_model_call(evolution_in
 
 
 def test_actual_omp_argv_is_checked_before_subprocess(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(evolution.sys, "platform", "win32")
     monkeypatch.setattr(evolution.shutil, "which", lambda _: "omp.exe")
     monkeypatch.setattr(evolution.subprocess, "run", lambda *_args, **_kwargs: pytest.fail("must reject before subprocess"))
     with pytest.raises(ToolOperationError, match="serialized Windows command"):

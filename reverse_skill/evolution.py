@@ -4,6 +4,7 @@ import hashlib
 import json
 import shutil
 import subprocess
+import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -41,12 +42,14 @@ def _dominates(left: CandidateScore, right: CandidateScore) -> bool:
         and left.invalid_counts[track] <= right.invalid_counts[track]
         for track in left.pass_rates
     )
+    if not no_worse:
+        return False
     strictly_better = any(
         left.pass_rates[track] > right.pass_rates[track]
         or left.invalid_counts[track] < right.invalid_counts[track]
         for track in left.pass_rates
     )
-    return no_worse and strictly_better
+    return strictly_better
 
 
 def pareto_frontier(scores: list[CandidateScore]) -> list[CandidateScore]:
@@ -241,6 +244,8 @@ def _omp_args(executable: str, working_dir: str, system_prompt: str, timeout: in
 
 
 def _check_windows_argv(args: list[str]) -> None:
+    if sys.platform != "win32":
+        return
     command = subprocess.list2cmdline(args)
     units = len(command.encode("utf-16-le", errors="surrogatepass")) // 2 + 1
     if units > MAX_WINDOWS_COMMAND_UNITS:
@@ -325,10 +330,10 @@ def _evaluate(candidate_id: str, candidate_text: str, fixtures: list[Fixture], c
     }
 
 
-def _reflect(parent_text: str, outcomes: list[dict[str, Any]], catalog_json: str, timeout: int) -> dict[str, Any]:
+def _reflect(parent_text: str, outcomes: list[dict[str, Any]], catalog: dict[str, Any], timeout: int) -> dict[str, Any]:
     payload = {
         "parent_candidate": parent_text,
-        "routing_catalog": json.loads(catalog_json),
+        "routing_catalog": catalog,
         "failed_fixtures": [row for row in outcomes if not row["passed"]],
         "successful_fixtures": [row for row in outcomes if row["passed"]],
     }
@@ -409,7 +414,7 @@ def evolve(candidate_path: Path, catalog_path: Path, fixtures_path: Path, output
         parent_id = eligible[iteration % len(eligible)].id
         parent = candidate_by_id[parent_id]
         failed_ids = [row["fixture_id"] for row in parent["outcomes"] if not row["passed"]]
-        reflection = _reflect(parent["candidate_text"], parent["outcomes"], catalog_json, timeout)
+        reflection = _reflect(parent["candidate_text"], parent["outcomes"], catalog, timeout)
         proposal_text = reflection["candidate_text"]
         _preflight_candidate(proposal_text, timeout)
         proposal_id = f"proposal-{iteration + 1}"

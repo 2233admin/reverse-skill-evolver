@@ -4,7 +4,7 @@
   "info": {
     "title": "reverse-skill",
     "summary": "Operate local IDA Pro MCP and run bounded routing evolution.",
-    "version": "1.1.0",
+    "version": "1.1.2",
     "license": { "identifier": "MIT" }
   },
   "command": {

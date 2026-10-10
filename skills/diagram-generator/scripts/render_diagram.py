@@ -43,7 +43,17 @@ def infer_kind(path: Path) -> str:
         return "plantuml"
     if ext in SVG_EXTS:
         return "svg"
-    text = path.read_text(encoding="utf-8", errors="replace").lstrip()
+    with path.open(encoding="utf-8", errors="replace") as source:
+        while True:
+            chunk = source.read(4096)
+            if not chunk:
+                return "mermaid"
+            text = chunk.lstrip()
+            if text:
+                text = text[:9]  # Longest recognized prefix: @startuml.
+                if len(text) < 9:
+                    text += source.read(9 - len(text))
+                break
     if text.startswith("@startuml"):
         return "plantuml"
     if text.startswith("digraph") or text.startswith("graph"):
@@ -72,6 +82,12 @@ def render_graphviz(src: Path, out: Path, fmt: str) -> None:
     run([dot, f"-T{fmt}", str(src), "-o", str(out)])
 
 
+def _stage_plantuml_source(src: Path, dest: Path) -> None:
+    # Text streams retain strict UTF-8 decoding and platform newline conversion.
+    with src.open(encoding="utf-8") as source, dest.open("w", encoding="utf-8") as target:
+        shutil.copyfileobj(source, target, length=64 * 1024)
+
+
 def render_plantuml(src: Path, out: Path, fmt: str) -> None:
     plantuml = shutil.which("plantuml")
     java = shutil.which("java")
@@ -79,7 +95,7 @@ def render_plantuml(src: Path, out: Path, fmt: str) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             temp_src = tmp_path / src.name
-            temp_src.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+            _stage_plantuml_source(src, temp_src)
             run([plantuml, f"-t{fmt}", str(temp_src)], cwd=tmp_path)
             produced = temp_src.with_suffix("." + fmt)
             if not produced.exists():
@@ -94,7 +110,7 @@ def render_plantuml(src: Path, out: Path, fmt: str) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             temp_src = tmp_path / src.name
-            temp_src.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+            _stage_plantuml_source(src, temp_src)
             run([java, "-jar", jar, f"-t{fmt}", str(temp_src)], cwd=tmp_path)
             produced = temp_src.with_suffix("." + fmt)
             if not produced.exists():

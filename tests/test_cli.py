@@ -24,7 +24,7 @@ def test_help_and_version_are_available() -> None:
     assert help_result.returncode == 0
     assert "Commands:" in help_result.stdout
     assert version_result.returncode == 0
-    assert "1.1.0" in version_result.stdout
+    assert "1.1.2" in version_result.stdout
 
 
 def test_help_describes_ida_operations_and_bounded_route_evolution_search() -> None:
@@ -93,7 +93,7 @@ def test_transport_failure_has_stable_exit_code_and_command_name() -> None:
         "--url",
         "http://127.0.0.1:1/mcp",
         "--timeout",
-        "0.1",
+        "5",
         "status",
     )
 
@@ -333,3 +333,77 @@ def test_tracecard_validate_requires_input() -> None:
     assert value["command"] == "tracecard-validate"
     assert value["error"]["code"] == "usage"
     assert "--input" in value["error"]["message"]
+
+
+@pytest.mark.parametrize("timeout_args,expected_timeout", [
+    ((), 120.0),
+    (("--timeout", "0.25"), 0.25),
+])
+@pytest.mark.parametrize("command,operation,existing,expected_operations,message", [
+    ("register", "get", False, ["get"], "failed to inspect"),
+    ("status", "get", False, ["get"], "failed to inspect"),
+    ("doctor", "get", False, ["get"], "failed to inspect"),
+    ("register", "remove", True, ["get", "remove"], "failed to remove"),
+    ("register", "add", False, ["get", "add"], "failed to register"),
+    ("register", "add", True, ["get", "remove", "add"], "failed to register"),
+])
+def test_codex_mcp_timeouts_fail_without_fallback_or_retry(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    timeout_args: tuple[str, ...],
+    expected_timeout: float,
+    command: str,
+    operation: str,
+    existing: bool,
+    expected_operations: list[str],
+    message: str,
+) -> None:
+    calls = []
+
+    def run(args, **kwargs):
+        calls.append((args, kwargs))
+        if args[2] == operation:
+            raise subprocess.TimeoutExpired(args, kwargs.get("timeout", expected_timeout))
+        if args[2] == "get":
+            if not existing:
+                return subprocess.CompletedProcess(args, 1, "", "not found")
+            return subprocess.CompletedProcess(args, 0, json.dumps({
+                "name": "idapro",
+                "enabled": True,
+                "transport": {"type": "streamable_http", "url": "http://old.example/mcp"},
+            }), "")
+        return subprocess.CompletedProcess(args, 0, "", "")
+
+    monkeypatch.setattr(cli_module.shutil, "which", lambda name: "codex")
+    monkeypatch.setattr(cli_module.subprocess, "run", run)
+    monkeypatch.setattr(cli_module, "find_latest_ida", lambda: None)
+
+    exit_code = cli_module.main(["--json", *timeout_args, command])
+    captured = capsys.readouterr()
+    value = json.loads(captured.out)
+
+    assert exit_code == 3
+    assert captured.err == ""
+    assert value == {
+        "schemaVersion": "1",
+        "ok": False,
+        "command": command,
+        "data": None,
+        "error": {
+            "code": "EnvironmentUnavailable",
+            "message": value["error"]["message"],
+        },
+    }
+    assert message in value["error"]["message"]
+    assert "idapro" in value["error"]["message"]
+    assert "timed out" in value["error"]["message"]
+    assert [args[2] for args, _ in calls] == expected_operations
+    for args, kwargs in calls:
+        assert args[:2] == ["codex", "mcp"]
+        assert args[3] == "idapro"
+        assert kwargs == {
+            "capture_output": True,
+            "text": True,
+            "check": False,
+            "timeout": expected_timeout,
+        }

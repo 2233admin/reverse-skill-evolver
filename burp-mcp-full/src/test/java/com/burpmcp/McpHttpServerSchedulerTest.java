@@ -16,6 +16,7 @@ public final class McpHttpServerSchedulerTest {
     public static void main(String[] args) throws Exception {
         replenishesWindowWhileFirstRequestIsBlocked();
         deadlineCancelsOutstandingWorkAndStopsSubmission();
+        McpHttpServerBehaviorTest.main(args);
     }
 
     private static void replenishesWindowWhileFirstRequestIsBlocked() throws Exception {

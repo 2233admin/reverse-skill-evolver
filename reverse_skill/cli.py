@@ -21,6 +21,7 @@ from .mcp import McpClient, probe_tool_count
 
 
 SCHEMA_VERSION = "1"
+DEFAULT_TIMEOUT = 120.0
 COMMAND_NAMES = {
     "install",
     "register",
@@ -75,13 +76,19 @@ def structured_content(result: Mapping[str, Any]) -> Mapping[str, Any]:
     return value if isinstance(value, Mapping) else result
 
 
-def codex_registration(name: str) -> dict[str, Any] | None:
+def codex_registration(name: str, *, timeout: float = DEFAULT_TIMEOUT) -> dict[str, Any] | None:
     codex = shutil.which("codex")
     if not codex:
         return None
-    completed = subprocess.run(
-        [codex, "mcp", "get", name, "--json"], capture_output=True, text=True, check=False
-    )
+    try:
+        completed = subprocess.run(
+            [codex, "mcp", "get", name, "--json"],
+            capture_output=True, text=True, check=False, timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise EnvironmentUnavailable(
+            f"failed to inspect Codex MCP registration {name!r}: timed out after {timeout:g} seconds"
+        ) from exc
     if completed.returncode != 0 or not completed.stdout.strip():
         return None
     try:
@@ -91,11 +98,11 @@ def codex_registration(name: str) -> dict[str, Any] | None:
     return value if isinstance(value, dict) else None
 
 
-def register_codex(name: str, url: str) -> dict[str, Any]:
+def register_codex(name: str, url: str, *, timeout: float = DEFAULT_TIMEOUT) -> dict[str, Any]:
     codex = shutil.which("codex")
     if not codex:
         raise EnvironmentUnavailable("codex CLI is not installed or is not on PATH")
-    existing = codex_registration(name)
+    existing = codex_registration(name, timeout=timeout)
     transport = (existing or {}).get("transport") or {}
     if (
         existing
@@ -105,17 +112,29 @@ def register_codex(name: str, url: str) -> dict[str, Any]:
     ):
         return {"name": name, "url": url, "changed": False, "status": "already_registered"}
     if existing:
-        completed = subprocess.run(
-            [codex, "mcp", "remove", name], capture_output=True, text=True, check=False
-        )
+        try:
+            completed = subprocess.run(
+                [codex, "mcp", "remove", name],
+                capture_output=True, text=True, check=False, timeout=timeout,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise EnvironmentUnavailable(
+                f"failed to remove existing Codex MCP registration {name!r}: timed out after {timeout:g} seconds"
+            ) from exc
         if completed.returncode != 0:
             detail = completed.stderr.strip() or completed.stdout.strip()
             raise EnvironmentUnavailable(
                 f"failed to remove existing Codex MCP registration {name!r}: {detail}"
             )
-    completed = subprocess.run(
-        [codex, "mcp", "add", name, "--url", url], capture_output=True, text=True, check=False
-    )
+    try:
+        completed = subprocess.run(
+            [codex, "mcp", "add", name, "--url", url],
+            capture_output=True, text=True, check=False, timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise EnvironmentUnavailable(
+            f"failed to register Codex MCP server {name!r}: timed out after {timeout:g} seconds"
+        ) from exc
     if completed.returncode != 0:
         detail = completed.stderr.strip() or completed.stdout.strip()
         raise EnvironmentUnavailable(f"failed to register Codex MCP server {name!r}: {detail}")
@@ -126,7 +145,7 @@ def register_codex(name: str, url: str) -> dict[str, Any]:
 @click.option("--url", default="http://127.0.0.1:13337/mcp", show_default=True)
 @click.option("--name", default="idapro", show_default=True, help="Codex MCP registration name.")
 @click.option("--json", "json_output", is_flag=True, help="Emit one stable JSON envelope on stdout.")
-@click.option("--timeout", type=click.FloatRange(min=0.1), default=120.0, show_default=True)
+@click.option("--timeout", type=click.FloatRange(min=0.1), default=DEFAULT_TIMEOUT, show_default=True)
 @click.version_option(__version__, prog_name="reverse-skill")
 @click.pass_context
 def cli(ctx: click.Context, url: str, name: str, json_output: bool, timeout: float) -> None:
@@ -166,7 +185,7 @@ def install(state: State, upgrade: bool) -> None:
 @click.pass_obj
 def register(state: State) -> None:
     """Register the Streamable HTTP endpoint with Codex."""
-    emit(state, "register", register_codex(state.name, state.url))
+    emit(state, "register", register_codex(state.name, state.url, timeout=state.timeout))
 
 
 @cli.command()
@@ -189,7 +208,7 @@ def start(state: State, ida_dir: Path | None, port: int, server_path: Path | Non
 
 def _status_data(state: State) -> dict[str, Any]:
     ida = find_latest_ida()
-    registration = codex_registration(state.name)
+    registration = codex_registration(state.name, timeout=state.timeout)
     transport = (registration or {}).get("transport") or {}
     with McpClient(state.url, timeout=state.timeout) as client:
         tools = client.request("tools/list")
