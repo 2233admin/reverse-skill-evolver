@@ -11,6 +11,7 @@ from reverse_skill.evolution import CandidateScore, pareto_frontier
 
 
 def test_pareto_frontier_keeps_tradeoffs_and_drops_dominated_candidates() -> None:
+    """Verify equal scores and tradeoffs survive in input order while dominated scores are removed."""
     east = CandidateScore("east", {"apk": 1.0, "native": 0.25}, {"apk": 0, "native": 0})
     west = CandidateScore("west", {"apk": 0.25, "native": 1.0}, {"apk": 0, "native": 0})
     equal = CandidateScore("equal", {"apk": 1.0, "native": 0.25}, {"apk": 0, "native": 0})
@@ -32,6 +33,7 @@ def test_pareto_frontier_keeps_tradeoffs_and_drops_dominated_candidates() -> Non
 def test_pareto_frontier_preserves_dominance_and_input_order(
     pass_rates: dict, invalid_counts: dict, expected_ids: list[str],
 ) -> None:
+    """Verify pass rates and invalid counts jointly determine an ordered Pareto frontier."""
     base = CandidateScore("base", {"apk": 0.5, "native": 0.5}, {"apk": 1, "native": 1})
     challenger = CandidateScore("challenger", pass_rates, invalid_counts)
 
@@ -70,6 +72,7 @@ def test_real_reflection_proposals_evaluate_full_frozen_suite_and_keep_ancestors
     optimizer_inputs: dict, monkeypatch: pytest.MonkeyPatch,
     max_evaluations: int, max_reflections: int, stop_reason: str,
 ) -> None:
+    """Verify reflections reuse the parsed catalog and preserve frozen evidence and candidate ancestry."""
     paths, cases, catalog = (optimizer_inputs[name] for name in ("paths", "cases", "catalog"))
     frozen_bytes = {name: paths[name].read_bytes() for name in ("catalog", "fixtures")}
     curated_text = paths["candidate"].read_bytes().decode("utf-8")
@@ -88,6 +91,7 @@ def test_real_reflection_proposals_evaluate_full_frozen_suite_and_keep_ancestors
     loads = json.loads
 
     def track_catalog_loads(value, *args, **kwargs):
+        """Record catalog deserializations while preserving normal JSON parsing."""
         parsed = loads(value, *args, **kwargs)
         if value in (frozen_bytes["catalog"].decode("utf-8"), catalog_json):
             catalog_loads.append(parsed)
@@ -96,6 +100,7 @@ def test_real_reflection_proposals_evaluate_full_frozen_suite_and_keep_ancestors
     monkeypatch.setattr(evolution.json, "loads", track_catalog_loads)
 
     def omp(prompt: str, system: str, timeout: int) -> str:
+        """Simulate model replies, check frozen prompts, and mutate inputs to detect unintended rereads."""
         calls.append((prompt, system, timeout))
         if prompt.startswith("You are editing"):
             payload = json.loads(prompt.split("Reflection data:\n", 1)[1])
@@ -243,11 +248,13 @@ def test_invalid_reflection_never_evaluates_a_proposal(
 def test_non_windows_accepts_candidate_that_only_exceeds_windows_argv_limit(
     optimizer_inputs: dict, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Verify non-Windows evolution accepts a candidate exceeding only the Windows argument limit."""
     paths = optimizer_inputs["paths"]
     quoted_candidate = '"' * 20_000
     monkeypatch.setattr(sys, "platform", "linux")
 
     def omp(prompt: str, system: str, timeout: int) -> str:
+        """Return an oversized-for-Windows proposal or an abstaining route evaluation."""
         if prompt.startswith("You are editing"):
             return quoted_candidate
         return '{"route_id":null}'

@@ -66,6 +66,7 @@ function buildToolDefinitions(toolNames) {
   }));
 }
 
+/** Return the tool description, falling back to a generic label containing its name. */
 function getToolDescription(name) {
   const descriptions = {
     proxy_history: 'Get Burp proxy history with optional filtering by URL, method, status code',

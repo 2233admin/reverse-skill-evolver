@@ -13,6 +13,7 @@ public final class McpHttpServerSchedulerTest {
     private static final int WINDOW_SIZE = 50;
     private static final int WAIT_SECONDS = 10;
 
+    /** Run scheduler and behavior regressions without a Burp runtime. */
     public static void main(String[] args) throws Exception {
         replenishesWindowWhileFirstRequestIsBlocked();
         deadlineCancelsOutstandingWorkAndStopsSubmission();

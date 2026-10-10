@@ -16,6 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /** No Burp runtime or network: exercise pagination, serialization and bounded attack work. */
 public final class McpHttpServerBehaviorTest {
+    /** Run pagination, regex, serialization, and sequential attack regressions. */
     public static void main(String[] args) throws Exception {
         paginationPreservesFilteredIndicesAndBoundaries();
         technologyNamesAreLiteralAndCaseInsensitive();
@@ -30,6 +31,7 @@ public final class McpHttpServerBehaviorTest {
         sequentialAttackErrorAndCountContractsRemainIntact();
     }
 
+    /** Verify newest-first pagination, filtered indices, totals, and legacy boundary behavior. */
     private static void paginationPreservesFilteredIndicesAndBoundaries() throws Exception {
         List<ProxyHttpRequestResponse> history = List.of(
                 entry("GET", "https://a/old", 200), entry("POST", "https://a/post", 201),
@@ -61,12 +63,14 @@ public final class McpHttpServerBehaviorTest {
         require(page.get("total").getAsInt() == 0 && page.getAsJsonArray("items").isEmpty(), "Empty filter result changed");
     }
 
+    /** Invoke the private history operation with parsed JSON parameters for assertions. */
     private static JsonObject history(McpHttpServer server, String json) throws Exception {
         Method method = McpHttpServer.class.getDeclaredMethod("proxyHistory", JsonObject.class);
         method.setAccessible(true);
         return (JsonObject) method.invoke(server, JsonParser.parseString(json).getAsJsonObject());
     }
 
+    /** Create a proxy history fixture with the requested method, URL, status, and a fixed body length. */
     private static ProxyHttpRequestResponse entry(String verb, String url, int status) {
         HttpRequest request = fake(HttpRequest.class, (m, a) -> switch (m.getName()) {
             case "method" -> verb;
@@ -92,6 +96,7 @@ public final class McpHttpServerBehaviorTest {
         });
     }
 
+    /** Verify RE2J matching semantics and consistent error envelopes for unsupported caller patterns. */
     private static void callerRegexesAcceptLinearPatternsAndRejectUnsupportedSyntax() throws Exception {
         List<ProxyHttpRequestResponse> entries = new ArrayList<>();
         entries.add(entry("GET", "Token:abc Token:DEF", 200));
@@ -143,12 +148,14 @@ public final class McpHttpServerBehaviorTest {
         }
     }
 
+    /** Invoke a private JSON operation by name, exposing reflection failures to the test. */
     private static JsonObject call(McpHttpServer server, String operation, JsonObject params) throws Exception {
         Method method = McpHttpServer.class.getDeclaredMethod(operation, JsonObject.class);
         method.setAccessible(true);
         return (JsonObject) method.invoke(server, params);
     }
 
+    /** Verify invalid candidates preserve each sequential attack operation's error and request counts. */
     private static void sequentialAttackErrorAndCountContractsRemainIntact() throws Exception {
         McpHttpServer server = new McpHttpServer(fake(MontoyaApi.class, (m, a) -> {
             throw new AssertionError("Invalid candidates must not invoke Montoya: " + m.getName());
@@ -165,6 +172,7 @@ public final class McpHttpServerBehaviorTest {
         }
     }
 
+    /** Verify only complete supported header names match, regardless of case. */
     private static void technologyNamesAreLiteralAndCaseInsensitive() {
         for (String name : List.of("server", "SeRvEr", "X-POWERED-BY", "x-AspNet-Version"))
             require(McpHttpServer.isTechnologyHeader(name), "Technology header excluded: " + name);
@@ -172,11 +180,14 @@ public final class McpHttpServerBehaviorTest {
             require(!McpHttpServer.isTechnologyHeader(name), "Non-technology header included: " + name);
     }
 
+    /** Verify header values are converted once and request text retains its existing wire format. */
     private static void numericRequestsReuseHeadersWithoutChangingWireFormat() {
         AtomicInteger conversions = new AtomicInteger();
         JsonObject headers = new JsonObject();
         headers.add("X-Test", new JsonElement() {
+            /** Count header value conversions and return a literal placeholder-bearing value. */
             @Override public String getAsString() { conversions.incrementAndGet(); return "static @@"; }
+            /** Return this immutable test value without allocating a copy. */
             @Override public JsonElement deepCopy() { return this; }
         });
         headers.addProperty("Host", "override.example");
@@ -188,6 +199,7 @@ public final class McpHttpServerBehaviorTest {
         require(conversions.get() == 1, "Invariant values must be converted once, without payload substitution");
     }
 
+    /** Verify sequential sends use Montoya request options with the remaining response timeout. */
     private static void sequentialRequestUsesExplicitTimeoutOptions() throws Exception {
         long[] timeout = {0};
         RequestOptions[] options = new RequestOptions[1];
@@ -220,6 +232,7 @@ public final class McpHttpServerBehaviorTest {
         require(timeout[0] > 0 && timeout[0] <= 5000, "Request timeout did not use remaining attack time");
     }
 
+    /** Verify the coordinator exits on deadline even when a callback ignores interruption. */
     private static void stalledCallbackCannotHoldAttackCoordinatorPastDeadline() throws Exception {
         CountDownLatch started = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
@@ -269,6 +282,7 @@ public final class McpHttpServerBehaviorTest {
         }
     }
 
+    /** Verify values and callback failures propagate while later requests remain eligible. */
     private static void sequentialRequestsReturnValuesAndPropagateFailures() throws Exception {
         JsonObject result = new JsonObject();
         try (var attack = new McpHttpServer.SequentialAttack(result, System.nanoTime() + TimeUnit.SECONDS.toNanos(10))) {
@@ -281,6 +295,7 @@ public final class McpHttpServerBehaviorTest {
         require(!result.has("timed_out") && !result.has("interrupted"), "Successful attack acquired cancellation flags");
     }
 
+    /** Verify an already expired attack records timeout without submitting a callback. */
     private static void expiredDeadlineNeverSubmits() throws Exception {
         AtomicInteger submitted = new AtomicInteger();
         JsonObject result = new JsonObject();
@@ -292,14 +307,17 @@ public final class McpHttpServerBehaviorTest {
         require(submitted.get() == 0 && result.get("timed_out").getAsBoolean(), "Expired attack submitted work or lost timeout flag");
     }
 
+    /** Verify coordinator interruption cancels pending work and prevents further submission. */
     private static void interruptionCancelsPendingRequestAndStopsSubmission() throws Exception {
         exerciseCancellation(true);
     }
 
+    /** Verify deadline expiry cancels pending work and prevents further submission. */
     private static void deadlineCancelsPendingRequestAndStopsSubmission() throws Exception {
         exerciseCancellation(false);
     }
 
+    /** Exercise interruption or deadline cancellation using a blocked request and verify cleanup. */
     private static void exerciseCancellation(boolean interrupt) throws Exception {
         CountDownLatch started = new CountDownLatch(1), cancelled = new CountDownLatch(1), release = new CountDownLatch(1);
         AtomicInteger submitted = new AtomicInteger();
@@ -336,12 +354,17 @@ public final class McpHttpServerBehaviorTest {
         }
     }
 
-    private interface Answer { Object invoke(Method method, Object[] args) throws Throwable; }
+    private interface Answer {
+        /** Handle a reflected interface call for a synthetic Montoya test object. */
+        Object invoke(Method method, Object[] args) throws Throwable;
+    }
+    /** Create an interface proxy that delegates each invocation to the supplied test answer. */
     @SuppressWarnings("unchecked")
     private static <T> T fake(Class<T> type, Answer answer) {
         return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[]{type},
                 (proxy, method, args) -> answer.invoke(method, args));
     }
+    /** Throw AssertionError with the supplied message when a test condition is false. */
     private static void require(boolean condition, String message) {
         if (!condition) throw new AssertionError(message);
     }

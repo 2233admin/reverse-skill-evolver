@@ -77,6 +77,11 @@ def structured_content(result: Mapping[str, Any]) -> Mapping[str, Any]:
 
 
 def codex_registration(name: str, *, timeout: float = DEFAULT_TIMEOUT) -> dict[str, Any] | None:
+    """Return the named Codex registration, or None when it cannot be read.
+
+    Missing Codex, failed lookups, and invalid JSON produce None. A subprocess
+    timeout (in seconds) raises EnvironmentUnavailable instead of hiding failure.
+    """
     codex = shutil.which("codex")
     if not codex:
         return None
@@ -99,6 +104,12 @@ def codex_registration(name: str, *, timeout: float = DEFAULT_TIMEOUT) -> dict[s
 
 
 def register_codex(name: str, url: str, *, timeout: float = DEFAULT_TIMEOUT) -> dict[str, Any]:
+    """Ensure Codex has an enabled Streamable HTTP registration for the URL.
+
+    Return its name, URL, change flag, and status. Each get, remove, or add
+    subprocess uses the supplied timeout in seconds; timeouts and failed
+    mutations raise EnvironmentUnavailable without retrying.
+    """
     codex = shutil.which("codex")
     if not codex:
         raise EnvironmentUnavailable("codex CLI is not installed or is not on PATH")
@@ -207,6 +218,7 @@ def start(state: State, ida_dir: Path | None, port: int, server_path: Path | Non
 
 
 def _status_data(state: State) -> dict[str, Any]:
+    """Collect IDA discovery, Codex registration, and live MCP metadata using the state timeout."""
     ida = find_latest_ida()
     registration = codex_registration(state.name, timeout=state.timeout)
     transport = (registration or {}).get("transport") or {}

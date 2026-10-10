@@ -147,6 +147,7 @@ public class McpHttpServer extends NanoHTTPD {
         }
     }
 
+    /** Return a newest-first filtered history page with filtered indices and the full match count. */
     private JsonObject proxyHistory(JsonObject params) {
         JsonObject result = new JsonObject();
         List<ProxyHttpRequestResponse> history = api.proxy().history();
@@ -247,6 +248,10 @@ public class McpHttpServer extends NanoHTTPD {
     }
 
     // Caller patterns on captured localhost traffic use RE2J, never Java backtracking.
+    /**
+     * Compile a caller pattern with RE2J and the supplied flags.
+     * @throws IllegalArgumentException if the pattern is invalid or uses unsupported syntax
+     */
     static Pattern compileCallerRegex(String regex, int flags) {
         try {
             return Pattern.compile(regex, flags);
@@ -255,11 +260,13 @@ public class McpHttpServer extends NanoHTTPD {
         }
     }
 
+    /** Match supported technology header names literally, ignoring case. */
     static boolean isTechnologyHeader(String name) {
         return "server".equalsIgnoreCase(name) || "x-powered-by".equalsIgnoreCase(name)
                 || "x-aspnet-version".equalsIgnoreCase(name);
     }
 
+    /** Serialize header values once as CRLF-terminated lines without payload substitution. */
     static String renderHeaderLines(JsonObject headers) {
         StringBuilder lines = new StringBuilder();
         for (Map.Entry<String, JsonElement> e : headers.entrySet())
@@ -267,6 +274,10 @@ public class McpHttpServer extends NanoHTTPD {
         return lines.toString();
     }
 
+    /**
+     * Build HTTP/1.1 request text from rendered headers and a substituted body.
+     * Nonempty bodies retain the existing String.length() Content-Length convention.
+     */
     static String numericAttackRequest(String method, String path, String host, String headerLines, String body) {
         StringBuilder request = new StringBuilder();
         request.append(method).append(" ").append(path).append(" HTTP/1.1\r\n")
@@ -291,11 +302,13 @@ public class McpHttpServer extends NanoHTTPD {
             return thread;
         });
 
+        /** Create a coordinator that records cancellation in result and uses a System.nanoTime() deadline. */
         SequentialAttack(JsonObject result, long deadline) {
             this.result = result;
             this.deadline = deadline;
         }
 
+        /** Record interruption or deadline expiry and return whether more work may be submitted. */
         boolean canContinue() {
             if (Thread.currentThread().isInterrupted()) {
                 result.addProperty("interrupted", true);
@@ -308,10 +321,15 @@ public class McpHttpServer extends NanoHTTPD {
             return !result.has("timed_out") && !result.has("interrupted");
         }
 
+        /** Send a Montoya request with the remaining response timeout and bound the coordinator wait. */
         HttpRequestResponse send(Http http, HttpRequest request) throws Exception {
             return send(timeoutMs -> sendRequestWithResponseTimeout(http, request, timeoutMs));
         }
 
+        /**
+         * Run a callback with remaining milliseconds, bounding the wait and propagating failures.
+         * Timeout or interruption records cancellation and attempts to interrupt pending work.
+         */
         <T> T send(LongFunction<T> request) throws Exception {
             if (!canContinue()) {
                 if (Thread.currentThread().isInterrupted()) throw new InterruptedException();
@@ -342,6 +360,7 @@ public class McpHttpServer extends NanoHTTPD {
             }
         }
 
+        /** Throttle for at most the remaining deadline, preserving and recording interruption. */
         void pause(long milliseconds) throws InterruptedException {
             long remaining = deadline - System.nanoTime();
             if (remaining <= 0) { result.addProperty("timed_out", true); return; }
@@ -354,9 +373,11 @@ public class McpHttpServer extends NanoHTTPD {
             }
         }
 
+        /** Interrupt the worker without waiting for potentially non-cooperative transport work. */
         @Override public void close() { worker.shutdownNow(); }
     }
 
+    /** Run sequential numeric payloads within the coordinator deadline and return counts and hits. */
     private JsonObject intruderAttack(JsonObject params) {
         JsonObject result = new JsonObject();
         try (SequentialAttack attack = new SequentialAttack(result, System.nanoTime() + TimeUnit.SECONDS.toNanos(ATTACK_TIMEOUT_SECONDS))) {
@@ -410,6 +431,7 @@ public class McpHttpServer extends NanoHTTPD {
         return result;
     }
 
+    /** Run numeric payloads with bounded concurrency and a coordinator deadline, returning counts and hits. */
     private JsonObject intruderAttackAsync(JsonObject params) {
         // Multi-threaded version for high-speed attacks
         JsonObject result = new JsonObject();
@@ -627,6 +649,7 @@ public class McpHttpServer extends NanoHTTPD {
         return result;
     }
 
+    /** Find case-insensitive RE2J matches in history, returning original indices or an error object. */
     private JsonObject searchHistory(JsonObject params) {
         JsonObject result = new JsonObject();
         try {
@@ -695,6 +718,7 @@ public class McpHttpServer extends NanoHTTPD {
         return result;
     }
 
+    /** Run wordlist payloads within the coordinator deadline and return successful request counts, errors, and hits. */
     private JsonObject intruderAttackWordlist(JsonObject params) {
         JsonObject result = new JsonObject();
         try (SequentialAttack attack = new SequentialAttack(result, System.nanoTime() + TimeUnit.SECONDS.toNanos(ATTACK_TIMEOUT_SECONDS))) {
@@ -913,6 +937,7 @@ public class McpHttpServer extends NanoHTTPD {
         return result;
     }
 
+    /** Substitute same-index payloads across parameter lists within the coordinator deadline and summarize results. */
     private JsonObject intruderPitchfork(JsonObject params) {
         JsonObject result = new JsonObject();
         try (SequentialAttack attack = new SequentialAttack(result, System.nanoTime() + TimeUnit.SECONDS.toNanos(ATTACK_TIMEOUT_SECONDS))) {
@@ -951,6 +976,7 @@ public class McpHttpServer extends NanoHTTPD {
     private JsonObject proxyListeners(JsonObject params) { JsonObject r = new JsonObject(); r.addProperty("info", "Manage via Burp UI or export_config/import_config. Default: 127.0.0.1:8080"); return r; }
     private JsonObject proxyMatchReplace(JsonObject params) { JsonObject r = new JsonObject(); r.addProperty("info", "Use export_config 鈫?modify proxy.match_replace_rules 鈫?import_config"); return r; }
 
+    /** Summarize hosts, technology headers, and the sampled count from matching site-map entries. */
     private JsonObject targetInfo(JsonObject params) {
         JsonObject result = new JsonObject();
         try {
@@ -1073,6 +1099,7 @@ public class McpHttpServer extends NanoHTTPD {
         return result;
     }
 
+    /** Try Cartesian payload combinations up to max_requests and the coordinator deadline, counting failed attempts too. */
     private JsonObject intruderClusterBomb(JsonObject params) {
         JsonObject result = new JsonObject();
         try (SequentialAttack attack = new SequentialAttack(result, System.nanoTime() + TimeUnit.SECONDS.toNanos(ATTACK_TIMEOUT_SECONDS))) {
@@ -1116,6 +1143,7 @@ public class McpHttpServer extends NanoHTTPD {
         return result;
     }
 
+    /** Apply each payload to all placeholder occurrences in URL, body, and header values and summarize bounded attack results. */
     private JsonObject intruderBatteringRam(JsonObject params) {
         JsonObject result = new JsonObject();
         try (SequentialAttack attack = new SequentialAttack(result, System.nanoTime() + TimeUnit.SECONDS.toNanos(ATTACK_TIMEOUT_SECONDS))) {
@@ -1150,6 +1178,7 @@ public class McpHttpServer extends NanoHTTPD {
         return result;
     }
 
+    /** Run a bounded numeric attack with encoding, throttling, timing, and optional case-sensitive RE2J extraction. */
     private JsonObject intruderWithOptions(JsonObject params) {
         // Intruder attack with payload processing, throttle, response time, grep extract
         JsonObject result = new JsonObject();
@@ -1208,6 +1237,7 @@ public class McpHttpServer extends NanoHTTPD {
         return result;
     }
 
+    /** Return full case-sensitive RE2J matches from a history response body, or an error object. */
     private JsonObject extractFromResponse(JsonObject params) {
         JsonObject result = new JsonObject();
         try {

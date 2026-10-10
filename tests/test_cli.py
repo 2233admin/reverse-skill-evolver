@@ -18,6 +18,7 @@ def run_cli(*args: str) -> subprocess.CompletedProcess[str]:
 
 
 def test_help_and_version_are_available() -> None:
+    """Verify module entry points expose CLI help and the current package version."""
     help_result = run_cli("--help")
     version_result = run_cli("--version")
 
@@ -88,6 +89,7 @@ def test_json_mode_rejects_interactive_install_without_starting_it() -> None:
 
 
 def test_transport_failure_has_stable_exit_code_and_command_name() -> None:
+    """Verify unreachable MCP transport returns the stable status error envelope and exit code."""
     result = run_cli(
         "--json",
         "--url",
@@ -358,9 +360,11 @@ def test_codex_mcp_timeouts_fail_without_fallback_or_retry(
     expected_operations: list[str],
     message: str,
 ) -> None:
+    """Verify each Codex timeout stops the command with one structured environment error."""
     calls = []
 
     def run(args, **kwargs):
+        """Record subprocess options and simulate a timeout at the selected MCP operation."""
         calls.append((args, kwargs))
         if args[2] == operation:
             raise subprocess.TimeoutExpired(args, kwargs.get("timeout", expected_timeout))

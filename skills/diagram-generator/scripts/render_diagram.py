@@ -34,6 +34,11 @@ def run(cmd: list[str], cwd: Path | None = None) -> None:
 
 
 def infer_kind(path: Path) -> str:
+    """Infer the renderer from the extension or first non-whitespace prefix.
+
+    Read unknown extensions in bounded chunks with replacement UTF-8 decoding.
+    Empty or unrecognized content defaults to Mermaid.
+    """
     ext = path.suffix.lower()
     if ext in MERMAID_EXTS:
         return "mermaid"
@@ -84,11 +89,17 @@ def render_graphviz(src: Path, out: Path, fmt: str) -> None:
 
 def _stage_plantuml_source(src: Path, dest: Path) -> None:
     # Text streams retain strict UTF-8 decoding and platform newline conversion.
+    """Stream strict UTF-8 source to dest, normalizing newlines with bounded reads."""
     with src.open(encoding="utf-8") as source, dest.open("w", encoding="utf-8") as target:
         shutil.copyfileobj(source, target, length=64 * 1024)
 
 
 def render_plantuml(src: Path, out: Path, fmt: str) -> None:
+    """Render staged UTF-8 source with PlantUML CLI or the configured Java JAR.
+
+    Copy the rendered file to out and clean up staging. Invalid UTF-8 raises
+    UnicodeDecodeError; a missing renderer or output raises RuntimeError.
+    """
     plantuml = shutil.which("plantuml")
     java = shutil.which("java")
     if plantuml:

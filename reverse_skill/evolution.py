@@ -35,6 +35,11 @@ class CandidateScore:
 
 
 def _dominates(left: CandidateScore, right: CandidateScore) -> bool:
+    """Return whether left is no worse on every track and better on at least one.
+
+    Higher pass rates and lower invalid counts are better. Scores with
+    different track sets are incomparable; equal scores do not dominate.
+    """
     if left.pass_rates.keys() != right.pass_rates.keys():
         return False
     no_worse = all(
@@ -244,6 +249,11 @@ def _omp_args(executable: str, working_dir: str, system_prompt: str, timeout: in
 
 
 def _check_windows_argv(args: list[str]) -> None:
+    """Reject an oversized serialized command on Windows with ToolOperationError.
+
+    Count UTF-16 units after argument quoting, including the terminating NUL.
+    Other platforms bypass this Windows-specific limit.
+    """
     if sys.platform != "win32":
         return
     command = subprocess.list2cmdline(args)
@@ -331,6 +341,12 @@ def _evaluate(candidate_id: str, candidate_text: str, fixtures: list[Fixture], c
 
 
 def _reflect(parent_text: str, outcomes: list[dict[str, Any]], catalog: dict[str, Any], timeout: int) -> dict[str, Any]:
+    """Ask OMP for replacement routing instructions using the parsed catalog.
+
+    Return the candidate text, raw response, and reflection context. Empty,
+    oversized, or route-answer proposals raise ToolOperationError. The timeout
+    in seconds is passed to OMP; model failures propagate to the caller.
+    """
     payload = {
         "parent_candidate": parent_text,
         "routing_catalog": catalog,
@@ -362,6 +378,14 @@ def _reflect(parent_text: str, outcomes: list[dict[str, Any]], catalog: dict[str
 
 
 def evolve(candidate_path: Path, catalog_path: Path, fixtures_path: Path, output_dir: Path, max_evaluations: int, max_reflections: int, timeout: int) -> dict[str, Any]:
+    """Run bounded routing-prompt search against frozen catalog and fixture inputs.
+
+    Evaluate the baseline and curated prompt, then reflect on eligible Pareto
+    candidates within the evaluation and reflection budgets. Return the report
+    and archive inputs, candidates, and results in a new output directory.
+    Invalid inputs or budgets raise ToolOperationError; model failures propagate.
+    The timeout in seconds applies to each model call.
+    """
     if max_evaluations < 3:
         raise ToolOperationError("max_evaluations must cover baseline, curated candidate, and at least one proposal (minimum 3)")
     if max_reflections < 1 or max_reflections > max_evaluations - 2:
