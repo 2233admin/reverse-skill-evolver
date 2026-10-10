@@ -244,14 +244,14 @@ def test_evolution_preserves_input_filesystem_errors(
 
 
 def test_trace_semantics_accept_observed_and_unobserved_cards(trace_card: dict) -> None:
-    evolution.validate_trace_card(trace_card)
+    assert evolution.validate_trace_card(trace_card) is None
     trace_card["unknowns"][0]["status"] = "resolved"
     trace_card["unknowns"][0]["supporting_evidence"] = ["ev-1"]
     trace_card["oracle_results"] = [{"oracle_id": "oracle-1", "status": "pass", "evidence_refs": ["ev-1"]}]
     trace_card["memory_tier"] = "validated"
     trace_card["promotion_candidate"] = True
-    evolution.validate_trace_card(trace_card)
-    Draft202012Validator(json.loads(TRACE_SCHEMA.read_text(encoding="utf-8"))).validate(trace_card)
+    assert evolution.validate_trace_card(trace_card) is None
+    assert Draft202012Validator(json.loads(TRACE_SCHEMA.read_text(encoding="utf-8"))).is_valid(trace_card)
 
 
 @pytest.mark.parametrize("mutation", [
