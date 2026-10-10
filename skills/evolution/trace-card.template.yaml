@@ -1,4 +1,4 @@
-schema_version: 1
+schema_version: 2
 trace_id: "<goal-id>-trace"
 goal_id: "<goal-id>"
 started_at: "<iso8601>"
@@ -21,14 +21,20 @@ steps:
     cost:
       tool_calls: 1
       elapsed_seconds: 0
-    outcome: "progress|blocked|failed|oracle_passed|oracle_failed"
+    outcome: "progress" # progress|blocked|failed|oracle_passed|oracle_failed
     failure_mode: "<optional>"
     next_edge: "<continue|fallback skill|stop>"
+    evidence_refs: [] # Records: id (unique, nonempty), source, input_id, coverage, limitations.
+
 
 oracle_results:
   - oracle_id: "oracle-1"
-    status: "pass|fail|not_run"
-    evidence: "<path, command output summary, or report section>"
+    status: "not_run" # pass|fail|not_run; pass/fail require nonempty evidence_refs.
+    evidence_refs: [] # IDs must resolve to this card's step evidence records.
+
+unknowns: [] # Records: question, status (open|resolved), requires, affects_outcome (boolean),
+             # supporting_evidence and contradicting_evidence (in-card evidence IDs).
+             # Resolved unknowns need at least one supporting or contradicting ID.
 
 learning:
   preserve:
@@ -38,5 +44,5 @@ learning:
   prune:
     - "<expensive action with no contribution>"
 
-memory_tier: "validated|candidate|forensic"
+memory_tier: "candidate" # validated|candidate|forensic
 promotion_candidate: false

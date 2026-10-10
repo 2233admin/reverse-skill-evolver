@@ -79,8 +79,15 @@ class McpClient:
         self.capabilities: dict[str, Any] | None = None
         self.tool_headers: dict[str, list[dict[str, Any]]] = {}
         self.http = httpx.Client(timeout=timeout, transport=transport)
-        if not self._discover_modern():
-            self._initialize_legacy()
+        try:
+            if not self._discover_modern():
+                self._initialize_legacy()
+        except BaseException:
+            try:
+                self.http.close()
+            except Exception:
+                pass
+            raise
 
     def __enter__(self) -> "McpClient":
         return self
@@ -121,19 +128,27 @@ class McpClient:
         if not content.strip():
             return None
         if content_type.lower().startswith("text/event-stream"):
-            messages: list[dict[str, Any]] = []
+            matched_message: dict[str, Any] | None = None
+            selection_error: AttributeError | None = None
             data_lines: list[str] = []
             for line in content.splitlines() + [""]:
                 if line.startswith("data:"):
                     data_lines.append(line[5:].lstrip(" "))
                 elif not line.strip() and data_lines:
-                    messages.append(json.loads("\n".join(data_lines)))
+                    message = json.loads("\n".join(data_lines))
                     data_lines.clear()
-            if request_id is None and messages:
-                return messages[-1]
-            for message in messages:
-                if str(message.get("id")) == str(request_id):
-                    return message
+                    if matched_message is None and selection_error is None:
+                        try:
+                            if str(message.get("id")) == str(request_id):
+                                matched_message = message
+                        except AttributeError as exc:
+                            # Validate all event JSON before reporting selection errors.
+                            selection_error = exc.with_traceback(None)
+                    del message
+            if selection_error is not None:
+                raise selection_error
+            if matched_message is not None:
+                return matched_message
             raise McpProtocolError(f"MCP SSE response did not contain JSON-RPC id {request_id}")
 
         message = json.loads(content)

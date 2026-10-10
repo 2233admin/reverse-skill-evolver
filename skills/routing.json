@@ -22,6 +22,17 @@
       "success_oracles": ["decoded_artifact_exists", "target_function_labeled", "replay_or_bypass_verified"]
     },
     {
+      "id": "firmware-iot",
+      "target_kinds": ["firmware_image", "router_firmware", "iot_device"],
+      "intent_keywords": ["router firmware", "firmware image", "firmware extraction", "binwalk", "unblob", "firmadyne", "squashfs", "jffs2"],
+      "primary_skill": "firmware-pentest/SKILL.md",
+      "requires_capabilities": [],
+      "fallback_edges": [
+        { "when": "single_embedded_binary_static_analysis", "goto": "reverse-engineering/platforms.md" }
+      ],
+      "success_oracles": ["firmware_stage_evidence_recorded", "requested_security_oracle_verified"]
+    },
+    {
       "id": "js-browser-signature",
       "target_kinds": ["js_bundle", "web_frontend", "browser_runtime", "sourcemap"],
       "intent_keywords": ["signature", "encrypted params", "js reverse", "request replay", "websocket"],

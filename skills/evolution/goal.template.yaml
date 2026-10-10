@@ -29,6 +29,7 @@ success_oracles:
 budgets:
   max_tool_calls: 30
   max_minutes: 60
+  max_evaluations: 0 # set >0 for skill/routing candidate search
   escalation_policy: "use stronger tools only after evidence or two failed cheaper paths"
 
 stop_conditions:

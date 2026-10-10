@@ -5,6 +5,8 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator, validate
 
+from reverse_skill.cli import cli
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -51,6 +53,8 @@ def test_opencli_description_matches_click_command_surface() -> None:
         "sessions",
         "call",
         "close",
+        "evolve",
+        "tracecard-validate",
     }
 
     for command in description["command"]["commands"]:
@@ -65,3 +69,28 @@ def test_opencli_description_matches_click_command_surface() -> None:
             assert option["name"] in command_help
         for argument in command.get("arguments", []):
             assert argument["name"] in command_help
+
+
+def test_opencli_evolve_required_options_match_click() -> None:
+    description = json.loads((ROOT / "reverse-skill.opencli.json").read_text(encoding="utf-8"))
+    evolve = next(command for command in description["command"]["commands"] if command["name"] == "evolve")
+    options = {option["name"]: option for option in evolve["options"]}
+    required_options = {"--candidate", "--catalog", "--fixtures", "--output"}
+
+    assert {name for name, option in options.items() if option.get("required", False)} == required_options
+    for parameter in cli.commands["evolve"].params:
+        name = parameter.opts[0]
+        assert options[name].get("required", False) == parameter.required
+    for name in required_options:
+        assert options[name]["arguments"][0]["required"] is True
+
+
+def test_opencli_tracecard_validate_requires_input() -> None:
+    description = json.loads((ROOT / "reverse-skill.opencli.json").read_text(encoding="utf-8"))
+    command = next(item for item in description["command"]["commands"] if item["name"] == "tracecard-validate")
+
+    assert command["options"] == [
+        {"name": "--input", "required": True, "arguments": [{"name": "FILE", "required": True}]},
+    ]
+    assert cli.commands["tracecard-validate"].params[0].opts == ["--input"]
+    assert cli.commands["tracecard-validate"].params[0].required is True

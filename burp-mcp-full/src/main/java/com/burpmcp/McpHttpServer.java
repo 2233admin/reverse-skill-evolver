@@ -3,6 +3,7 @@ package com.burpmcp;
 import burp.api.montoya.MontoyaApi;
 import burp.api.montoya.collaborator.*;
 import burp.api.montoya.http.HttpService;
+import burp.api.montoya.http.RequestOptions;
 import burp.api.montoya.http.message.requests.HttpRequest;
 import burp.api.montoya.http.message.responses.HttpResponse;
 import burp.api.montoya.proxy.ProxyHttpRequestResponse;
@@ -16,9 +17,11 @@ import java.net.URI;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
-import java.util.stream.Collectors;
+import java.util.function.IntFunction;
 
 public class McpHttpServer extends NanoHTTPD {
+    private static final int MAX_IN_FLIGHT_ATTACKS = 50;
+    private static final int ATTACK_TIMEOUT_SECONDS = 120;
     private final MontoyaApi api;
     private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
     private CollaboratorClient collaborator;
@@ -147,15 +150,12 @@ public class McpHttpServer extends NanoHTTPD {
         String filterMethod = params.has("method_filter") ? params.get("method_filter").getAsString() : null;
         int filterStatus = params.has("status_filter") ? params.get("status_filter").getAsInt() : 0;
 
-        List<ProxyHttpRequestResponse> filtered = new ArrayList<>(history);
-        if (filterUrl != null) {
-            filtered = filtered.stream().filter(r -> r.finalRequest().url().contains(filterUrl)).collect(Collectors.toList());
-        }
-        if (filterMethod != null) {
-            filtered = filtered.stream().filter(r -> r.finalRequest().method().equalsIgnoreCase(filterMethod)).collect(Collectors.toList());
-        }
-        if (filterStatus > 0) {
-            filtered = filtered.stream().filter(r -> r.response() != null && r.response().statusCode() == filterStatus).collect(Collectors.toList());
+        List<ProxyHttpRequestResponse> filtered = new ArrayList<>(history.size());
+        for (ProxyHttpRequestResponse entry : history) {
+            if (filterUrl != null && !entry.finalRequest().url().contains(filterUrl)) continue;
+            if (filterMethod != null && !entry.finalRequest().method().equalsIgnoreCase(filterMethod)) continue;
+            if (filterStatus > 0 && (entry.response() == null || entry.response().statusCode() != filterStatus)) continue;
+            filtered.add(entry);
         }
         Collections.reverse(filtered);
         int end = Math.min(offset + limit, filtered.size());
@@ -279,12 +279,14 @@ public class McpHttpServer extends NanoHTTPD {
                     count++;
                     boolean isHit = false;
                     if (successLengthNot > 0 && resp.body().length() != successLengthNot) isHit = true;
-                    if (successContains != null && resp.bodyToString().contains(successContains)) isHit = true;
+                    String responseText = successContains == null ? null : resp.bodyToString();
+                    if (responseText != null && responseText.contains(successContains)) isHit = true;
                     if (isHit) {
                         JsonObject hit = new JsonObject();
                         hit.addProperty("payload", payload); hit.addProperty("status", resp.statusCode());
                         hit.addProperty("length", resp.body().length());
-                        hit.addProperty("body_preview", resp.bodyToString().substring(0, Math.min(300, resp.bodyToString().length())));
+                        if (responseText == null) responseText = resp.bodyToString();
+                        hit.addProperty("body_preview", responseText.substring(0, Math.min(300, responseText.length())));
                         hits.add(hit);
                     }
                 } catch (Exception e) { errors++; }
@@ -310,47 +312,55 @@ public class McpHttpServer extends NanoHTTPD {
             int successLengthNot = params.has("success_length_not") ? params.get("success_length_not").getAsInt() : -1;
             int threads = params.has("threads") ? params.get("threads").getAsInt() : 50;
 
-            ExecutorService executor = Executors.newFixedThreadPool(threads);
             ConcurrentLinkedQueue<JsonObject> hits = new ConcurrentLinkedQueue<>();
             AtomicInteger count = new AtomicInteger(0);
             AtomicInteger errors = new AtomicInteger(0);
             AtomicBoolean found = new AtomicBoolean(false);
-
-            List<Future<?>> futures = new ArrayList<>();
-            for (int i = from; i <= to; i++) {
-                final int idx = i;
-                futures.add(executor.submit(() -> {
-                    if (found.get()) return;
-                    String payload = padDigits > 0 ? String.format("%0" + padDigits + "d", idx) : String.valueOf(idx);
-                    String url = urlTemplate.replace(placeholder, payload);
-                    String body = bodyTemplate.replace(placeholder, payload);
-                    try {
-                        URI uri = new URI(url);
-                        String host = uri.getHost();
-                        int port = uri.getPort() == -1 ? (uri.getScheme().equals("https") ? 443 : 80) : uri.getPort();
-                        String path = uri.getRawPath() + (uri.getRawQuery() != null ? "?" + uri.getRawQuery() : "");
-                        boolean isHttps = uri.getScheme().equals("https");
-                        StringBuilder rawReq = new StringBuilder();
-                        rawReq.append(method).append(" ").append(path).append(" HTTP/1.1\r\n");
-                        rawReq.append("Host: ").append(host).append("\r\n");
-                        for (Map.Entry<String, JsonElement> e : headers.entrySet())
-                            rawReq.append(e.getKey()).append(": ").append(e.getValue().getAsString()).append("\r\n");
-                        if (!body.isEmpty()) rawReq.append("Content-Length: ").append(body.length()).append("\r\n\r\n").append(body);
-                        else rawReq.append("\r\n");
-                        HttpService svc = HttpService.httpService(host, port, isHttps);
-                        HttpResponse resp = api.http().sendRequest(HttpRequest.httpRequest(svc, rawReq.toString())).response();
-                        count.incrementAndGet();
-                        if (successLengthNot > 0 && resp.body().length() != successLengthNot) {
-                            JsonObject hit = new JsonObject();
-                            hit.addProperty("payload", payload); hit.addProperty("length", resp.body().length());
-                            hit.addProperty("body_preview", resp.bodyToString().substring(0, Math.min(300, resp.bodyToString().length())));
-                            hits.add(hit); found.set(true);
-                        }
-                    } catch (Exception e) { errors.incrementAndGet(); }
-                }));
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(ATTACK_TIMEOUT_SECONDS);
+            boolean timedOut = false;
+            try {
+                timedOut = runBoundedAttack(from, to, threads, deadline, found, idx -> () -> {
+                        if (found.get()) return;
+                        String payload = padDigits > 0 ? String.format("%0" + padDigits + "d", idx) : String.valueOf(idx);
+                        String url = urlTemplate.replace(placeholder, payload);
+                        String body = bodyTemplate.replace(placeholder, payload);
+                        try {
+                            URI uri = new URI(url);
+                            String host = uri.getHost();
+                            int port = uri.getPort() == -1 ? (uri.getScheme().equals("https") ? 443 : 80) : uri.getPort();
+                            String path = uri.getRawPath() + (uri.getRawQuery() != null ? "?" + uri.getRawQuery() : "");
+                            boolean isHttps = uri.getScheme().equals("https");
+                            StringBuilder rawReq = new StringBuilder();
+                            rawReq.append(method).append(" ").append(path).append(" HTTP/1.1\r\n");
+                            rawReq.append("Host: ").append(host).append("\r\n");
+                            for (Map.Entry<String, JsonElement> e : headers.entrySet())
+                                rawReq.append(e.getKey()).append(": ").append(e.getValue().getAsString()).append("\r\n");
+                            if (!body.isEmpty()) rawReq.append("Content-Length: ").append(body.length()).append("\r\n\r\n").append(body);
+                            else rawReq.append("\r\n");
+                            HttpService svc = HttpService.httpService(host, port, isHttps);
+                            long remainingNanos = deadline - System.nanoTime();
+                            if (remainingNanos <= 0) return;
+                            long responseTimeoutMs = Math.max(1, TimeUnit.NANOSECONDS.toMillis(remainingNanos));
+                            HttpRequest request = HttpRequest.httpRequest(svc, rawReq.toString());
+                            HttpResponse resp = api.http().sendRequest(
+                                    request,
+                                    RequestOptions.requestOptions().withResponseTimeout(responseTimeoutMs)
+                            ).response();
+                            count.incrementAndGet();
+                            if (successLengthNot > 0 && resp.body().length() != successLengthNot) {
+                                JsonObject hit = new JsonObject();
+                                hit.addProperty("payload", payload); hit.addProperty("length", resp.body().length());
+                                String responseText = resp.bodyToString();
+                                hit.addProperty("body_preview", responseText.substring(0, Math.min(300, responseText.length())));
+                                hits.add(hit); found.set(true);
+                            }
+                        } catch (Exception e) { errors.incrementAndGet(); }
+                });
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                result.addProperty("interrupted", true);
             }
-            for (Future<?> f : futures) { try { f.get(120, TimeUnit.SECONDS); } catch (Exception e) {} }
-            executor.shutdownNow();
+            if (timedOut) result.addProperty("timed_out", true);
 
             result.addProperty("total_requests", count.get()); result.addProperty("errors", errors.get());
             result.addProperty("hits", hits.size());
@@ -358,6 +368,34 @@ public class McpHttpServer extends NanoHTTPD {
             result.add("hit_details", hitArr);
         } catch (Exception e) { result.addProperty("error", e.getMessage()); }
         return result;
+    }
+
+    static boolean runBoundedAttack(int from, int to, int threads, long deadline,
+                                   AtomicBoolean found, IntFunction<Runnable> requestTask)
+            throws InterruptedException {
+        int workerCount = Math.min(threads, MAX_IN_FLIGHT_ATTACKS);
+        ExecutorService executor = Executors.newFixedThreadPool(workerCount);
+        CompletionService<Void> completions = new ExecutorCompletionService<>(executor);
+        List<Future<Void>> futures = new ArrayList<>(workerCount);
+        long candidate = from;
+        try {
+            while ((candidate <= to && !found.get()) || !futures.isEmpty()) {
+                while (candidate <= to && !found.get() && futures.size() < workerCount) {
+                    futures.add(completions.submit(requestTask.apply((int) candidate++), null));
+                }
+                if (futures.isEmpty()) break;
+                long remaining = deadline - System.nanoTime();
+                if (remaining <= 0) return true;
+                Future<Void> completed = completions.poll(remaining, TimeUnit.NANOSECONDS);
+                if (completed == null) return true;
+                // Exceptional tasks also arrive here and release their window slot.
+                futures.remove(completed);
+            }
+            return false;
+        } finally {
+            futures.forEach(future -> future.cancel(true));
+            executor.shutdownNow();
+        }
     }
 
     private JsonObject getSitemap(JsonObject params) {
@@ -831,7 +869,9 @@ public class McpHttpServer extends NanoHTTPD {
         JsonObject result = new JsonObject();
         try { String req = params.get("request").getAsString(); String host = params.has("host") ? params.get("host").getAsString() : "example.com";
             boolean https = params.has("https") ? params.get("https").getAsBoolean() : true;
-            String[] lines = req.split("\r\n"); String[] p = lines[0].split(" "); String url = (https?"https://":"http://") + host + (p.length>1?p[1]:"/");
+            int requestLineEnd = req.indexOf("\r\n");
+            String requestLine = req.substring(0, requestLineEnd < 0 ? req.length() : requestLineEnd);
+            String[] p = requestLine.split(" "); String url = (https?"https://":"http://") + host + (p.length>1?p[1]:"/");
             result.addProperty("curl", "curl -X " + p[0] + " '" + url + "'");
         } catch (Exception e) { result.addProperty("error", e.getMessage()); } return result;
     }
@@ -840,7 +880,9 @@ public class McpHttpServer extends NanoHTTPD {
         JsonObject result = new JsonObject();
         try { String req = params.get("request").getAsString(); String host = params.has("host") ? params.get("host").getAsString() : "example.com";
             boolean https = params.has("https") ? params.get("https").getAsBoolean() : true;
-            String[] lines = req.split("\r\n"); String[] p = lines[0].split(" "); String url = (https?"https://":"http://") + host + (p.length>1?p[1]:"/");
+            int requestLineEnd = req.indexOf("\r\n");
+            String requestLine = req.substring(0, requestLineEnd < 0 ? req.length() : requestLineEnd);
+            String[] p = requestLine.split(" "); String url = (https?"https://":"http://") + host + (p.length>1?p[1]:"/");
             result.addProperty("poc_html", "<html><body><form id='f' method='"+p[0]+"' action='"+url+"'></form><script>document.getElementById('f').submit()</script></body></html>");
         } catch (Exception e) { result.addProperty("error", e.getMessage()); } return result;
     }
@@ -900,7 +942,10 @@ public class McpHttpServer extends NanoHTTPD {
             if (params.has("replace_header")) {
                 JsonObject rh = params.getAsJsonObject("replace_header");
                 for (Map.Entry<String, JsonElement> e : rh.entrySet()) {
-                    rawRequest = rawRequest.replaceAll("(?i)" + e.getKey() + ": [^\r\n]+", e.getKey() + ": " + e.getValue().getAsString());
+                    String header = e.getKey();
+                    String replacement = java.util.regex.Matcher.quoteReplacement(header + ": " + e.getValue().getAsString());
+                    String pattern = "(?i)" + java.util.regex.Pattern.quote(header) + ": [^\r\n]+";
+                    rawRequest = rawRequest.replaceAll(pattern, replacement);
                 }
             }
             if (params.has("add_header")) {
@@ -914,7 +959,8 @@ public class McpHttpServer extends NanoHTTPD {
             HttpService svc = HttpService.httpService(host, port, isHttps);
             HttpResponse resp = api.http().sendRequest(HttpRequest.httpRequest(svc, rawRequest)).response();
             result.addProperty("status", resp.statusCode()); result.addProperty("length", resp.body().length());
-            result.addProperty("body", resp.bodyToString().substring(0, Math.min(10000, resp.bodyToString().length())));
+            String responseText = resp.bodyToString();
+            result.addProperty("body", responseText.substring(0, Math.min(10000, responseText.length())));
         } catch (Exception e) { result.addProperty("error", e.getMessage()); }
         return result;
     }
@@ -1010,6 +1056,7 @@ public class McpHttpServer extends NanoHTTPD {
             String payloadEncoding = params.has("payload_encoding") ? params.get("payload_encoding").getAsString() : "none";
             String grepExtract = params.has("grep_extract") ? params.get("grep_extract").getAsString() : null;
             boolean recordTime = params.has("record_time") ? params.get("record_time").getAsBoolean() : false;
+            java.util.regex.Pattern extractionPattern = null;
 
             JsonArray hits = new JsonArray(); int count = 0, errors = 0;
             for (int i = from; i <= to; i++) {
@@ -1034,7 +1081,11 @@ public class McpHttpServer extends NanoHTTPD {
                     if (isHit) {
                         JsonObject hit = new JsonObject(); hit.addProperty("payload", rawPayload); hit.addProperty("status", resp.statusCode()); hit.addProperty("length", resp.body().length());
                         if (recordTime) hit.addProperty("time_ms", elapsed);
-                        if (grepExtract != null) { java.util.regex.Matcher m = java.util.regex.Pattern.compile(grepExtract).matcher(resp.bodyToString()); if (m.find()) hit.addProperty("extracted", m.group()); }
+                        if (grepExtract != null) {
+                            if (extractionPattern == null) extractionPattern = java.util.regex.Pattern.compile(grepExtract);
+                            java.util.regex.Matcher matcher = extractionPattern.matcher(resp.bodyToString());
+                            if (matcher.find()) hit.addProperty("extracted", matcher.group());
+                        }
                         hits.add(hit);
                     }
                     if (throttleMs > 0) Thread.sleep(throttleMs);

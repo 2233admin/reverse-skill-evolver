@@ -42,11 +42,13 @@
 <!-- 路由是否准确？bootstrap 是否缺失？文档是否需要补充？新工具是否需要加入 manifest？ -->
 
 ## TraceCard 摘要
-<!-- 对应 evolution/trace-card.template.yaml。记录步骤级路由、工具、证据、失败模式、oracle 结果 -->
+<!-- 对应 evolution/trace-card.template.yaml。记录步骤、证据引用及覆盖边界、未解决问题、失败模式和 oracle -->
 
 - Trace ID:
 - Macro route:
 - Micro route switches:
+- Evidence refs (source/version, input, coverage, limitations):
+- Open unknowns (required evidence/authority):
 - Oracle result:
 - Preserve:
 - Repair:

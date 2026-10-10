@@ -15,24 +15,38 @@ This mini benchmark is the promotion gate for evolved routing and skill changes.
 
 ## Baselines
 
-Run each fixture against:
+Run identical fixtures with comparable tool versions and settings against:
 
 - no-skill baseline
 - curated skill baseline
-- evolved candidate
+- each evolved candidate
 
-Promotion requires the evolved candidate to match or exceed the curated baseline on oracle pass rate and avoid materially higher invalid step count.
+Before evaluation, record the affected track set and its route/oracle coverage in the GOAL. A shared routing change affects every track; a child-skill change affects its own track and every track that routes through it. If impact is uncertain, include all tracks. When route selection is the behavior being changed, each applicable track needs an oracle for expected route selection, not only the child task outcome.
 
-## Required Result Fields
+Promotion requires matching or exceeding the curated baseline on oracle pass rate for every applicable track, with no materially higher invalid or repeated step count. Aggregate gains cannot hide a track regression. Missing or incomparable track results remain unknown and block promotion.
 
-- fixture id
-- route selected
-- tools used
-- oracle status
-- invalid or repeated step count
-- elapsed time
-- memory tier decision
-- promotion decision
+## Candidate Search
+
+One evaluation is one candidate run across the entire frozen fixture set. `max_evaluations` counts the no-skill baseline, curated candidate, and every proposal; reflection calls have a separate `max_reflections` cap. The `reverse-skill evolve` command requires at least three full-suite evaluations and does not count a later, independent promotion check in its search budget. Never report partial-suite scores as comparable results.
+
+1. Select a parent from the current Pareto frontier.
+2. Give the parent and exact failed fixture outputs to the configured OMP model for one targeted text mutation.
+3. Evaluate the proposal on every same fixture; record per-track oracle pass counts/rates, invalid responses, and failure diagnostics.
+4. Keep a candidate on the frontier unless another is at least as good on every per-track pass rate and invalid-response count, and strictly better on one dimension. Retain incomparable candidates; never optimize a weighted aggregate.
+5. Review frontier candidates manually, then run an independent full-suite comparison against the curated baseline. Frontier membership never authorizes stable changes; keep candidates unpromoted until that check passes.
+
+Do not score by evaluator narration alone. Missing oracle outputs, partial fixture coverage, or unlinked diagnostics are unknown, not passes.
+
+## Optimizer Report Fields
+
+The current `reverse-skill evolve` JSON report records:
+
+- fixture count, per-case expected and selected route, pass status, and invalid-response diagnostic
+- per-track pass counts/rates and invalid-response counts for the no-skill baseline and each candidate
+- evaluation/reflection budgets and consumption, candidate/parent IDs, mutation basis, and Pareto-frontier membership
+- termination reason and explicit `not_promoted` status
+
+The route-selection optimizer does not produce TraceCards, tool-version records, elapsed/cost accounting, or downstream task outcomes. Record those separately when required by a promotion review; unavailable measurements remain unknown.
 
 ## Non-goals
 

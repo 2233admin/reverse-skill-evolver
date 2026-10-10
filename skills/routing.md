@@ -33,7 +33,7 @@ When `routing.md` and `routing.json` disagree, use `routing.md` for safety/inten
 | Binary exe/dll/so/elf | `ida-reverse/` — IDA Pro decompile | `radare2/` — CLI analysis, or `reverse-engineering/tools.md` — GDB/Unicorn |
 | JavaScript / Web frontend | `js-reverse/` — 5-stage workflow | anything-analyzer MCP browser tools, or jshookmcp CDP/Hook |
 | HTTP capture / browser sampling / request replay | anything-analyzer MCP (23816) | `js-reverse/`, jshookmcp, or `competition-web-runtime/` |
-| Firmware / IoT | `reverse-engineering/platforms.md` — binwalk/ARM/MIPS | `reverse-engineering/tools.md` — Ghidra headless |
+| Firmware / IoT full-image assessment | `firmware-pentest/SKILL.md` — OWASP FSTM end-to-end workflow | `reverse-engineering/platforms.md` — single-image / static analysis |
 | WASM / Python bytecode / .NET | `reverse-engineering/languages.md` | Check specific language section |
 | macOS / iOS | `reverse-engineering/platforms.md` — Mach-O/ObjC/Swift | `mobile-reverse/` for iOS-specific |
 | Game (Unity/Unreal) | `reverse-engineering/languages-platforms.md` + `ida-reverse/` — engine/native reverse, IL2CPP/Mono triage | `radare2/` CLI analysis |
@@ -101,7 +101,7 @@ When `routing.md` and `routing.json` disagree, use `routing.md` for safety/inten
 | "draw diagram / flowchart / architecture" | `diagram-generator/SKILL.md` |
 | "attack path diagram / sequence diagram" | `diagram-generator/SKILL.md` — Mermaid/Graphviz/PlantUML |
 | "malware / virus analysis / sample analysis" | `reverse-engineering/SKILL.md` + YARA/sandbox |
-| "firmware / IoT / binwalk / ARM" | `reverse-engineering/platforms-hardware.md` |
+| "firmware / IoT / binwalk / ARM" | `firmware-pentest/SKILL.md` — full firmware workflow; use `reverse-engineering/platforms-hardware.md` for a narrow static architecture question |
 | "cryptography / AES / RSA" | `reverse-engineering/patterns*.md` — crypto pattern recognition |
 | "protocol reverse / Protobuf / custom protocol" | `reverse-engineering/platforms.md` |
 | "protocol source / Rust codec / Go client / fixture replay / cargo test" | `reverse-engineering/platforms.md` — protocol-source route with offline tests before live endpoints |

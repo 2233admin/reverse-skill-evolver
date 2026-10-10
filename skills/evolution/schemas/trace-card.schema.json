@@ -3,18 +3,18 @@
   "$id": "https://reverse-skill-private.local/schemas/trace-card.schema.json",
   "title": "TraceCard",
   "type": "object",
-  "required": ["schema_version", "trace_id", "goal_id", "route", "steps", "oracle_results", "memory_tier"],
+  "required": ["schema_version", "trace_id", "goal_id", "route", "steps", "oracle_results", "unknowns", "memory_tier"],
   "properties": {
-    "schema_version": { "const": 1 },
-    "trace_id": { "type": "string" },
-    "goal_id": { "type": "string" },
+    "schema_version": { "const": 2 },
+    "trace_id": { "$ref": "#/$defs/nonempty" },
+    "goal_id": { "$ref": "#/$defs/nonempty" },
     "started_at": { "type": "string" },
     "completed_at": { "type": "string" },
     "route": {
       "type": "object",
       "required": ["macro_route"],
       "properties": {
-        "macro_route": { "type": "string" },
+        "macro_route": { "$ref": "#/$defs/nonempty" },
         "selected_by": { "type": "string" },
         "alternatives_considered": { "type": "array" }
       }
@@ -24,14 +24,28 @@
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["step_id", "prefix_summary", "decision", "outcome"],
+        "required": ["step_id", "prefix_summary", "decision", "outcome", "evidence_refs"],
         "properties": {
           "step_id": { "type": "integer", "minimum": 1 },
-          "prefix_summary": { "type": "string" },
-          "decision": { "type": "string" },
+          "prefix_summary": { "$ref": "#/$defs/nonempty" },
+          "decision": { "$ref": "#/$defs/nonempty" },
           "route_or_tool": { "type": "string" },
           "command_or_action": { "type": "string" },
           "evidence_observed": { "type": "string" },
+          "evidence_refs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "source", "input_id", "coverage", "limitations"],
+              "properties": {
+                "id": { "$ref": "#/$defs/nonempty" },
+                "source": { "$ref": "#/$defs/nonempty" },
+                "input_id": { "$ref": "#/$defs/nonempty" },
+                "coverage": { "$ref": "#/$defs/nonempty" },
+                "limitations": { "type": "array", "items": { "$ref": "#/$defs/nonempty" } }
+              }
+            }
+          },
           "cost": { "type": "object" },
           "outcome": { "enum": ["progress", "blocked", "failed", "oracle_passed", "oracle_failed"] },
           "failure_mode": { "type": "string" },
@@ -39,9 +53,79 @@
         }
       }
     },
-    "oracle_results": { "type": "array" },
+    "oracle_results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["oracle_id", "status", "evidence_refs"],
+        "properties": {
+          "oracle_id": { "$ref": "#/$defs/nonempty" },
+          "status": { "enum": ["pass", "fail", "not_run"] },
+          "evidence_refs": { "$ref": "#/$defs/evidenceIds" }
+        },
+        "allOf": [{
+          "if": { "properties": { "status": { "enum": ["pass", "fail"] } }, "required": ["status"] },
+          "then": { "properties": { "evidence_refs": { "minItems": 1 } } }
+        }]
+      }
+    },
+    "unknowns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["question", "status", "requires", "affects_outcome", "supporting_evidence", "contradicting_evidence"],
+        "properties": {
+          "question": { "$ref": "#/$defs/nonempty" },
+          "status": { "enum": ["open", "resolved"] },
+          "requires": { "$ref": "#/$defs/nonempty" },
+          "affects_outcome": { "type": "boolean" },
+          "supporting_evidence": { "$ref": "#/$defs/evidenceIds" },
+          "contradicting_evidence": { "$ref": "#/$defs/evidenceIds" }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "status": { "const": "resolved" } }, "required": ["status"] },
+            "then": {
+              "anyOf": [
+                { "properties": { "supporting_evidence": { "minItems": 1 } } },
+                { "properties": { "contradicting_evidence": { "minItems": 1 } } }
+              ]
+            }
+          }
+        ]
+      }
+    },
     "learning": { "type": "object" },
     "memory_tier": { "enum": ["validated", "candidate", "forensic"] },
     "promotion_candidate": { "type": "boolean" }
-  }
+  },
+  "$defs": {
+    "nonempty": { "type": "string", "minLength": 1, "pattern": "\\S" },
+    "evidenceIds": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/nonempty" } }
+  },
+  "allOf": [
+    {
+      "if": {
+        "anyOf": [
+          { "properties": { "memory_tier": { "const": "validated" } }, "required": ["memory_tier"] },
+          { "properties": { "promotion_candidate": { "const": true } }, "required": ["promotion_candidate"] }
+        ]
+      },
+      "then": {
+        "properties": {
+          "oracle_results": { "minItems": 1, "items": { "properties": { "status": { "const": "pass" } } } },
+          "unknowns": {
+            "not": { "contains": {
+              "properties": { "status": { "const": "open" }, "affects_outcome": { "const": true } },
+              "required": ["status", "affects_outcome"]
+            } }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "promotion_candidate": { "const": true } }, "required": ["promotion_candidate"] },
+      "then": { "properties": { "memory_tier": { "const": "validated" } } }
+    }
+  ]
 }

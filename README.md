@@ -282,9 +282,13 @@ After success, check:
 > Important: `yes/no` in `tool-index.md` only represents the scan result on the current machine. It does not guarantee the same status on your machine.
 > Use `capability-graph.json` for current session facts such as MCP registration, service ports, smoke status, and promotion-gate policy.
 
-## 6.2 IDA Pro Chain
+## 6.2 Python CLI Workflows
 
-The Python command `reverse-skill` is the unified entry point. Install it from the repository with `python -m pip install -e .`; a source checkout can run the same interface as `python -m reverse_skill`. It targets the same Streamable HTTP service as native Codex MCP registration:
+The Python command `reverse-skill` is the common entry point for both workflows. Install it from the repository with `python -m pip install -e .`; a source checkout can run the same interface as `python -m reverse_skill`. The IDA Pro workflow targets the same Streamable HTTP service as native Codex MCP registration:
+
+The CLI has two distinct journeys: IDA Pro MCP operations (service lifecycle, discovery, and tool calls) and bounded routing-evolution search (`evolve`). The latter only evaluates route selection against local fixtures; it does not execute child skills or promote candidates.
+
+### IDA Pro MCP
 
 | Execution entry | Intended use | Boundary |
 |---|---|---|
@@ -300,6 +304,17 @@ reverse-skill status
 reverse-skill tools
 reverse-skill integrations
 ```
+
+
+### Bounded routing evolution (OMP runtime)
+
+The CLI can search changes to routing instructions against the frozen route-selection fixtures:
+
+```console
+python -m reverse_skill evolve --candidate skills/routing.md --catalog skills/routing.json --fixtures skills/evolution/fixtures/route-selection.json --output candidate-runs/run-001 --max-evaluations 3 --max-reflections 1
+```
+
+This uses the model already selected by the local OMP configuration; it does not pass a model override. The isolated OMP calls run without tools, skills, rules, extensions, or session persistence. The default budget evaluates the no-skill baseline and curated routing prompt, then allows one reflected proposal if failures remain. Results and Pareto-frontier candidates are written to a new output directory; existing output is refused. Nothing is automatically promoted. The bundled fixtures measure route selection only, not the correctness of downstream reverse-engineering work.
 
 `register` writes the Codex configuration through `codex mcp add ... --url ...`, so a new task can use the native `idapro` MCP tools directly. `start` selects the newest valid local IDA installation, preserves an existing healthy service, and only cleans up stale processes when the service is unavailable.
 
