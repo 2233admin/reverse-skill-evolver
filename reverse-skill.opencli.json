@@ -3,13 +3,13 @@
   "opencli": "0.1",
   "info": {
     "title": "reverse-skill",
-    "summary": "Operate the local IDA Pro MCP service from Python.",
+    "summary": "Operate local IDA Pro MCP and run bounded routing evolution.",
     "version": "1.1.0",
     "license": { "identifier": "MIT" }
   },
   "command": {
     "name": "reverse-skill",
-    "description": "Install, register, start, inspect, and call the IDA Pro MCP service.",
+    "description": "Operate IDA Pro MCP and run bounded routing evolution against local fixtures.",
     "options": [
       { "name": "--url", "arguments": [{ "name": "URL", "required": true }], "description": "MCP Streamable HTTP URL." },
       { "name": "--name", "arguments": [{ "name": "NAME", "required": true }], "description": "Codex MCP registration name." },
@@ -24,7 +24,7 @@
       { "code": 2, "description": "Invalid command-line usage." },
       { "code": 3, "description": "Required local environment or executable unavailable." },
       { "code": 4, "description": "MCP transport or protocol failure." },
-      { "code": 5, "description": "The MCP tool completed with an operation-level error." }
+      { "code": 5, "description": "Operation-level failure, including invalid TraceCard content or MCP tool errors." }
     ],
     "commands": [
       {
@@ -88,6 +88,27 @@
         "description": "Close an IDA database session.",
         "arguments": [{ "name": "DATABASE", "required": true }],
         "options": [{ "name": "--no-save" }]
+      },
+      {
+        "name": "tracecard-validate",
+        "description": "Validate TraceCard semantics without verifying the truth of external evidence.",
+        "options": [
+          { "name": "--input", "required": true, "arguments": [{ "name": "FILE", "required": true }] }
+        ]
+      },
+      {
+        "name": "evolve",
+        "description": "Evaluate and reflect routing candidates with the configured OMP model; never promotes candidates.",
+        "arguments": [],
+        "options": [
+          { "name": "--candidate", "required": true, "arguments": [{ "name": "FILE", "required": true }] },
+          { "name": "--catalog", "required": true, "arguments": [{ "name": "FILE", "required": true }] },
+          { "name": "--fixtures", "required": true, "arguments": [{ "name": "FILE", "required": true }] },
+          { "name": "--output", "required": true, "arguments": [{ "name": "DIRECTORY", "required": true }] },
+          { "name": "--max-evaluations", "arguments": [{ "name": "COUNT", "required": true }] },
+          { "name": "--max-reflections", "arguments": [{ "name": "COUNT", "required": true }] },
+          { "name": "--model-timeout", "arguments": [{ "name": "SECONDS", "required": true }] }
+        ]
       }
     ]
   }

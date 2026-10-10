@@ -166,9 +166,16 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    Task([完成任务]) --> Goal[GOAL 契约<br/>成功 oracle]
+    Task([完成任务]) --> Goal[GOAL 契约<br/>成功 oracle + 搜索预算]
     Goal --> Trace[TraceCard<br/>步骤+证据+失败归因]
-    Trace --> Tier{记忆分层}
+    Trace --> Search{修改技能/路由?}
+    Search -->|否| Tier{记忆分层}
+    Search -->|是| Eval[固定基准集<br/>no-skill / curated / candidate]
+    Eval --> Reflect[按失败 oracle 与 TraceCard 定向变异]
+    Reflect --> Frontier[Pareto 前沿<br/>保留非支配候选]
+    Frontier -->|预算内| Eval
+    Frontier -->|搜索结束| Verify[全量复跑并对比 curated]
+    Verify --> Tier
     Tier -->|oracle 通过| Validated[validated<br/>可参与路由]
     Tier -->|证据不足| Candidate[candidate<br/>只提示]
     Tier -->|失败/异常| Forensic[forensic<br/>只分析]
@@ -185,6 +192,7 @@ flowchart LR
     NewTask([下次同类任务]) --> ReadIdx[读取 _index.md + validated]
     ReadIdx --> Reuse[复用已验证经验<br/>避免重复踩坑]
 ```
+路由文本候选搜索已有 `reverse-skill evolve` OMP 执行器：固定 route-selection fixtures、严格 route ID oracle、全套评估、失败反馈反思及 Pareto 保留；其他子技能的任务级 evaluator 尚未接入。候选只写入独立输出目录，仍须人工审阅和独立全量复跑才能晋级。
 
 ## Overnight 无人值守模式
 

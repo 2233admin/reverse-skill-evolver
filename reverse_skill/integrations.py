@@ -39,6 +39,14 @@ def _module_available(name: str) -> bool:
 def integration_inventory() -> list[dict[str, Any]]:
     """Return honest local availability and the implemented IDA bridge boundary."""
     yara_available = _module_available("yara")
+    capa_entry = shutil.which("capa") or ("python:capa" if _module_available("capa") else None)
+    floss_entry = shutil.which("floss") or ("python:floss" if _module_available("floss") else None)
+    r2_entry = shutil.which("r2")
+    rabin2_entry = shutil.which("rabin2")
+    bindiff_entry = shutil.which("bindiff")
+    diaphora_entry = shutil.which("diaphora") or ("python:diaphora" if _module_available("diaphora") else None)
+    x64dbg_entry = shutil.which("x64dbg") or shutil.which("x96dbg")
+    windbg_entry = shutil.which("windbg") or shutil.which("cdb")
     definitions = [
         {
             "name": "yara",
@@ -50,57 +58,57 @@ def integration_inventory() -> list[dict[str, Any]]:
         },
         {
             "name": "capa",
-            "available": bool(shutil.which("capa") or _module_available("capa")),
+            "available": bool(capa_entry),
             "version": _distribution_version("flare-capa", "capa"),
-            "entry": shutil.which("capa") or ("python:capa" if _module_available("capa") else None),
+            "entry": capa_entry,
             "support": "discovery_only",
             "idaBridge": [],
         },
         {
             "name": "floss",
-            "available": bool(shutil.which("floss") or _module_available("floss")),
+            "available": bool(floss_entry),
             "version": _distribution_version("flare-floss"),
-            "entry": shutil.which("floss") or ("python:floss" if _module_available("floss") else None),
+            "entry": floss_entry,
             "support": "discovery_only",
             "idaBridge": [],
         },
         {
             "name": "radare2",
-            "available": bool(shutil.which("r2") and shutil.which("rabin2")),
+            "available": bool(r2_entry and rabin2_entry),
             "version": None,
-            "entry": shutil.which("rabin2") or shutil.which("r2"),
+            "entry": rabin2_entry or r2_entry,
             "support": "discovery_only",
             "idaBridge": [],
         },
         {
             "name": "bindiff",
-            "available": bool(shutil.which("bindiff")),
+            "available": bool(bindiff_entry),
             "version": None,
-            "entry": shutil.which("bindiff"),
+            "entry": bindiff_entry,
             "support": "discovery_only",
             "idaBridge": [],
         },
         {
             "name": "diaphora",
-            "available": bool(shutil.which("diaphora") or _module_available("diaphora")),
+            "available": bool(diaphora_entry),
             "version": _distribution_version("diaphora"),
-            "entry": shutil.which("diaphora") or ("python:diaphora" if _module_available("diaphora") else None),
+            "entry": diaphora_entry,
             "support": "discovery_only",
             "idaBridge": [],
         },
         {
             "name": "x64dbg",
-            "available": bool(shutil.which("x64dbg") or shutil.which("x96dbg")),
+            "available": bool(x64dbg_entry),
             "version": None,
-            "entry": shutil.which("x64dbg") or shutil.which("x96dbg"),
+            "entry": x64dbg_entry,
             "support": "discovery_only",
             "idaBridge": [],
         },
         {
             "name": "windbg",
-            "available": bool(shutil.which("windbg") or shutil.which("cdb")),
+            "available": bool(windbg_entry),
             "version": None,
-            "entry": shutil.which("windbg") or shutil.which("cdb"),
+            "entry": windbg_entry,
             "support": "discovery_only",
             "idaBridge": [],
         },

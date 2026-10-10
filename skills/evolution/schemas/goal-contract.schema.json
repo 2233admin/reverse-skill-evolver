@@ -60,7 +60,12 @@
         }
       }
     },
-    "budgets": { "type": "object" },
+    "budgets": {
+      "type": "object",
+      "properties": {
+        "max_evaluations": { "type": "integer", "minimum": 0 }
+      }
+    },
     "stop_conditions": { "type": "array", "items": { "type": "string" } },
     "route": { "type": "object" }
   }

@@ -12,6 +12,8 @@ from typing import Any, Mapping
 import click
 
 from . import __version__
+from .evolution import evolve as run_evolution
+from .evolution import validate_trace_card
 from .errors import EnvironmentUnavailable, ReverseSkillError, ToolOperationError
 from .ida import find_latest_ida, install_ida_mcp, start_server
 from .integrations import annotate_yara_matches, integration_inventory, scan_yara
@@ -32,6 +34,8 @@ COMMAND_NAMES = {
     "sessions",
     "call",
     "close",
+    "evolve",
+    "tracecard-validate",
 }
 
 
@@ -126,8 +130,26 @@ def register_codex(name: str, url: str) -> dict[str, Any]:
 @click.version_option(__version__, prog_name="reverse-skill")
 @click.pass_context
 def cli(ctx: click.Context, url: str, name: str, json_output: bool, timeout: float) -> None:
-    """Operate the IDA Pro MCP service without a PowerShell runtime."""
+    """Operate IDA Pro MCP workflows and bounded route-evolution search."""
     ctx.obj = State(url=url, name=name, json_output=json_output, timeout=timeout)
+
+
+@cli.command(name="tracecard-validate")
+@click.option(
+    "--input",
+    "input_path",
+    required=True,
+    type=click.Path(exists=True, dir_okay=False, readable=True, path_type=Path),
+)
+@click.pass_obj
+def tracecard_validate(state: State, input_path: Path) -> None:
+    """Validate TraceCard semantics, not the truth of external evidence."""
+    try:
+        trace = json.loads(input_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise ToolOperationError(f"Cannot read TraceCard JSON: {exc}") from exc
+    validate_trace_card(trace)
+    emit(state, "tracecard-validate", {"semantics_valid": True})
 
 
 @cli.command()
@@ -230,6 +252,40 @@ def integrations(state: State) -> None:
         },
     )
 
+
+
+@cli.command()
+@click.option("--candidate", required=True, type=click.Path(exists=True, dir_okay=False, resolve_path=True, path_type=Path))
+@click.option("--catalog", required=True, type=click.Path(exists=True, dir_okay=False, resolve_path=True, path_type=Path))
+@click.option("--fixtures", required=True, type=click.Path(exists=True, dir_okay=False, resolve_path=True, path_type=Path))
+@click.option("--output", required=True, type=click.Path(file_okay=False, path_type=Path))
+@click.option("--max-evaluations", type=click.IntRange(min=3), default=3, show_default=True)
+@click.option("--max-reflections", type=click.IntRange(min=1), default=1, show_default=True)
+@click.option("--model-timeout", type=click.IntRange(min=1, max=3600), default=120, show_default=True)
+@click.pass_obj
+def evolve(
+    state: State,
+    candidate: Path,
+    catalog: Path,
+    fixtures: Path,
+    output: Path,
+    max_evaluations: int,
+    max_reflections: int,
+    model_timeout: int,
+) -> None:
+    """Search routing candidates against a fixed local fixture suite using OMP."""
+    if max_reflections > max_evaluations - 2:
+        raise click.UsageError("--max-reflections must be between 1 and --max-evaluations - 2")
+    report = run_evolution(
+        candidate,
+        catalog,
+        fixtures,
+        output,
+        max_evaluations,
+        max_reflections,
+        model_timeout,
+    )
+    emit(state, "evolve", report)
 
 @cli.command(name="yara-scan")
 @click.argument("target", type=click.Path(exists=True, dir_okay=False, resolve_path=True, path_type=Path))

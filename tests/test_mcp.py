@@ -1,4 +1,5 @@
 import json
+import weakref
 from typing import Any
 
 import httpx
@@ -203,9 +204,147 @@ def test_json_and_sse_parsers_require_the_matching_response_id() -> None:
     assert sse_message["result"]["value"] == "done"
 
 
+@pytest.mark.parametrize(
+    ("content_type", "scenario", "error"),
+    [
+        ("application/json", "matching", None),
+        ("application/json", "unmatched", "MCP JSON response did not contain JSON-RPC id"),
+        ("application/json", "non_object", "MCP JSON response is not an object"),
+        ("text/event-stream", "matching", None),
+        ("text/event-stream", "unmatched", "MCP SSE response did not contain JSON-RPC id"),
+        ("text/event-stream", "malformed_before", "not valid JSON"),
+        ("text/event-stream", "malformed_after", "not valid JSON"),
+        ("text/event-stream", "non_object_before", "no attribute 'get'"),
+        ("text/event-stream", "non_object_before_malformed", "not valid JSON"),
+        ("text/event-stream", "non_object_after", None),
+    ],
+)
+def test_request_preserves_json_and_sse_response_validation(
+    content_type: str, scenario: str, error: str | None
+) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = _json(request)
+        if body["method"] == "server/discover":
+            return httpx.Response(
+                200,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": body["id"],
+                    "result": {"resultType": "complete", "supportedVersions": [MODERN_VERSION]},
+                },
+            )
+        matching = json.dumps({"jsonrpc": "2.0", "id": body["id"], "result": {"value": "done"}})
+        unrelated = '{"jsonrpc":"2.0","id":"unrelated","result":{}}'
+        content = matching
+        if content_type == "application/json":
+            if scenario == "unmatched":
+                content = unrelated
+            elif scenario == "non_object":
+                content = "[]"
+        else:
+            duplicate = json.dumps({"jsonrpc": "2.0", "id": body["id"], "result": {"value": "later"}})
+            events = [unrelated, matching, unrelated, duplicate]
+            if scenario == "unmatched":
+                events = [unrelated, unrelated]
+            elif scenario == "malformed_before":
+                events.insert(0, "{")
+            elif scenario == "malformed_after":
+                events.append("{")
+            elif scenario == "non_object_before":
+                events.insert(0, "[]")
+            elif scenario == "non_object_before_malformed":
+                events = ["[]", matching, "{"]
+            elif scenario == "non_object_after":
+                events.append("[]")
+            content = "\n\n".join(f"event: message\ndata: {event}" for event in events)
+        return httpx.Response(200, text=content, headers={"Content-Type": content_type})
+
+    with McpClient("http://mock/mcp", transport=httpx.MockTransport(handler)) as client:
+        if error is not None:
+            expected_error = AttributeError if scenario == "non_object_before" else McpProtocolError
+            with pytest.raises(expected_error, match=error):
+                client.request("resources/list")
+        else:
+            assert client.request("resources/list") == {"value": "done"}
+
+
+def test_request_releases_unrelated_sse_events_before_decoding_the_next(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class TrackedEvent(dict[str, Any]):
+        pass
+
+    event_refs: list[weakref.ReferenceType[TrackedEvent]] = []
+    original_loads = json.loads
+
+    def tracked_loads(content: str | bytes | bytearray, *args: Any, **kwargs: Any) -> Any:
+        # Weak references observe event lifetime without keeping the events alive.
+        assert all(reference() is None for reference in event_refs)
+        decoded = original_loads(content, *args, **kwargs)
+        if isinstance(decoded, dict) and decoded.get("id") in {"unrelated-before", "unrelated-after"}:
+            event = TrackedEvent(decoded)
+            event_refs.append(weakref.ref(event))
+            return event
+        return decoded
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = _json(request)
+        if body["method"] == "server/discover":
+            return httpx.Response(
+                200,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": body["id"],
+                    "result": {"resultType": "complete", "supportedVersions": [MODERN_VERSION]},
+                },
+            )
+        matching = json.dumps({"jsonrpc": "2.0", "id": body["id"], "result": {"value": "done"}})
+        events = [
+            '{"jsonrpc":"2.0","id":"unrelated-before","result":{}}',
+            matching,
+            '{"jsonrpc":"2.0","id":"unrelated-after","result":{}}',
+            '{"jsonrpc":"2.0","method":"notifications/progress","params":{}}',
+        ]
+        return httpx.Response(
+            200,
+            text="\n\n".join(f"data: {event}" for event in events),
+            headers={"Content-Type": "text/event-stream"},
+        )
+
+    monkeypatch.setattr(json, "loads", tracked_loads)
+    with McpClient("http://mock/mcp", transport=httpx.MockTransport(handler)) as client:
+        assert client.request("resources/list") == {"value": "done"}
+    assert len(event_refs) == 2
+    assert all(reference() is None for reference in event_refs)
+
+
 def test_invalid_modern_discovery_body_does_not_silently_fall_back() -> None:
     def handler(_: httpx.Request) -> httpx.Response:
         return httpx.Response(502, text="<html>bad gateway</html>", headers={"Content-Type": "text/html"})
 
     with pytest.raises(McpProtocolError, match="not valid JSON"):
         McpClient("http://mock/mcp", transport=httpx.MockTransport(handler))
+
+
+def test_constructor_closes_http_client_when_discovery_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    error = McpProtocolError("discovery failed")
+
+    class TrackingClient:
+        closed = False
+
+        def close(self) -> None:
+            self.closed = True
+
+    client = TrackingClient()
+
+    def fail_discovery(_: McpClient) -> bool:
+        raise error
+
+    monkeypatch.setattr("reverse_skill.mcp.httpx.Client", lambda **_: client)
+    monkeypatch.setattr(McpClient, "_discover_modern", fail_discovery)
+
+    with pytest.raises(McpProtocolError) as raised:
+        McpClient("http://mock/mcp")
+
+    assert raised.value is error
+    assert client.closed

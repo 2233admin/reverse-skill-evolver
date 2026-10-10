@@ -53,6 +53,7 @@ Burp Suite → Extensions → Add → Java → 选择 build/libs/burp-mcp-full.j
 | `send_to_repeater` | 发送请求到 Repeater | `request`, `tab_name` |
 | `send_to_intruder` | 发送请求到 Intruder | `request` |
 | `intruder_attack` | **自动化枚举攻击** | `url_template`, `from`, `to`, `pad_digits`, `method`, `headers`, `success_indicator`, `success_length_not` |
+| `intruder_attack_async` | 有界并发枚举；每次最多 50 个在途请求，协调等待上限 120 秒 | `url_template`, `from`, `to`, `threads`；超限返回部分结果与 `timed_out: true`。底层请求的响应读取有超时，建连阶段仍由 Burp 控制 |
 | `sitemap` | 查看站点地图 | `url_prefix`, `limit` |
 | `intercept_toggle` | 开关拦截 | `enable` |
 | `encode` | 编码（Base64/URL） | `input`, `type` |

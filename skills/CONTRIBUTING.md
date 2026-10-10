@@ -199,17 +199,18 @@ if (-not $spec.Available) {
 
 ## 5. 接入路由系统
 
-### 5.1 更新路由矩阵
-
-打开 `routing.md`，在对应的表格中添加新行：
+打开 `routing.md`，在对应表格中添加或修订主路由。同步检查 `routing_zh.md` 与 `routing.json`：中文行应表达相同的主路由，JSON 中已建模的宏路由应镜像相同目标；不要把备选路径写成主路由。
 
 - "按目标类型"表：添加新的目标类型 → 推荐入口
 - "按用户意图"表：添加用户可能说的话 → 对应 skill
 - "按工具链"表：添加新工具 → 对应模块
 
+`routing.md` 规定人读语义；若与 `routing.json` 冲突，以 `routing.md` 的安全/意图上下文为准，并修复 JSON 镜像。
+
 ### 5.2 更新根 SKILL.md
 
-打开根目录的 `SKILL.md`，在"当前模块"表格中添加新行。
+打开根目录的 `SKILL.md`，在“当前模块”表格中添加新行。
+
 
 ### 5.3 更新 Kiro steering（如果使用 Kiro）
 
@@ -273,7 +274,7 @@ bash "<项目根目录>/kali/scripts/refresh-tool-index.sh"
 
 **通用（必须）**：
 - [ ] `<new-skill>/SKILL.md` 存在且包含所有必需章节
-- [ ] 路由矩阵（`routing.md`）已更新，能正确路由到新 skill
+- [ ] 主路由已同步 `routing.md`、`routing_zh.md`，并在 `routing.json` 中有对应宏路由时更新其 primary target。
 - [ ] 根 `SKILL.md` 的模块表已更新
 - [ ] `.kiro/steering/reverse-routing.md` 触发关键词已更新（如果使用 Kiro）
 - [ ] `RULES.md` 触发关键词已更新

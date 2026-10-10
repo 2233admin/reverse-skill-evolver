@@ -281,9 +281,13 @@ powershell -File "<SKILL_ROOT>\scripts\refresh-tool-index.ps1"
 > 重要：`tool-index.md` 里的 `yes/no` 只代表**当前扫描机器**的结果，不代表你的机器一定一样。
 > `capability-graph.json` 用于当前会话事实：MCP 注册、服务端口、smoke 状态和晋级门禁策略。
 
-## 6.2 IDA Pro 链路
+## 6.2 Python CLI 工作流
 
-统一入口是 Python 命令 `reverse-skill`。在仓库中执行 `python -m pip install -e .` 即可安装；源码检出也可直接使用 `python -m reverse_skill`。它与 Codex 原生 MCP 注册指向同一个 Streamable HTTP 服务：
+Python 命令 `reverse-skill` 是两条工作流共用的入口。在仓库中执行 `python -m pip install -e .` 即可安装；源码检出也可直接使用 `python -m reverse_skill`。其中 IDA Pro 工作流与 Codex 原生 MCP 注册指向同一个 Streamable HTTP 服务：
+
+CLI 提供两条不同的使用路径：IDA Pro MCP 操作（服务生命周期、发现与工具调用），以及有界路由进化搜索（`evolve`）。后者只用本地用例评估路由选择，不执行子技能，也不会晋级候选。
+
+### IDA Pro MCP
 
 | 执行入口 | 用途 | 边界 |
 |---|---|---|
@@ -301,6 +305,16 @@ reverse-skill integrations
 ```
 
 `register` 通过 `codex mcp add ... --url ...` 写入 Codex 配置；新任务启动时即可直接使用 `idapro` MCP 工具。`start` 会自动选择本机最高版本的有效 IDA，健康服务已存在时直接复用，只有服务不可达时才清理陈旧进程并重启。
+
+### 有界路由进化（需要 OMP 运行时）
+
+CLI 可以用冻结的本地路由选择用例搜索路由说明的改进：
+
+```console
+python -m reverse_skill evolve --candidate skills/routing.md --catalog skills/routing.json --fixtures skills/evolution/fixtures/route-selection.json --output candidate-runs/run-001 --max-evaluations 3 --max-reflections 1
+```
+
+命令沿用本机 OMP 配置选定的模型，不传模型覆盖参数。隔离调用禁用工具、skills、rules、extensions 和会话持久化。默认先评估无 skill 基线和现有路由说明；若仍有失败，预算允许反思并评估一个候选。结果及 Pareto 前沿候选写入新目录；目标目录已存在时拒绝覆盖。不会自动晋级。内置用例只衡量路由选择，不代表下游逆向任务正确性。
 
 常用会话操作：
 

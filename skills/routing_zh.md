@@ -13,7 +13,7 @@
 
 | 目标类型 | 推荐入口 | 备选方案 |
 |---------|---------|---------|
-| APK / Android 应用 | `mobile-reverse/SKILL.md` — Frida/Objection/MobSF 全平台移动逆向 | `apk-reverse/` — 仅 Android 静态分析、jadx 反编译 |
+| APK / Android 应用 | `apk-reverse/SKILL.md` — APK 解包、Java 反编译与重打包 | `mobile-reverse/SKILL.md` — 跨 Android/iOS 的移动安全与动态分析；含 native `.so` 时转 `ida-reverse/` 或 `radare2/` |
 | iOS / IPA 应用 | `mobile-reverse/SKILL.md` — iOS 逆向 + Frida/Objection | `mobile-reverse/references/ios-reverse-guide.md` — iOS 专项 |
 | 二进制 exe/dll/so/elf | `ida-reverse/` — IDA Pro 反编译 | `radare2/` — CLI 分析，或 `reverse-engineering/tools.md` — GDB/Unicorn |
 | JavaScript / Web 前端 | `js-reverse/` — 5 阶段工作流 | anything-analyzer MCP 的浏览器工具，或 jshookmcp 的浏览器/CDP/Hook 能力 |
