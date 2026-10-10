@@ -77,10 +77,12 @@ def structured_content(result: Mapping[str, Any]) -> Mapping[str, Any]:
 
 
 def codex_registration(name: str, *, timeout: float = DEFAULT_TIMEOUT) -> dict[str, Any] | None:
-    """Return the named Codex registration, or None when it cannot be read.
+    """Return the named Codex registration, or None when no object is retrieved.
 
-    Missing Codex, failed lookups, and invalid JSON produce None. A subprocess
-    timeout (in seconds) raises EnvironmentUnavailable instead of hiding failure.
+    Missing Codex, nonzero exit status, empty output, and invalid or non-object
+    JSON produce None. A subprocess timeout (in seconds) raises
+    EnvironmentUnavailable; process-start OSError and output-decoding
+    UnicodeDecodeError propagate.
     """
     codex = shutil.which("codex")
     if not codex:
@@ -108,7 +110,10 @@ def register_codex(name: str, url: str, *, timeout: float = DEFAULT_TIMEOUT) -> 
 
     Return its name, URL, change flag, and status. Each get, remove, or add
     subprocess uses the supplied timeout in seconds; timeouts and failed
-    mutations raise EnvironmentUnavailable without retrying.
+    mutations raise EnvironmentUnavailable without retrying, as does missing
+    Codex. Process-start OSError and output-decoding UnicodeDecodeError propagate.
+    Replacing an existing registration removes it first; a failed add does not
+    restore it.
     """
     codex = shutil.which("codex")
     if not codex:
@@ -218,7 +223,11 @@ def start(state: State, ida_dir: Path | None, port: int, server_path: Path | Non
 
 
 def _status_data(state: State) -> dict[str, Any]:
-    """Collect IDA discovery, Codex registration, and live MCP metadata using the state timeout."""
+    """Collect IDA discovery, Codex registration, and live MCP metadata using the state timeout.
+
+    Codex lookup timeouts and MCP transport or protocol errors propagate;
+    an unreachable MCP endpoint does not produce an offline status result.
+    """
     ida = find_latest_ida()
     registration = codex_registration(state.name, timeout=state.timeout)
     transport = (registration or {}).get("transport") or {}

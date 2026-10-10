@@ -37,7 +37,9 @@ def infer_kind(path: Path) -> str:
     """Infer the renderer from the extension or first non-whitespace prefix.
 
     Read unknown extensions in bounded chunks with replacement UTF-8 decoding.
-    Empty or unrecognized content defaults to Mermaid.
+    Empty or unrecognized content defaults to Mermaid. Known extensions are
+    case-insensitive and require no file read; content prefixes are case-sensitive.
+    File I/O errors propagate as OSError.
     """
     ext = path.suffix.lower()
     if ext in MERMAID_EXTS:
@@ -89,7 +91,11 @@ def render_graphviz(src: Path, out: Path, fmt: str) -> None:
 
 def _stage_plantuml_source(src: Path, dest: Path) -> None:
     # Text streams retain strict UTF-8 decoding and platform newline conversion.
-    """Stream strict UTF-8 source to dest, normalizing newlines with bounded reads."""
+    """Stream strict UTF-8 source to dest, normalizing newlines with bounded reads.
+
+    Overwrite dest using platform line endings. UnicodeDecodeError and OSError
+    propagate and may leave dest truncated or partially written.
+    """
     with src.open(encoding="utf-8") as source, dest.open("w", encoding="utf-8") as target:
         shutil.copyfileobj(source, target, length=64 * 1024)
 
@@ -97,8 +103,12 @@ def _stage_plantuml_source(src: Path, dest: Path) -> None:
 def render_plantuml(src: Path, out: Path, fmt: str) -> None:
     """Render staged UTF-8 source with PlantUML CLI or the configured Java JAR.
 
-    Copy the rendered file to out and clean up staging. Invalid UTF-8 raises
-    UnicodeDecodeError; a missing renderer or output raises RuntimeError.
+    Prefer the CLI on PATH, falling back to Java with PLANTUML_JAR. fmt selects
+    the output format passed to PlantUML, independently of out's extension.
+    Copy the rendered file to out, overwriting it, and clean up staging.
+    Invalid UTF-8 raises UnicodeDecodeError before invoking the renderer;
+    a missing renderer or output, or a nonzero renderer exit, raises RuntimeError.
+    File and process-start errors propagate as OSError.
     """
     plantuml = shutil.which("plantuml")
     java = shutil.which("java")
