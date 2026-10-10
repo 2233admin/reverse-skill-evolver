@@ -1,4 +1,3 @@
-import re
 
 path = r"&lt;SKILL_ROOT&gt;\burp-mcp-full\src\main\java\com\burpmcp\McpHttpServer.java"
 with open(path, "r", encoding="utf-8") as f:
