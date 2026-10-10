@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "reverse-skill-evolver-cli"
-version = "1.1.0"
+version = "1.1.1"
 description = "Python CLI for IDA Pro MCP and bounded routing evolution"
 readme = "README.md"
 requires-python = ">=3.10"

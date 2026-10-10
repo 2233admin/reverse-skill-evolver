@@ -43,12 +43,16 @@ def infer_kind(path: Path) -> str:
         return "plantuml"
     if ext in SVG_EXTS:
         return "svg"
-    text = path.read_text(encoding="utf-8", errors="replace").lstrip()
-    if text.startswith("@startuml"):
+    with path.open("r", encoding="utf-8", errors="replace") as source:
+        first = source.read(1)
+        while first and first.isspace():
+            first = source.read(1)
+        prefix = first + source.read(len("@startuml") - 1)
+    if prefix.startswith("@startuml"):
         return "plantuml"
-    if text.startswith("digraph") or text.startswith("graph"):
+    if prefix.startswith("digraph") or prefix.startswith("graph"):
         return "graphviz"
-    if text.startswith("<svg"):
+    if prefix.startswith("<svg"):
         return "svg"
     return "mermaid"
 

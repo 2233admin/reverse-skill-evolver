@@ -20,54 +20,67 @@ const readline = require('readline');
 
 const BURP_HOST = process.env.BURP_MCP_HOST || '127.0.0.1';
 const BURP_PORT = parseInt(process.env.BURP_MCP_PORT || '9876', 10);
+const MAX_IN_FLIGHT = 16;
+const HTTP_TIMEOUT_MS = 30_000;
 
 // Tool definitions for MCP
 let TOOLS = null;
 
-async function fetchTools() {
+function requestJson(path, body) {
   return new Promise((resolve, reject) => {
-    http.get(`http://${BURP_HOST}:${BURP_PORT}/tools`, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try { resolve(JSON.parse(data)); } catch (e) { reject(e); }
-      });
-    }).on('error', reject);
-  });
-}
-
-async function callTool(toolName, params) {
-  return new Promise((resolve, reject) => {
-    const body = JSON.stringify({ tool: toolName, params: params || {} });
+    const finish = (error, value) => {
+      clearTimeout(deadline);
+      if (error) reject(error);
+      else resolve(value);
+    };
     const req = http.request({
-      hostname: BURP_HOST, port: BURP_PORT, path: '/', method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+      hostname: BURP_HOST, port: BURP_PORT, path, method: body === undefined ? 'GET' : 'POST',
+      headers: body === undefined ? {} : {
+        'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body)
+      }
     }, (res) => {
       let data = '';
       res.on('data', chunk => data += chunk);
+      res.on('error', finish);
       res.on('end', () => {
-        try { resolve(JSON.parse(data)); } catch (e) { resolve({ error: data }); }
+        try { finish(null, JSON.parse(data)); }
+        catch (error) {
+          if (body === undefined) finish(error);
+          else finish(null, { error: data });
+        }
       });
     });
-    req.on('error', reject);
-    req.write(body);
-    req.end();
+    const deadline = setTimeout(() => {
+      const error = new Error(`HTTP request timed out after ${HTTP_TIMEOUT_MS}ms`);
+      req.destroy(error);
+      finish(error);
+    }, HTTP_TIMEOUT_MS);
+    req.on('error', finish);
+    try { req.end(body); }
+    catch (error) { req.destroy(); finish(error); }
   });
+}
+
+function fetchTools() {
+  return requestJson('/tools');
+}
+
+function callTool(toolName, params) {
+  return requestJson('/', JSON.stringify({ tool: toolName, params: params || {} }));
 }
 
 function buildToolDefinitions(toolNames) {
   return toolNames.map(name => ({
     name: `burp_${name}`,
-    description: getToolDescription(name),
+    description: TOOL_DESCRIPTIONS[name] || `Burp Suite tool: ${name}`,
     inputSchema: {
       type: 'object',
-      properties: getToolParams(name),
+      properties: TOOL_SCHEMAS[name] || {},
     }
   }));
 }
 
-function getToolDescription(name) {
-  const descriptions = {
+const TOOL_DESCRIPTIONS = {
     proxy_history: 'Get Burp proxy history with optional filtering by URL, method, status code',
     proxy_detail: 'Get full request/response details for a specific proxy history item by index',
     proxy_websocket: 'Get WebSocket message history',
@@ -131,13 +144,10 @@ function getToolDescription(name) {
     remove_proxy_rule: 'Remove/clear proxy intercept rules',
     extensions_list: 'Get information about loaded extensions',
     log: 'Write a message to Burp extension output log',
-  };
-  return descriptions[name] || `Burp Suite tool: ${name}`;
-}
+};
 
-function getToolParams(name) {
-  // Common parameter schemas
-  const schemas = {
+// Common parameter schemas
+const TOOL_SCHEMAS = {
     proxy_history: { limit: {type:'number',description:'Max items (default 100)'}, offset: {type:'number'}, url_filter: {type:'string'}, method_filter: {type:'string'}, status_filter: {type:'number'} },
     proxy_detail: { index: {type:'number',description:'History item index'} },
     proxy_websocket: { limit: {type:'number'} },
@@ -187,9 +197,7 @@ function getToolParams(name) {
     register_http_handler: { header_name: {type:'string'}, header_value: {type:'string'}, match: {type:'string'}, replace: {type:'string'} },
     register_proxy_rule: { url_contains: {type:'string'} },
     log: { message: {type:'string'}, level: {type:'string'} },
-  };
-  return schemas[name] || {};
-}
+};
 
 // MCP JSON-RPC handler
 function handleRequest(msg) {
@@ -208,7 +216,7 @@ function handleRequest(msg) {
 
     case 'tools/list':
       if (!TOOLS) return { jsonrpc: '2.0', id, error: { code: -1, message: 'Tools not loaded. Is Burp running?' } };
-      return { jsonrpc: '2.0', id, result: { tools: buildToolDefinitions(TOOLS) } };
+      return { jsonrpc: '2.0', id, result: { tools: TOOLS } };
 
     case 'tools/call': {
       const toolName = params.name.replace(/^burp_/, '');
@@ -229,7 +237,7 @@ function handleRequest(msg) {
 async function main() {
   // Try to fetch tools from Burp
   try {
-    TOOLS = await fetchTools();
+    TOOLS = buildToolDefinitions(await fetchTools());
     process.stderr.write(`[burp-mcp-bridge] Connected to Burp. ${TOOLS.length} tools available.\n`);
   } catch (e) {
     process.stderr.write(`[burp-mcp-bridge] WARNING: Cannot connect to Burp at ${BURP_HOST}:${BURP_PORT}. Start Burp first.\n`);
@@ -237,29 +245,47 @@ async function main() {
   }
 
   const rl = readline.createInterface({ input: process.stdin, terminal: false });
-  let buffer = '';
+  const pending = [];
+  let active = 0;
+  let closed = false;
 
-  rl.on('line', async (line) => {
-    buffer += line;
+  async function processLine(line) {
     try {
-      const msg = JSON.parse(buffer);
-      buffer = '';
-      
+      const msg = JSON.parse(line);
       const response = await handleRequest(msg);
       if (response) {
-        const out = JSON.stringify(response);
-        process.stdout.write(out + '\n');
+        process.stdout.write(JSON.stringify(response) + '\n');
       }
     } catch (e) {
-      // Incomplete JSON, wait for more
-      if (e instanceof SyntaxError) return;
-      buffer = '';
       const errResp = { jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } };
       process.stdout.write(JSON.stringify(errResp) + '\n');
     }
+  }
+
+  function drain() {
+    while (active < MAX_IN_FLIGHT && pending.length) {
+      active++;
+      processLine(pending.shift()).finally(() => {
+        active--;
+        drain();
+      });
+    }
+    if (!closed) {
+      if (active === MAX_IN_FLIGHT) rl.pause();
+      else rl.resume();
+    }
+  }
+
+  rl.on('line', (line) => {
+    // readline may emit the rest of an already-read chunk after stdin is paused.
+    pending.push(line);
+    drain();
   });
 
-  rl.on('close', () => process.exit(0));
+  rl.on('close', () => {
+    closed = true;
+    drain();
+  });
 }
 
 main();

@@ -74,14 +74,30 @@ def structured_content(result: Mapping[str, Any]) -> Mapping[str, Any]:
     value = result.get("structuredContent")
     return value if isinstance(value, Mapping) else result
 
+CODEX_COMMAND_TIMEOUT = 30.0
+
+
+def _run_codex(codex: str, *arguments: str) -> subprocess.CompletedProcess[str]:
+    try:
+        return subprocess.run(
+            [codex, *arguments],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=CODEX_COMMAND_TIMEOUT,
+        )
+    except subprocess.TimeoutExpired as exc:
+        operation = arguments[1] if len(arguments) > 1 else "command"
+        raise EnvironmentUnavailable(
+            f"Codex MCP {operation} timed out after {CODEX_COMMAND_TIMEOUT:g} seconds"
+        ) from exc
+
 
 def codex_registration(name: str) -> dict[str, Any] | None:
     codex = shutil.which("codex")
     if not codex:
         return None
-    completed = subprocess.run(
-        [codex, "mcp", "get", name, "--json"], capture_output=True, text=True, check=False
-    )
+    completed = _run_codex(codex, "mcp", "get", name, "--json")
     if completed.returncode != 0 or not completed.stdout.strip():
         return None
     try:
@@ -105,17 +121,13 @@ def register_codex(name: str, url: str) -> dict[str, Any]:
     ):
         return {"name": name, "url": url, "changed": False, "status": "already_registered"}
     if existing:
-        completed = subprocess.run(
-            [codex, "mcp", "remove", name], capture_output=True, text=True, check=False
-        )
+        completed = _run_codex(codex, "mcp", "remove", name)
         if completed.returncode != 0:
             detail = completed.stderr.strip() or completed.stdout.strip()
             raise EnvironmentUnavailable(
                 f"failed to remove existing Codex MCP registration {name!r}: {detail}"
             )
-    completed = subprocess.run(
-        [codex, "mcp", "add", name, "--url", url], capture_output=True, text=True, check=False
-    )
+    completed = _run_codex(codex, "mcp", "add", name, "--url", url)
     if completed.returncode != 0:
         detail = completed.stderr.strip() or completed.stdout.strip()
         raise EnvironmentUnavailable(f"failed to register Codex MCP server {name!r}: {detail}")

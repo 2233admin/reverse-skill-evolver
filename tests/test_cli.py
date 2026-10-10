@@ -24,7 +24,7 @@ def test_help_and_version_are_available() -> None:
     assert help_result.returncode == 0
     assert "Commands:" in help_result.stdout
     assert version_result.returncode == 0
-    assert "1.1.0" in version_result.stdout
+    assert "1.1.1" in version_result.stdout
 
 
 def test_help_describes_ida_operations_and_bounded_route_evolution_search() -> None:
@@ -333,3 +333,18 @@ def test_tracecard_validate_requires_input() -> None:
     assert value["command"] == "tracecard-validate"
     assert value["error"]["code"] == "usage"
     assert "--input" in value["error"]["message"]
+
+
+def test_register_codex_fails_closed_when_lookup_times_out(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(cli_module.shutil, "which", lambda _name: "codex")
+    calls: list[float | None] = []
+
+    def timed_out(command, **kwargs):
+        calls.append(kwargs.get("timeout"))
+        raise subprocess.TimeoutExpired(command, kwargs.get("timeout"))
+
+    monkeypatch.setattr(cli_module.subprocess, "run", timed_out)
+    with pytest.raises(cli_module.EnvironmentUnavailable, match="timed out"):
+        cli_module.register_codex("idapro", "http://127.0.0.1:13337/mcp")
+
+    assert calls == [30.0]

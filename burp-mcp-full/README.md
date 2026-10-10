@@ -19,6 +19,10 @@ chmod +x build.sh
 ./build.sh
 ```
 
+手动构建需要 JDK 21+ 和 `curl`；Windows 使用 `JAVA_HOME`，未设置时使用 PATH 中的 JDK。
+两个脚本先确保依赖存在（下载失败直接退出），仅在输出 JAR 比所有 Java 源文件和
+依赖 JAR 更新时跳过编译与打包；同时间戳或无法检查时间戳时重新构建。
+
 ### 2. 加载到 Burp
 
 ```
@@ -60,6 +64,19 @@ Burp Suite → Extensions → Add → Java → 选择 build/libs/burp-mcp-full.j
 | `decode` | 解码（Base64/URL） | `input`, `type` |
 | `scan` | 启动漏洞扫描 | `url` |
 | `add_to_scope` | 添加到 Scope | `url` |
+
+### 正则表达式兼容性
+
+`search_history` 的 `regex`（不区分大小写）和 `extract_from_response` 的 `regex`
+使用 **RE2/J 1.8**，避免用户提供的正则触发灾难性回溯。支持常见字符类、
+分组、交替和重复；不支持 Java 回溯引擎特有的反向引用（例如 `(a)\1`）、
+前后向断言（例如 `(?=...)` / `(?<=...)`）、原子组和占有量词。
+非法或不支持的表达式返回现有工具结果中的 `error`，不会回退到 Java 正则引擎。
+不区分大小写匹配遵循 RE2/J 的语义；非 ASCII 字符的大小写匹配可能与
+原先 `java.util.regex` 的 `CASE_INSENSITIVE` 行为不同。
+
+Java 回归检查：在本目录运行 `gradle performanceRegressionTest`（或 `gradle check`），
+覆盖历史分页/顺序、RE2/J 拒绝行为及有界预览；需要 JDK 21+、Gradle 和 Maven 依赖。
 
 ## 安装
 

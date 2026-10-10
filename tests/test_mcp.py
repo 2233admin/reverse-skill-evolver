@@ -5,7 +5,7 @@ from typing import Any
 import httpx
 import pytest
 
-from reverse_skill.errors import McpProtocolError
+from reverse_skill.errors import McpProtocolError, McpTransportError
 from reverse_skill.mcp import (
     MODERN_VERSION,
     McpClient,
@@ -214,9 +214,9 @@ def test_json_and_sse_parsers_require_the_matching_response_id() -> None:
         ("text/event-stream", "unmatched", "MCP SSE response did not contain JSON-RPC id"),
         ("text/event-stream", "malformed_before", "not valid JSON"),
         ("text/event-stream", "malformed_after", "not valid JSON"),
-        ("text/event-stream", "non_object_before", "no attribute 'get'"),
+        ("text/event-stream", "non_object_before", "MCP SSE event is not a JSON object"),
         ("text/event-stream", "non_object_before_malformed", "not valid JSON"),
-        ("text/event-stream", "non_object_after", None),
+        ("text/event-stream", "non_object_after", "MCP SSE event is not a JSON object"),
     ],
 )
 def test_request_preserves_json_and_sse_response_validation(
@@ -261,8 +261,7 @@ def test_request_preserves_json_and_sse_response_validation(
 
     with McpClient("http://mock/mcp", transport=httpx.MockTransport(handler)) as client:
         if error is not None:
-            expected_error = AttributeError if scenario == "non_object_before" else McpProtocolError
-            with pytest.raises(expected_error, match=error):
+            with pytest.raises(McpProtocolError, match=error):
                 client.request("resources/list")
         else:
             assert client.request("resources/list") == {"value": "done"}
@@ -317,6 +316,60 @@ def test_request_releases_unrelated_sse_events_before_decoding_the_next(
     assert len(event_refs) == 2
     assert all(reference() is None for reference in event_refs)
 
+def test_request_consumes_sse_events_before_reading_the_next_chunk(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    events = ['{"jsonrpc":"2.0","id":"unrelated","result":{}}']
+    original_loads = json.loads
+
+    class EventStream(httpx.SyncByteStream):
+        parsed_events = 0
+        closed = False
+        request_id: str | int | None = None
+
+        def __iter__(self):
+            for index, event in enumerate(events):
+                if index:
+                    assert self.parsed_events >= index
+                yield f"data: {event}\n\n".encode()
+
+        def close(self) -> None:
+            self.closed = True
+
+    stream = EventStream()
+
+    def tracked_loads(content: str | bytes | bytearray, *args: Any, **kwargs: Any) -> Any:
+        value = original_loads(content, *args, **kwargs)
+        if isinstance(value, dict) and value.get("id") in {"unrelated", stream.request_id}:
+            stream.parsed_events += 1
+        return value
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = _json(request)
+        if body["method"] == "server/discover":
+            return httpx.Response(
+                200,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": body["id"],
+                    "result": {"resultType": "complete", "supportedVersions": [MODERN_VERSION]},
+                },
+            )
+        stream.request_id = body["id"]
+        events.append(json.dumps({"jsonrpc": "2.0", "id": body["id"], "result": {"value": "done"}}))
+        return httpx.Response(
+            200,
+            stream=stream,
+            headers={"Content-Type": "text/event-stream"},
+        )
+
+    monkeypatch.setattr(json, "loads", tracked_loads)
+    with McpClient("http://mock/mcp", transport=httpx.MockTransport(handler)) as client:
+        assert client.request("resources/list") == {"value": "done"}
+
+    assert stream.parsed_events == 2
+    assert stream.closed
+
 
 def test_invalid_modern_discovery_body_does_not_silently_fall_back() -> None:
     def handler(_: httpx.Request) -> httpx.Response:
@@ -348,3 +401,124 @@ def test_constructor_closes_http_client_when_discovery_fails(monkeypatch: pytest
 
     assert raised.value is error
     assert client.closed
+
+
+def test_mcp_client_deadline_is_shared_across_discovery_and_request(monkeypatch: pytest.MonkeyPatch) -> None:
+    from types import SimpleNamespace
+
+    from reverse_skill import mcp as mcp_module
+
+    now = [0.0]
+    observed_timeouts = []
+    monkeypatch.setattr(mcp_module, "time", SimpleNamespace(monotonic=lambda: now[0]), raising=False)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = _json(request)
+        observed_timeouts.append(request.extensions["timeout"]["read"])
+        if body["method"] == "server/discover":
+            now[0] = 8.0
+            return httpx.Response(
+                200,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": body["id"],
+                    "result": {"resultType": "complete", "supportedVersions": [MODERN_VERSION]},
+                },
+            )
+        return httpx.Response(200, json={"jsonrpc": "2.0", "id": body["id"], "result": {"tools": []}})
+
+    with McpClient(
+        "http://mock/mcp",
+        timeout=10,
+        transport=httpx.MockTransport(handler),
+        deadline=10,
+    ) as client:
+        assert client.request("tools/list") == {"tools": []}
+
+    assert observed_timeouts[0] == 10
+    assert observed_timeouts[1] <= 2
+
+@pytest.mark.parametrize("content_type", ["application/json", "text/event-stream"])
+def test_mcp_client_rejects_response_body_completed_after_deadline(content_type: str) -> None:
+    import time
+
+    chunks_read = [0]
+
+    class DrippingBody(httpx.SyncByteStream):
+        def __init__(self, content: bytes) -> None:
+            self.content = content
+
+        def __iter__(self):
+            for index in range(10):
+                if index:
+                    time.sleep(0.01)
+                chunks_read[0] += 1
+                yield self.content[index * len(self.content) // 10 : (index + 1) * len(self.content) // 10]
+
+        def close(self) -> None:
+            pass
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = _json(request)
+        if body["method"] == "server/discover":
+            return httpx.Response(
+                200,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": body["id"],
+                    "result": {"resultType": "complete", "supportedVersions": [MODERN_VERSION]},
+                },
+            )
+        message = json.dumps({"jsonrpc": "2.0", "id": body["id"], "result": {"tools": []}})
+        if content_type == "text/event-stream":
+            message = f"data: {message}\n\n"
+        return httpx.Response(
+            200,
+            stream=DrippingBody(message.encode()),
+            headers={"Content-Type": content_type},
+        )
+
+    with McpClient("http://mock/mcp", timeout=1, transport=httpx.MockTransport(handler)) as client:
+        client.deadline = time.monotonic() + 0.035
+        with pytest.raises(McpTransportError, match="deadline"):
+            client.request("tools/list")
+    assert chunks_read[0] < 10, "deadline must stop consuming the body instead of rejecting after EOF"
+
+
+def test_mcp_sse_stream_handles_split_utf8_and_crlf_boundaries() -> None:
+    class ChunkedBody(httpx.SyncByteStream):
+        def __init__(self, chunks: list[bytes]) -> None:
+            self.chunks = chunks
+
+        def __iter__(self):
+            yield from self.chunks
+
+        def close(self) -> None:
+            pass
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = _json(request)
+        if body["method"] == "server/discover":
+            return httpx.Response(
+                200,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": body["id"],
+                    "result": {"resultType": "complete", "supportedVersions": [MODERN_VERSION]},
+                },
+            )
+        event = (
+            f'data: {json.dumps({"jsonrpc": "2.0", "id": body["id"], "result": {"text": "λ"}}, ensure_ascii=False)}\r\n\r\n'
+        ).encode()
+        utf8_boundary = event.index("λ".encode()) + 1
+        crlf_boundary = event.index(b"\r\n") + 1
+        cuts = sorted((utf8_boundary, crlf_boundary))
+        chunks = [event[: cuts[0]], event[cuts[0] : cuts[1]], event[cuts[1] :]]
+        return httpx.Response(
+            200,
+            stream=ChunkedBody(chunks),
+            headers={"Content-Type": "text/event-stream"},
+        )
+
+    with McpClient("http://mock/mcp", transport=httpx.MockTransport(handler)) as client:
+        assert client.request("tools/list") == {"text": "λ", "tools": []}

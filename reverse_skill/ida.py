@@ -237,8 +237,9 @@ def start_server(
     if installation is None:
         raise EnvironmentUnavailable("no usable IDA installation found (requires ida.exe/idat.exe and idalib.dll)")
 
-    existing_count = probe(port, 3.0)
-    if existing_count > 0:
+    deadline = time.monotonic() + max(0, wait_seconds)
+    existing_count = probe(port, deadline) if time.monotonic() < deadline else 0
+    if existing_count > 0 and time.monotonic() < deadline:
         return {
             "ida": installation.public(),
             "server": {"url": f"http://127.0.0.1:{port}/mcp", "toolCount": existing_count, "reused": True},
@@ -249,7 +250,7 @@ def start_server(
         raise EnvironmentUnavailable("idalib-mcp is not installed; run `reverse-skill install` first")
     if replace_stale:
         _terminate_stale_servers()
-        time.sleep(1)
+        time.sleep(min(1, max(0.0, deadline - time.monotonic())))
 
     env = os.environ.copy()
     env["IDADIR"] = installation.install_dir
@@ -266,10 +267,13 @@ def start_server(
         creationflags=creationflags,
     )
 
-    for _ in range(wait_seconds):
-        time.sleep(1)
-        tool_count = probe(port, 3.0)
-        if tool_count > 0:
+    while (remaining := deadline - time.monotonic()) > 0:
+        time.sleep(min(1.0, remaining))
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        tool_count = probe(port, deadline)
+        if tool_count > 0 and time.monotonic() < deadline:
             return {
                 "ida": installation.public(),
                 "server": {"url": f"http://127.0.0.1:{port}/mcp", "toolCount": tool_count, "reused": False},

@@ -1,6 +1,7 @@
 package com.burpmcp;
 
 import burp.api.montoya.MontoyaApi;
+import burp.api.montoya.core.ByteArray;
 import burp.api.montoya.collaborator.*;
 import burp.api.montoya.http.HttpService;
 import burp.api.montoya.http.RequestOptions;
@@ -11,6 +12,8 @@ import burp.api.montoya.proxy.ProxyWebSocketMessage;
 import burp.api.montoya.sitemap.SiteMapFilter;
 import com.google.gson.*;
 import fi.iki.elonen.NanoHTTPD;
+import com.google.re2j.Pattern;
+import com.google.re2j.Matcher;
 
 import java.io.IOException;
 import java.net.URI;
@@ -22,6 +25,8 @@ import java.util.function.IntFunction;
 public class McpHttpServer extends NanoHTTPD {
     private static final int MAX_IN_FLIGHT_ATTACKS = 50;
     private static final int ATTACK_TIMEOUT_SECONDS = 120;
+    private static final java.util.regex.Pattern TECHNOLOGY_HEADER_PATTERN =
+            java.util.regex.Pattern.compile("server|x-powered-by|x-aspnet-version");
     private final MontoyaApi api;
     private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
     private CollaboratorClient collaborator;
@@ -149,28 +154,38 @@ public class McpHttpServer extends NanoHTTPD {
         String filterUrl = params.has("url_filter") ? params.get("url_filter").getAsString() : null;
         String filterMethod = params.has("method_filter") ? params.get("method_filter").getAsString() : null;
         int filterStatus = params.has("status_filter") ? params.get("status_filter").getAsInt() : 0;
+        if (offset < 0) Objects.checkIndex(offset, history.size());
 
-        List<ProxyHttpRequestResponse> filtered = new ArrayList<>(history.size());
-        for (ProxyHttpRequestResponse entry : history) {
-            if (filterUrl != null && !entry.finalRequest().url().contains(filterUrl)) continue;
-            if (filterMethod != null && !entry.finalRequest().method().equalsIgnoreCase(filterMethod)) continue;
-            if (filterStatus > 0 && (entry.response() == null || entry.response().statusCode() != filterStatus)) continue;
-            filtered.add(entry);
-        }
-        Collections.reverse(filtered);
-        int end = Math.min(offset + limit, filtered.size());
+        boolean pageOnly = filterUrl == null && filterMethod == null && filterStatus <= 0;
         JsonArray items = new JsonArray();
-        for (int i = offset; i < end; i++) {
-            ProxyHttpRequestResponse entry = filtered.get(i);
+        int total = pageOnly ? history.size() : 0;
+        int index = offset;
+        long end = (long) offset + limit;
+        int iteratorStart = pageOnly ? Math.max(0, history.size() - offset) : history.size();
+        ListIterator<ProxyHttpRequestResponse> iterator = history.listIterator(iteratorStart);
+        while (iterator.hasPrevious()) {
+            if (pageOnly && index >= end) break;
+            ProxyHttpRequestResponse entry = iterator.previous();
+            if (!pageOnly) {
+                if (filterUrl != null && !entry.finalRequest().url().contains(filterUrl)) continue;
+                if (filterMethod != null && !entry.finalRequest().method().equalsIgnoreCase(filterMethod)) continue;
+                if (filterStatus > 0 && (entry.response() == null || entry.response().statusCode() != filterStatus)) continue;
+                index = total++;
+            }
+            if (index < offset || index >= end) {
+                if (pageOnly) index++;
+                continue;
+            }
             JsonObject item = new JsonObject();
-            item.addProperty("index", i);
+            item.addProperty("index", index);
             item.addProperty("method", entry.finalRequest().method());
             item.addProperty("url", entry.finalRequest().url());
             item.addProperty("status", entry.response() != null ? entry.response().statusCode() : 0);
             item.addProperty("length", entry.response() != null ? entry.response().body().length() : 0);
             items.add(item);
+            if (pageOnly) index++;
         }
-        result.addProperty("total", filtered.size());
+        result.addProperty("total", total);
         result.add("items", items);
         return result;
     }
@@ -207,9 +222,7 @@ public class McpHttpServer extends NanoHTTPD {
 
             result.addProperty("status", response.statusCode());
             result.addProperty("length", response.body().length());
-            String respBody = response.bodyToString();
-            if (respBody.length() > 10000) respBody = respBody.substring(0, 10000) + "...[truncated]";
-            result.addProperty("body", respBody);
+            result.addProperty("body", truncatedPreview(response.body(), 10000));
             JsonObject respHeaders = new JsonObject();
             response.headers().forEach(h -> respHeaders.addProperty(h.name(), h.value()));
             result.add("headers", respHeaders);
@@ -285,8 +298,9 @@ public class McpHttpServer extends NanoHTTPD {
                         JsonObject hit = new JsonObject();
                         hit.addProperty("payload", payload); hit.addProperty("status", resp.statusCode());
                         hit.addProperty("length", resp.body().length());
-                        if (responseText == null) responseText = resp.bodyToString();
-                        hit.addProperty("body_preview", responseText.substring(0, Math.min(300, responseText.length())));
+                        hit.addProperty("body_preview", responseText == null
+                                ? preview(resp.body(), 300)
+                                : responseText.substring(0, Math.min(300, responseText.length())));
                         hits.add(hit);
                     }
                 } catch (Exception e) { errors++; }
@@ -350,8 +364,7 @@ public class McpHttpServer extends NanoHTTPD {
                             if (successLengthNot > 0 && resp.body().length() != successLengthNot) {
                                 JsonObject hit = new JsonObject();
                                 hit.addProperty("payload", payload); hit.addProperty("length", resp.body().length());
-                                String responseText = resp.bodyToString();
-                                hit.addProperty("body_preview", responseText.substring(0, Math.min(300, responseText.length())));
+                                hit.addProperty("body_preview", preview(resp.body(), 300));
                                 hits.add(hit); found.set(true);
                             }
                         } catch (Exception e) { errors.incrementAndGet(); }
@@ -528,11 +541,13 @@ public class McpHttpServer extends NanoHTTPD {
             String regex = params.has("regex") ? params.get("regex").getAsString() : ".*";
             String searchIn = params.has("search_in") ? params.get("search_in").getAsString() : "url";
             int limit = params.has("limit") ? params.get("limit").getAsInt() : 20;
-            java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(regex, java.util.regex.Pattern.CASE_INSENSITIVE);
+            Pattern pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
             List<ProxyHttpRequestResponse> history = api.proxy().history();
             JsonArray items = new JsonArray(); int c = 0;
-            for (int i = history.size() - 1; i >= 0 && c < limit; i--) {
-                ProxyHttpRequestResponse entry = history.get(i);
+            ListIterator<ProxyHttpRequestResponse> iterator = history.listIterator(history.size());
+            while (iterator.hasPrevious() && c < limit) {
+                int i = iterator.previousIndex();
+                ProxyHttpRequestResponse entry = iterator.previous();
                 boolean match = false;
                 if ("url".equals(searchIn)) match = pattern.matcher(entry.finalRequest().url()).find();
                 else if ("request".equals(searchIn)) match = pattern.matcher(entry.finalRequest().toString()).find();
@@ -562,9 +577,7 @@ public class McpHttpServer extends NanoHTTPD {
             result.addProperty("url", entry.finalRequest().url());
             result.addProperty("request", entry.finalRequest().toString());
             if (entry.response() != null) {
-                String resp = entry.response().toString();
-                if (resp.length() > 50000) resp = resp.substring(0, 50000) + "...[truncated]";
-                result.addProperty("response", resp);
+                result.addProperty("response", truncatedPreview(entry.response().toByteArray(), 50000));
                 result.addProperty("status", entry.response().statusCode());
                 result.addProperty("response_length", entry.response().body().length());
             }
@@ -582,7 +595,7 @@ public class McpHttpServer extends NanoHTTPD {
                 if (c >= limit) break;
                 JsonObject item = new JsonObject();
                 item.addProperty("direction", msg.direction().name());
-                item.addProperty("payload", msg.payload().toString().substring(0, Math.min(500, msg.payload().toString().length())));
+                item.addProperty("payload", preview(msg.payload(), 500));
                 items.add(item); c++;
             }
             result.addProperty("total", c); result.add("messages", items);
@@ -800,9 +813,7 @@ public class McpHttpServer extends NanoHTTPD {
             HttpResponse response = api.http().sendRequest(request).response();
             result.addProperty("status", response.statusCode());
             result.addProperty("length", response.body().length());
-            String respBody = response.bodyToString();
-            if (respBody.length() > 10000) respBody = respBody.substring(0, 10000) + "...[truncated]";
-            result.addProperty("body", respBody);
+            result.addProperty("body", truncatedPreview(response.body(), 10000));
         } catch (Exception e) { result.addProperty("error", e.getMessage()); }
         return result;
     }
@@ -850,7 +861,7 @@ public class McpHttpServer extends NanoHTTPD {
             var entries = api.siteMap().requestResponses(SiteMapFilter.prefixFilter(urlPrefix));
             Set<String> hosts = new HashSet<>(); Set<String> tech = new HashSet<>(); int total = 0;
             for (var entry : entries) { hosts.add(entry.request().httpService().host()); total++;
-                if (entry.response() != null) entry.response().headers().forEach(h -> { if (h.name().toLowerCase().matches("server|x-powered-by|x-aspnet-version")) tech.add(h.name()+": "+h.value()); });
+                if (entry.response() != null) entry.response().headers().forEach(h -> { if (TECHNOLOGY_HEADER_PATTERN.matcher(h.name().toLowerCase()).matches()) tech.add(h.name()+": "+h.value()); });
                 if (total > 500) break; }
             JsonArray hArr = new JsonArray(); hosts.forEach(hArr::add); JsonArray tArr = new JsonArray(); tech.forEach(tArr::add);
             result.add("hosts", hArr); result.add("technologies", tArr); result.addProperty("requests_sampled", total);
@@ -959,8 +970,7 @@ public class McpHttpServer extends NanoHTTPD {
             HttpService svc = HttpService.httpService(host, port, isHttps);
             HttpResponse resp = api.http().sendRequest(HttpRequest.httpRequest(svc, rawRequest)).response();
             result.addProperty("status", resp.statusCode()); result.addProperty("length", resp.body().length());
-            String responseText = resp.bodyToString();
-            result.addProperty("body", responseText.substring(0, Math.min(10000, responseText.length())));
+            result.addProperty("body", preview(resp.body(), 10000));
         } catch (Exception e) { result.addProperty("error", e.getMessage()); }
         return result;
     }
@@ -1103,9 +1113,9 @@ public class McpHttpServer extends NanoHTTPD {
             String regex = params.get("regex").getAsString();
             List<ProxyHttpRequestResponse> history = api.proxy().history();
             if (index < 0 || index >= history.size()) { result.addProperty("error", "Index out of range"); return result; }
+            Pattern pattern = Pattern.compile(regex);
             String body = history.get(index).response() != null ? history.get(index).response().bodyToString() : "";
-            java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(regex);
-            java.util.regex.Matcher matcher = pattern.matcher(body);
+            Matcher matcher = pattern.matcher(body);
             JsonArray matches = new JsonArray();
             while (matcher.find()) { matches.add(matcher.group()); }
             result.addProperty("total_matches", matches.size()); result.add("matches", matches);
@@ -1226,8 +1236,10 @@ public class McpHttpServer extends NanoHTTPD {
             int limit = params.has("limit") ? params.get("limit").getAsInt() : 50;
             List<ProxyHttpRequestResponse> history = api.proxy().history();
             JsonArray items = new JsonArray(); int c = 0;
-            for (int i = history.size() - 1; i >= 0 && c < limit; i--) {
-                ProxyHttpRequestResponse entry = history.get(i);
+            ListIterator<ProxyHttpRequestResponse> iterator = history.listIterator(history.size());
+            while (iterator.hasPrevious() && c < limit) {
+                int i = iterator.previousIndex();
+                ProxyHttpRequestResponse entry = iterator.previous();
                 boolean match = true;
                 if (hasNotes != null && "true".equals(hasNotes)) { String notes = entry.annotations().notes(); match = notes != null && !notes.isEmpty(); }
                 if (match) { JsonObject item = new JsonObject(); item.addProperty("index", i); item.addProperty("url", entry.finalRequest().url()); item.addProperty("notes", entry.annotations().notes() != null ? entry.annotations().notes() : ""); items.add(item); c++; }
@@ -1282,6 +1294,25 @@ public class McpHttpServer extends NanoHTTPD {
 
 
     // ==================== HELPERS ====================
+
+    // Decode only a prefix, including lookahead so a partial final character is not returned.
+    static String preview(ByteArray bytes, int limit) {
+        int length = bytes.length();
+        if (length == 0 || limit == 0) return "";
+        int prefixLength = (int) Math.min(length, (long) limit + 1);
+        while (true) {
+            String text = bytes.subArray(0, prefixLength).toString();
+            if (prefixLength == length || text.length() > limit) {
+                return text.substring(0, Math.min(limit, text.length()));
+            }
+            prefixLength = (int) Math.min(length, (long) prefixLength * 2);
+        }
+    }
+
+    private static String truncatedPreview(ByteArray bytes, int limit) {
+        String text = preview(bytes, limit + 1);
+        return text.length() > limit ? text.substring(0, limit) + "...[truncated]" : text;
+    }
 
     private String getToolList() {
         return "[\"proxy_history\",\"proxy_detail\",\"proxy_websocket\",\"proxy_listeners\"," +

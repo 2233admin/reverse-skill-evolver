@@ -1,0 +1,2 @@
+burp-mcp-full/build.bat text eol=crlf
+burp-mcp-full/build.sh text eol=lf

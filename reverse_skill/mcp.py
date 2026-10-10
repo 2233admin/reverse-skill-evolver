@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import base64
+import codecs
 import json
 import re
+import time
 import uuid
 from dataclasses import dataclass
-from typing import Any, Mapping
+from itertools import chain
+from typing import Any, Iterable, Mapping
 
 import httpx
 
@@ -25,7 +28,6 @@ class HttpResult:
     headers: Mapping[str, str]
     message: dict[str, Any] | None
     content_type: str
-    raw_content: str
 
 
 def encode_header_value(value: str) -> str:
@@ -66,9 +68,11 @@ class McpClient:
         transport: httpx.BaseTransport | None = None,
         client_name: str = "reverse-skill-cli",
         client_version: str = "1.0.0",
+        deadline: float | None = None,
     ) -> None:
         self.url = url
         self.timeout = timeout
+        self.deadline = deadline
         self.era = "modern"
         self.protocol_version = MODERN_VERSION
         self.session_id = ""
@@ -120,6 +124,43 @@ class McpClient:
         return {"jsonrpc": "2.0", "id": request_id, "method": method, "params": self._params(params)}
 
     @staticmethod
+    def _parse_sse_lines(
+        lines: Iterable[str], request_id: str | int | None
+    ) -> dict[str, Any] | None:
+        if request_id is None:
+            return None
+        matched_message: dict[str, Any] | None = None
+        json_error: McpProtocolError | None = None
+        shape_error: McpProtocolError | None = None
+        data_lines: list[str] = []
+        for line in chain(lines, ("",)):
+            if line.startswith("data:"):
+                data_lines.append(line[5:].lstrip(" "))
+            elif not line.strip() and data_lines:
+                try:
+                    message = json.loads("\n".join(data_lines))
+                except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+                    if json_error is None:
+                        json_error = McpProtocolError(f"MCP response is not valid JSON: {exc}")
+                    data_lines.clear()
+                    continue
+                data_lines.clear()
+                if not isinstance(message, dict):
+                    if shape_error is None:
+                        shape_error = McpProtocolError("MCP SSE event is not a JSON object")
+                    continue
+                if matched_message is None and str(message.get("id")) == str(request_id):
+                    matched_message = message
+                del message
+        if json_error is not None:
+            raise json_error
+        if shape_error is not None:
+            raise shape_error
+        if matched_message is not None:
+            return matched_message
+        raise McpProtocolError(f"MCP SSE response did not contain JSON-RPC id {request_id}")
+
+    @staticmethod
     def _parse_response(content: str, content_type: str, request_id: str | int | None) -> dict[str, Any] | None:
         # JSON-RPC notifications do not have a response body. Some legacy MCP
         # servers acknowledge them with the literal HTTP body ``Accepted``.
@@ -128,35 +169,71 @@ class McpClient:
         if not content.strip():
             return None
         if content_type.lower().startswith("text/event-stream"):
-            matched_message: dict[str, Any] | None = None
-            selection_error: AttributeError | None = None
-            data_lines: list[str] = []
-            for line in content.splitlines() + [""]:
-                if line.startswith("data:"):
-                    data_lines.append(line[5:].lstrip(" "))
-                elif not line.strip() and data_lines:
-                    message = json.loads("\n".join(data_lines))
-                    data_lines.clear()
-                    if matched_message is None and selection_error is None:
-                        try:
-                            if str(message.get("id")) == str(request_id):
-                                matched_message = message
-                        except AttributeError as exc:
-                            # Validate all event JSON before reporting selection errors.
-                            selection_error = exc.with_traceback(None)
-                    del message
-            if selection_error is not None:
-                raise selection_error
-            if matched_message is not None:
-                return matched_message
-            raise McpProtocolError(f"MCP SSE response did not contain JSON-RPC id {request_id}")
+            return McpClient._parse_sse_lines(content.splitlines(), request_id)
 
         message = json.loads(content)
         if not isinstance(message, dict):
             raise McpProtocolError("MCP JSON response is not an object")
-        if request_id is not None and str(message.get("id")) != str(request_id):
+        if str(message.get("id")) != str(request_id):
             raise McpProtocolError(f"MCP JSON response did not contain JSON-RPC id {request_id}")
         return message
+
+    def _check_deadline(self) -> None:
+        if self.deadline is not None and time.monotonic() >= self.deadline:
+            raise McpTransportError("MCP request exceeded its shared deadline")
+
+    def _iter_response_lines(self, response: httpx.Response) -> Iterable[str]:
+        decoder = codecs.getincrementaldecoder(response.encoding or "utf-8")()
+        line_parts: list[str] = []
+        pending_carriage_return = False
+        for chunk in response.iter_bytes():
+            self._check_deadline()
+            text = decoder.decode(chunk)
+            if pending_carriage_return:
+                if text.startswith("\n"):
+                    text = text[1:]
+                yield "".join(line_parts)
+                line_parts.clear()
+                pending_carriage_return = False
+            start = 0
+            while start < len(text):
+                newline = text.find("\n", start)
+                carriage = text.find("\r", start)
+                if newline < 0 and carriage < 0:
+                    line_parts.append(text[start:])
+                    break
+                end = newline if carriage < 0 or 0 <= newline < carriage else carriage
+                if text[end] == "\r" and end + 1 == len(text):
+                    if start < end:
+                        line_parts.append(text[start:end])
+                    pending_carriage_return = True
+                    break
+                line_parts.append(text[start:end])
+                yield "".join(line_parts)
+                line_parts.clear()
+                start = end + (2 if text.startswith("\r\n", end) else 1)
+
+        tail = decoder.decode(b"", final=True)
+        if pending_carriage_return:
+            if tail.startswith("\n"):
+                tail = tail[1:]
+            yield "".join(line_parts)
+            line_parts.clear()
+        start = 0
+        while start < len(tail):
+            newline = tail.find("\n", start)
+            carriage = tail.find("\r", start)
+            if newline < 0 and carriage < 0:
+                line_parts.append(tail[start:])
+                break
+            end = newline if carriage < 0 or 0 <= newline < carriage else carriage
+            line_parts.append(tail[start:end])
+            yield "".join(line_parts)
+            line_parts.clear()
+            start = end + (2 if tail.startswith("\r\n", end) else 1)
+        if line_parts:
+            yield "".join(line_parts)
+        self._check_deadline()
 
     def _send(self, message: Mapping[str, Any], extra_headers: Mapping[str, str] | None = None) -> HttpResult:
         method = str(message["method"])
@@ -177,23 +254,37 @@ class McpClient:
             headers["Mcp-Name"] = encode_header_value(str(name))
         headers.update(extra_headers or {})
 
+        request_id = message.get("id")
+        timeout = self.timeout
+        if self.deadline is not None:
+            timeout = min(timeout, self.deadline - time.monotonic())
+            if timeout <= 0:
+                raise McpTransportError("MCP request exceeded its shared deadline")
         try:
-            response = self.http.post(self.url, headers=headers, json=message)
+            with self.http.stream(
+                "POST", self.url, headers=headers, json=message, timeout=timeout
+            ) as response:
+                content_type = response.headers.get("content-type", "")
+                if content_type.lower().startswith("text/event-stream"):
+                    parsed = self._parse_sse_lines(self._iter_response_lines(response), request_id)
+                else:
+                    chunks = []
+                    for chunk in response.iter_bytes():
+                        self._check_deadline()
+                        chunks.append(chunk)
+                    self._check_deadline()
+                    content = b"".join(chunks).decode(response.encoding or "utf-8")
+                    parsed = self._parse_response(content, content_type, request_id)
+                return HttpResult(
+                    status_code=response.status_code,
+                    headers=response.headers,
+                    message=parsed,
+                    content_type=content_type,
+                )
         except httpx.RequestError as exc:
             raise McpTransportError(f"MCP request failed: {exc}") from exc
-
-        request_id = message.get("id")
-        try:
-            parsed = self._parse_response(response.text, response.headers.get("content-type", ""), request_id)
         except (json.JSONDecodeError, UnicodeDecodeError) as exc:
             raise McpProtocolError(f"MCP response is not valid JSON: {exc}") from exc
-        return HttpResult(
-            status_code=response.status_code,
-            headers=response.headers,
-            message=parsed,
-            content_type=response.headers.get("content-type", ""),
-            raw_content=response.text,
-        )
 
     def _discover_modern(self) -> bool:
         for _ in range(2):
@@ -392,23 +483,32 @@ class McpClient:
         try:
             if self.era == "legacy" and self.session_id:
                 try:
-                    self.http.delete(
-                        self.url,
-                        headers={
-                            "Mcp-Session-Id": self.session_id,
-                            "MCP-Protocol-Version": self.protocol_version,
-                        },
-                        timeout=min(self.timeout, 10),
-                    )
+                    timeout = min(self.timeout, 10.0)
+                    if self.deadline is not None:
+                        timeout = min(timeout, self.deadline - time.monotonic())
+                    if timeout > 0:
+                        self.http.delete(
+                            self.url,
+                            headers={
+                                "Mcp-Session-Id": self.session_id,
+                                "MCP-Protocol-Version": self.protocol_version,
+                            },
+                            timeout=timeout,
+                        )
                 except httpx.RequestError:
                     pass
         finally:
             self.http.close()
 
 
-def probe_tool_count(port: int, timeout: float) -> int:
+def probe_tool_count(port: int, deadline: float) -> int:
     try:
-        with McpClient(f"http://127.0.0.1:{port}/mcp", timeout=timeout) as client:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return -1
+        with McpClient(
+            f"http://127.0.0.1:{port}/mcp", timeout=min(3.0, remaining), deadline=deadline
+        ) as client:
             return len(client.request("tools/list").get("tools") or [])
     except (McpProtocolError, McpTransportError):
         return -1
