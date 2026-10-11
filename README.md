@@ -429,18 +429,18 @@ python -m pip install -e ".[test]"
 python -m pytest -q
 ```
 
-Install Gradle 8.7 and make sure `gradle` is on your `PATH` and `JAVA_HOME` points to JDK 21. From `burp-mcp-full`, run the Java gate.
+The Gradle Wrapper downloads pinned Gradle 8.7. Set `JAVA_HOME` to JDK 21 and run the Java gate from `burp-mcp-full`.
 
 Windows (PowerShell):
 
 ```powershell
-gradle check --no-daemon
+.\gradlew.bat check --no-daemon
 ```
 
 POSIX:
 
 ```sh
-gradle check --no-daemon
+./gradlew check --no-daemon
 ```
 
 Gradle `check` includes `schedulerRegressionTest`, the scheduler regression suite. Both the Python and Java gates must pass before a change is considered verified. The Project checks workflow runs these same gates on pull requests and pushes to `main`.
