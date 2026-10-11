@@ -106,9 +106,10 @@ def codex_registration(name: str, *, timeout: float = DEFAULT_TIMEOUT) -> dict[s
 def register_codex(name: str, url: str, *, timeout: float = DEFAULT_TIMEOUT) -> dict[str, Any]:
     """Ensure Codex has an enabled Streamable HTTP registration for the URL.
 
-    Return its name, URL, change flag, and status. Each get, remove, or add
+    Return its name, URL, change flag, and status. Each get or add
     subprocess uses the supplied timeout in seconds; timeouts and failed
     mutations raise EnvironmentUnavailable without retrying.
+    Codex replaces same-name entries; no separate removal is needed.
     """
     codex = shutil.which("codex")
     if not codex:
@@ -122,21 +123,6 @@ def register_codex(name: str, url: str, *, timeout: float = DEFAULT_TIMEOUT) -> 
         and existing.get("enabled") is True
     ):
         return {"name": name, "url": url, "changed": False, "status": "already_registered"}
-    if existing:
-        try:
-            completed = subprocess.run(
-                [codex, "mcp", "remove", name],
-                capture_output=True, text=True, check=False, timeout=timeout,
-            )
-        except subprocess.TimeoutExpired as exc:
-            raise EnvironmentUnavailable(
-                f"failed to remove existing Codex MCP registration {name!r}: timed out after {timeout:g} seconds"
-            ) from exc
-        if completed.returncode != 0:
-            detail = completed.stderr.strip() or completed.stdout.strip()
-            raise EnvironmentUnavailable(
-                f"failed to remove existing Codex MCP registration {name!r}: {detail}"
-            )
     try:
         completed = subprocess.run(
             [codex, "mcp", "add", name, "--url", url],

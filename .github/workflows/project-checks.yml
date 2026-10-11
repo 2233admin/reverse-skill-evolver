@@ -32,8 +32,6 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v6
-        with:
-          gradle-version: '8.7'
       - name: Run Gradle checks
         working-directory: burp-mcp-full
-        run: gradle check --no-daemon
+        run: ./gradlew check --no-daemon
