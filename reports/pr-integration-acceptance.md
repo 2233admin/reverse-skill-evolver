@@ -22,7 +22,7 @@ Observed on 2026-10-12. Implementation revision: `b16f50624dfdb05ef23b88c5040649
 
 Independent read-only review covered affected Java scheduling/regex/history, Python evolution, rendering, tests, and the incremental repairs. It found the Linux test issue and success-fixture gaps; both are corrected. No additional concrete blocker was found. CodeRabbit's old remove-before-add finding is addressed by removal of that path. PR #18's four-file difference contains only docstrings/Javadocs, and its registration description has been synchronized.
 
-Subsequent CodeRabbit feedback: checkout credential persistence is disabled in both CI jobs. Codex can save a replacement before a later OAuth error. Automatic rollback would contradict Issue #10's no-retry constraint for possibly completed mutations and overwrite the successfully saved requested configuration. Both pre-write and post-write failure paths are now tested; errors explicitly tell the caller to inspect before retrying. Exact restoration after a partially completed external operation is not claimed.
+Subsequent CodeRabbit feedback: checkout credential persistence is disabled in both CI jobs. Codex can save a replacement before a later OAuth error. Issue #10 prohibits automatic retries but does not require transactional rollback. Another write after uncertain partial completion could overwrite the requested saved state or concurrent changes, so the helper stops with an explicit warning. Both pre-write and post-write failure paths are tested; targeted CLI verification passed 44 tests. Exact restoration after a partially completed external operation is not claimed.
 
 ## Issue acceptance mapping
 
