@@ -427,18 +427,18 @@ python -m pip install -e ".[test]"
 python -m pytest -q
 ```
 
-安装 Gradle 8.7，确保 `gradle` 位于 `PATH` 中，且 `JAVA_HOME` 指向 JDK 21。在 `burp-mcp-full` 目录执行 Java 门禁。
+Gradle Wrapper 会下载固定版本的 Gradle 8.7。将 `JAVA_HOME` 指向 JDK 21，在 `burp-mcp-full` 目录执行 Java 门禁。
 
 Windows（PowerShell）：
 
 ```powershell
-gradle check --no-daemon
+.\gradlew.bat check --no-daemon
 ```
 
 POSIX：
 
 ```sh
-gradle check --no-daemon
+./gradlew check --no-daemon
 ```
 
 Gradle `check` 包含调度器回归测试 `schedulerRegressionTest`。Python 和 Java 两项门禁都通过后，才能视为变更已验证。Project checks 工作流在拉取请求和向 `main` 推送时执行相同门禁。

@@ -29,6 +29,7 @@ public final class McpHttpServerBehaviorTest {
         deadlineCancelsPendingRequestAndStopsSubmission();
         callerRegexesAcceptLinearPatternsAndRejectUnsupportedSyntax();
         sequentialAttackErrorAndCountContractsRemainIntact();
+        sequentialAttackSuccessAndExtractionContractsRemainIntact();
     }
 
     /** Verify newest-first pagination, filtered indices, totals, and legacy boundary behavior. */
@@ -169,6 +170,54 @@ public final class McpHttpServerBehaviorTest {
                     "Attempt/success count contract changed for " + operation);
             require(result.get("hits").getAsInt() == 0 && result.getAsJsonArray("hit_details").isEmpty(),
                     "Failed candidates must not become hits for " + operation);
+        }
+    }
+
+    private static void sequentialAttackSuccessAndExtractionContractsRemainIntact() throws Exception {
+        AtomicInteger sends = new AtomicInteger();
+        MontoyaObjectFactory previousFactory = ObjectFactoryLocator.FACTORY;
+        ObjectFactoryLocator.FACTORY = fake(MontoyaObjectFactory.class, (method, args) ->
+                fake(method.getReturnType(), (m, a) -> {
+                    if (m.getName().equals("withResponseTimeout")) {
+                        require((Long) a[0] > 0, "Attack response timeout must be positive");
+                        return fake(RequestOptions.class, (ignored, values) -> null);
+                    }
+                    return null;
+                }));
+        try {
+            Http http = fake(Http.class, (method, args) -> {
+                require(method.getName().equals("sendRequest") && args.length == 2,
+                        "Attack must send with explicit response options");
+                sends.incrementAndGet();
+                return fake(method.getReturnType(), (m, a) ->
+                        m.getName().equals("response") ? entry("GET", "Token:abc", 200).response() : null);
+            });
+            McpHttpServer server = new McpHttpServer(fake(MontoyaApi.class, (m, a) ->
+                    m.getName().equals("http") ? http : null), 0);
+            for (String operation : List.of("intruderAttack", "intruderAttackWordlist", "intruderPitchfork",
+                    "intruderClusterBomb", "intruderBatteringRam", "intruderWithOptions")) {
+                sends.set(0);
+                JsonObject params = JsonParser.parseString("{\"url_template\":\"https://example.invalid/@@\",\"from\":0,\"to\":2,\"wordlist\":[\"0\",\"1\",\"2\"],\"placeholders\":{\"@@\":[\"0\",\"1\",\"2\"]},\"max_requests\":3,\"success_length_not\":99,\"grep_extract\":\"Token:[a-z]+\"}").getAsJsonObject();
+                JsonObject result = call(server, operation, params);
+                require(!result.has("error"), "Successful attack failed for " + operation + ": " + result);
+                require(result.get("total_requests").getAsInt() == 3 && sends.get() == 3,
+                        "Successful request count changed for " + operation);
+                require(result.get("errors").getAsInt() == 0 && result.get("hits").getAsInt() == 3,
+                        "Successful hit count changed for " + operation);
+                for (JsonElement row : result.getAsJsonArray("hit_details")) {
+                    JsonObject hit = row.getAsJsonObject();
+                    require(hit.get("length").getAsInt() == 3,
+                            "Successful response details changed for " + operation);
+                    if (operation.equals("intruderPitchfork"))
+                        require(hit.has("iteration") && !hit.has("status"), "Pitchfork hit shape changed");
+                    else
+                        require(hit.get("status").getAsInt() == 200, "Successful response status changed for " + operation);
+                    if (operation.equals("intruderWithOptions"))
+                        require(hit.get("extracted").getAsString().equals("Token:abc"), "Grep extraction lost the full match");
+                }
+            }
+        } finally {
+            ObjectFactoryLocator.FACTORY = previousFactory;
         }
     }
 
