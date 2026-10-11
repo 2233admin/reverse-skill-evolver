@@ -9,7 +9,8 @@ from reverse_skill import cli as cli_module
 
 
 @pytest.mark.parametrize("failure", ["timeout", "exit"])
-def test_failed_registration_replacement_keeps_existing_entry(monkeypatch, failure):
+@pytest.mark.parametrize("saved", [False, True])
+def test_failed_registration_replacement_keeps_a_registration_without_retry(monkeypatch, failure, saved):
     existing = {"enabled": True, "transport": {"type": "streamable_http", "url": "http://old.example/mcp"}}
     registrations = {"idapro": existing}
     calls = []
@@ -22,16 +23,18 @@ def test_failed_registration_replacement_keeps_existing_entry(monkeypatch, failu
         if operation == "remove":
             registrations.pop(args[3])
             return subprocess.CompletedProcess(args, 0, "", "")
+        if saved:
+            registrations[args[3]] = {"enabled": True, "transport": {"type": "streamable_http", "url": args[-1]}}
         if failure == "timeout":
             raise subprocess.TimeoutExpired(args, kwargs["timeout"])
         return subprocess.CompletedProcess(args, 1, "", "write failed")
 
     monkeypatch.setattr(cli_module.shutil, "which", lambda _: "codex")
     monkeypatch.setattr(cli_module.subprocess, "run", run)
-    with pytest.raises(cli_module.EnvironmentUnavailable):
+    with pytest.raises(cli_module.EnvironmentUnavailable, match="may have saved the registration"):
         cli_module.register_codex("idapro", "http://new.example/mcp")
     assert calls == ["get", "add"]
-    assert registrations["idapro"] == existing
+    assert registrations["idapro"]["transport"]["url"] == ("http://new.example/mcp" if saved else "http://old.example/mcp")
 
 
 def run_cli(*args: str) -> subprocess.CompletedProcess[str]:

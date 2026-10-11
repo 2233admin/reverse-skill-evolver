@@ -113,6 +113,7 @@ def register_codex(name: str, url: str, *, timeout: float = DEFAULT_TIMEOUT) -> 
     mutations raise EnvironmentUnavailable without retrying, as does missing
     Codex. Process-start OSError and output-decoding UnicodeDecodeError propagate.
     Codex replaces same-name entries; no separate removal is needed.
+    An add failure may follow a saved replacement, so inspect before retrying.
     """
     codex = shutil.which("codex")
     if not codex:
@@ -133,11 +134,15 @@ def register_codex(name: str, url: str, *, timeout: float = DEFAULT_TIMEOUT) -> 
         )
     except subprocess.TimeoutExpired as exc:
         raise EnvironmentUnavailable(
-            f"failed to register Codex MCP server {name!r}: timed out after {timeout:g} seconds"
+            f"failed to register Codex MCP server {name!r}: timed out after {timeout:g} seconds; "
+            "Codex may have saved the registration; inspect it before retrying"
         ) from exc
     if completed.returncode != 0:
         detail = completed.stderr.strip() or completed.stdout.strip()
-        raise EnvironmentUnavailable(f"failed to register Codex MCP server {name!r}: {detail}")
+        raise EnvironmentUnavailable(
+            f"failed to register Codex MCP server {name!r}: {detail}; "
+            "Codex may have saved the registration; inspect it before retrying"
+        )
     return {"name": name, "url": url, "changed": True, "status": "registered"}
 
 
