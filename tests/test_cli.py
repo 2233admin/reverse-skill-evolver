@@ -8,6 +8,32 @@ import pytest
 from reverse_skill import cli as cli_module
 
 
+@pytest.mark.parametrize("failure", ["timeout", "exit"])
+def test_failed_registration_replacement_keeps_existing_entry(monkeypatch, failure):
+    existing = {"enabled": True, "transport": {"type": "streamable_http", "url": "http://old.example/mcp"}}
+    registrations = {"idapro": existing}
+    calls = []
+
+    def run(args, **kwargs):
+        operation = args[2]
+        calls.append(operation)
+        if operation == "get":
+            return subprocess.CompletedProcess(args, 0, json.dumps(registrations[args[3]]), "")
+        if operation == "remove":
+            registrations.pop(args[3])
+            return subprocess.CompletedProcess(args, 0, "", "")
+        if failure == "timeout":
+            raise subprocess.TimeoutExpired(args, kwargs["timeout"])
+        return subprocess.CompletedProcess(args, 1, "", "write failed")
+
+    monkeypatch.setattr(cli_module.shutil, "which", lambda _: "codex")
+    monkeypatch.setattr(cli_module.subprocess, "run", run)
+    with pytest.raises(cli_module.EnvironmentUnavailable):
+        cli_module.register_codex("idapro", "http://new.example/mcp")
+    assert calls == ["get", "add"]
+    assert registrations["idapro"] == existing
+
+
 def run_cli(*args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [sys.executable, "-m", "reverse_skill", *args],
@@ -345,9 +371,8 @@ def test_tracecard_validate_requires_input() -> None:
     ("register", "get", False, ["get"], "failed to inspect"),
     ("status", "get", False, ["get"], "failed to inspect"),
     ("doctor", "get", False, ["get"], "failed to inspect"),
-    ("register", "remove", True, ["get", "remove"], "failed to remove"),
     ("register", "add", False, ["get", "add"], "failed to register"),
-    ("register", "add", True, ["get", "remove", "add"], "failed to register"),
+    ("register", "add", True, ["get", "add"], "failed to register"),
 ])
 def test_codex_mcp_timeouts_fail_without_fallback_or_retry(
     monkeypatch: pytest.MonkeyPatch,

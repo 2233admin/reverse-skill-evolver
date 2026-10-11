@@ -228,6 +228,8 @@ def test_invalid_budgets_reject_before_model_use(optimizer_inputs: dict, monkeyp
 def test_invalid_reflection_never_evaluates_a_proposal(
     optimizer_inputs: dict, monkeypatch: pytest.MonkeyPatch, response: str, diagnostic: str,
 ) -> None:
+    if diagnostic == "serialized Windows command":
+        monkeypatch.setattr(evolution.sys, "platform", "win32")
     paths = optimizer_inputs["paths"]
     calls = []
 
