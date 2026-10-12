@@ -23,6 +23,12 @@ Route tasks to the most appropriate skill module by target type, user intent, an
 
 When `routing.md` and `routing.json` disagree, use `routing.md` for safety/intent context, but update `routing.json` before claiming the routing package is current.
 
+### IDA backend selection
+
+`requires_capabilities` requires every listed capability (AND); an empty list adds no requirement. When present, `requires_any_capabilities` additionally requires at least one listed capability (OR). The `native-binary` route keeps `ida-reverse/SKILL.md` as its primary entry and accepts either `omp_ida_native` or `idapro`.
+
+`omp_ida_native` means that the current OMP session exposes the native `ida` schema checked by `ida-reverse/SKILL.md`; a file or CLI on disk is insufficient. This is a live session capability and is not written into the host capability graph. A missing `idapro` MCP does not trigger fallback when native `ida` is available. If neither supported backend is available, follow `all_supported_ida_backends_unavailable` and the existing alternatives. An installed Hex-Rays OMP extension exposing `ida_*` tools follows its own guidance and live schemas; this package does not provide that adapter.
+
 ## By Target Type
 
 | Target Type | Recommended Entry | Alternative |
@@ -193,7 +199,7 @@ When `routing.md` and `routing.json` disagree, use `routing.md` for safety/inten
 | Trivy / Syft / Gitleaks / OSV-Scanner | `supply-chain-security/` — supply chain scanning |
 | Objection / Frida iOS / class-dump | `mobile-reverse/` — iOS dynamic analysis |
 
-Check `capability-graph.json` first, then `tool-index.md`, for actual tool availability, paths, versions, MCP registration, service health, and smoke status. If neither generated file exists, run `scripts/refresh-tool-index.ps1`. NEVER guess paths.
+For OMP native IDA, record the live schema and operation evidence. For external tools, check `capability-graph.json` first, then `tool-index.md`, for availability, paths, versions, MCP registration, service health, and smoke status. If neither generated file exists, run `scripts/refresh-tool-index.ps1`. NEVER guess external tool paths.
 
 ---
 
