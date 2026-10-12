@@ -273,7 +273,7 @@ public final class McpHttpServerBehaviorTest {
             McpHttpServer server = new McpHttpServer(fake(MontoyaApi.class, (m, a) ->
                     m.getName().equals("http") ? http : null), 0);
             for (String operation : List.of("intruderAttack", "intruderAttackAsync", "intruderWithOptions")) {
-                for (String value : List.of("1025", "2147483647", "4294967297", "1e100000", "1024.5", "null", "true", "\"bad\"", "[]", "{}")) {
+                for (String value : List.of("1025", "2147483647", "4294967297", "1e100000", "1024.5", "null", "true", "\"bad\"", "[]", "[3]", "{}")) {
                     requests.set(0); sends.set(0);
                     JsonObject params = JsonParser.parseString("{\"url_template\":\"https://example.invalid/@@\",\"from\":7,\"to\":7}").getAsJsonObject();
                     params.add("pad_digits", JsonParser.parseString(value));

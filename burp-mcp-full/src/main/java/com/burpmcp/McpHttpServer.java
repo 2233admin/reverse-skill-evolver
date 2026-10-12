@@ -287,6 +287,8 @@ public class McpHttpServer extends NanoHTTPD {
     private static int numericPadding(JsonObject params) {
         JsonElement padding = params.get("pad_digits");
         if (padding == null) return 0;
+        if (!padding.isJsonPrimitive())
+            throw new IllegalArgumentException("pad_digits must be numeric");
         BigDecimal width;
         try { width = padding.getAsBigDecimal(); }
         catch (NumberFormatException | UnsupportedOperationException | IllegalStateException e) {
