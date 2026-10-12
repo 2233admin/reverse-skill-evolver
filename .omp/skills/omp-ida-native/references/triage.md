@@ -1,0 +1,82 @@
+# Native IDA snapshot and triage
+
+Development status: implemented from the pinned OMP worker contract; runtime behavior is **untested**. No IDA session, target binary, or model was executed during development.
+
+Use `scripts/ida_analysis.py` inside an existing OMP native `ida` worker. It defines `collect_snapshot(namespace, database_id, ...)` and `triage(namespace, database_id, ...)`; loading it performs no analysis. Both functions call the real worker helpers passed in `namespace`. They do not start a service or use an MCP adapter, and they do not call database-edit helpers.
+
+## Load without replacing worker helpers
+
+Pass the explicit native database ID to the surrounding `ida` call. In its `code`, use an absolute path to the script from the installed skill directory:
+
+```python
+task_analysis_path = __import__("pathlib").Path("/absolute/path/to/omp-ida-native/scripts/ida_analysis.py")
+task_analysis_namespace = dict(globals())
+exec(compile(task_analysis_path.read_text(encoding="utf-8"), str(task_analysis_path), "exec"), task_analysis_namespace)
+task_analysis_triage = task_analysis_namespace["triage"]
+task_analysis_result = task_analysis_triage(globals(), "<native-db-id>")
+print(__import__("json").dumps(task_analysis_result, ensure_ascii=False))
+```
+
+The separate dictionary holds the script's imports and definitions; the worker's `func`, `functions`, `strings`, and other helpers retain their original bindings. Use task-specific variable names because the worker namespace is shared. The caller supplies the ID returned by native `ida`; this collector cannot independently verify that string against the host registry. Each database has a separate worker namespace.
+
+Use a finite native `ida` exec timeout. Native `functions()`, `strings()`, and `imports()` enumerate their whole underlying collections before the script can apply limits. `callees()`, `xrefs_to()`, and optional `pseudocode()` also finish their native work before results can be shortened. These limits bound captured output and subsequent queries, not the complete native scan or decompiler cost. OMP may save a database as part of its normal exec/lifecycle handling.
+
+Large printed JSON may exceed OMP's inline output cap. Preserve the full returned artifact when available and confirm it contains complete parseable JSON before handing it to another workflow; a truncated display is not a snapshot.
+
+## `collect_snapshot` contract
+
+```python
+task_analysis_snapshot = task_analysis_namespace["collect_snapshot"]
+task_analysis_result = task_analysis_snapshot(
+    globals(), "<native-db-id>",
+    max_functions=500, max_strings=200, max_imports=200,
+    max_callees=25, max_bytes_per_function=256,
+    collect_pseudocode=False,
+    max_pseudocode_functions=10, max_pseudocode_chars=8000,
+    max_text_chars=4096,
+)
+```
+
+Limits are nonnegative integers; boolean values are rejected. Text limits require at least one character. Maximum values are 5,000 functions/strings/imports, 500 callees per function, 4,096 bytes per function, 50 pseudocode functions, 20,000 pseudocode characters, and 16,384 string characters. `collect_pseudocode` must be a boolean and defaults to `False`.
+
+The returned JSON object has:
+
+- `schema_version: 1`.
+- `source`: input `sha256` (64 lowercase hexadecimal digits), `module`, `format`, `architecture`, integer `bitness` (32 or 64), hexadecimal `image_base`, and the caller's native `database_id`. These metadata fields come from the worker's existing `db` properties.
+- `coverage`: native enumeration mode, total function/string/import counts, output truncation flags, callee/byte/text truncation flags, pseudocode request/count/limit flags, and effective `limits`. Counts describe what the native helpers enumerated, not verified analysis completeness.
+- `functions`: hexadecimal `ea` and `rva` (`ea = image_base + rva`), `name`, primary function-range `size`, bounded `callees`, `callees_truncated`, byte-hash fields, and optional pseudocode fields.
+- `strings`: `ea`, bounded `value`, and `value_truncated`.
+- `imports`: `ea`, `module`, and `name`.
+
+Byte hashes cover only the actual bytes returned for a contiguous prefix of the primary function range. `bytes_start_ea` and `bytes_end_ea` delimit that captured prefix, `bytes_hashed` is its length, and `bytes_truncated` is `bytes_hashed < size`. A zero-size function has `bytes_sha256: null`, `bytes_hashed: 0`, and `bytes_truncated: false`. A nonempty range with no captured bytes has `null`, `0`, and `true`. Hash equality is an observation about captured bytes, not semantic equivalence; rebasing or operand changes can change the hash.
+
+With `collect_pseudocode=False`, every row has `pseudocode: null` and `pseudocode_kind: "not_collected"`. An explicit request collects at most `max_pseudocode_functions` among the returned functions and clips each text to `max_pseudocode_chars`. The pinned helper's decompilation-failure marker produces `pseudocode_kind: "assembly_fallback"`; actual pseudocode is labeled `"pseudocode"`. `pseudocode_truncated` records clipping. Assembly fallback is not recovered source code.
+
+## `triage` contract
+
+`triage` accepts optional case-insensitive `function_pattern`, `string_pattern`, and `import_pattern` regexes. Defaults look for names concerning parsing, decoding, authentication, common copy/formatting APIs, network operations, and related strings. Patterns identify leads; a match does not establish a vulnerability.
+
+```python
+task_analysis_triage = task_analysis_namespace["triage"]
+task_analysis_result = task_analysis_triage(
+    globals(), "<native-db-id>",
+    function_pattern=r"parse|decode|verify",
+    string_pattern=r"password|invalid|https?://",
+    import_pattern=r"memcpy|recv|crypt",
+    max_candidates=50, max_matches_per_source=100, max_xref_queries=100,
+    max_xrefs_per_source=100, max_evidence_per_candidate=20,
+    max_scan_per_source=10000, max_subject_chars=4096,
+)
+```
+
+Limits reject booleans. Candidate count is 1–50, matches per source and xref queries are 0–100, xref rows per queried source are 0–1,000, evidence per candidate is 1–100, regex scans per source are 0–100,000, and subject characters are 1–16,384. Each regex contains 1–256 characters. Use simple patterns: Python regex length and subject caps do not guarantee a wall-clock bound for every pattern. Invalid regexes fail before native enumeration.
+
+The output contains `schema_version`, the same `source` contract, `coverage`, and `candidates`. Each candidate has `ea`, `rva`, `name`, integer `score`, `evidence`, and `next_action`. Unique matching function-name evidence adds 3 points; unique string/import xref-site evidence adds 2. This only orders captured leads. Ties sort by address.
+
+String/import targets are interleaved within the xref-query budget. Evidence names its `kind`, `source_ea`, and matched `value`; referenced evidence also includes actual `xref_from` and `xref_type`. Ownership comes from `func(xref["from"]).start_ea`, rather than treating a referencing instruction as the function start. Non-function references are explicitly skipped and counted in `non_function_xrefs_skipped`. Only the pinned helper's specific `LookupError("no function at ...")` is handled as a missing function; other worker errors propagate.
+
+`coverage.source_scans` records total entries, regex-scanned entries, captured matches, scan truncation, and subject clipping for each source. Scanning stops at its entry budget or match budget, so unseen matches remain unknown. Other coverage fields record queried xref counts, returned xref-row totals for queried sources, xref clipping, discarded candidate/evidence output, and effective regex patterns and limits. No coverage field proves all important functions were found.
+
+## Basis
+
+Helper shapes and `db` properties were read from [OMP 18.8.9 worker.py](https://github.com/can1357/oh-my-pi/blob/fa5ff4a3a977a28b93d025f4cf50f046e019f18c/packages/coding-agent/src/ida/worker.py), particularly `func`, `functions`, `strings`, `imports`, `callees`, `xrefs_to`, `pseudocode`, `_view_overview`, and exec namespace initialization. Consult the live native interface before use.

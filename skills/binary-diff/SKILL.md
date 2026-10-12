@@ -9,6 +9,10 @@ description: |
 
 # 跨版本符号迁移 (Binary Diff)
 
+## OMP 原生快照对照
+
+在 OMP 中已有两个原生 IDA 快照、需要先对照函数观察时，读取 [OMP 版本对照](../../.omp/skills/omp-ida-native/references/version-diff.md)。此实现使用显式映射或唯一符号名产生可检查的候选对应，记录来源与截断，不调用模型、不自动迁移符号。运行尚未验收；需要语义匹配或实际符号应用时仍需独立证据。
+
 ## 适用范围
 
 当任务属于以下场景时使用本 skill：

@@ -1,6 +1,6 @@
 ---
 name: omp-ida-native
-description: Analyze executables and IDA databases in OMP using its built-in ida actions, binary read views, and persistent Python helpers. Use for OMP-native decompilation, xrefs, function maps, database edits, or bounded batch analysis when the native IDA interface is available.
+description: Analyze executables and IDA databases in OMP using its built-in ida actions, binary read views, and persistent Python helpers. Use for native decompilation, evidence snapshots, candidate function triage, version comparison, dynamic observation plans, or database edits when the native IDA interface is available.
 ---
 
 # OMP native IDA analysis
@@ -29,6 +29,16 @@ Always pass the returned native `db` ID to subsequent `ida` calls, including whe
 Prefer a relevant regex and a small result slice. Combine related queries in one `exec` call when they address the same task. The helpers return Python values; print compact JSON when collecting machine-readable evidence. Record what was filtered or truncated.
 
 Persistent variables are a convenience during analysis. Save durable evidence in the task report: input identity, native database ID, addresses, actual outputs, and remaining unknowns. Reopening a closed database resets the namespace.
+
+### Reusable analysis workflows
+
+| Requested result | Entry | Output |
+| --- | --- | --- |
+| Candidate functions or frozen observations | [Snapshot and triage](references/triage.md) | Source SHA, EA/RVA, bounded evidence and coverage |
+| Two-version observations | [Version comparison](references/version-diff.md) | Explicit/unique-name correspondences, changed fields and unmatched items |
+| Runtime verification plan | [Dynamic observation plan](references/dynamic-validation.md) | Bounded Frida script with unresolved identity/trigger preconditions |
+
+These helpers are newly developed and **not functionally tested**. Preserve complete JSON artifacts before passing them between workflows. Their scripts stay within this portable skill directory. Generating a dynamic plan does not execute it or establish that its hypothesis is true.
 
 ### Edit and save
 

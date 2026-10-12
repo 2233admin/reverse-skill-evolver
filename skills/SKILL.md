@@ -2,6 +2,8 @@
 
 本目录收录了一系列逆向工程相关的技能模块，每个子目录是一个独立模块，内含 `SKILL.md` 描述其适用场景、工具链和工作流程。
 
+OMP 中已有捕获样本与签名函数、需要本地逐项对照时，先进入 [omp-js-replay](../.omp/skills/omp-js-replay/SKILL.md)。该入口使用当前 JS eval 和本地数据，不需要为复现步骤刷新外部工具索引或注册浏览器 MCP；尚未采集证据的任务继续共享 JS 路由。
+
 ## OMP 原生 IDA 入口
 
 OMP 中的 IDA 任务先读 `ida-reverse/SKILL.md`，根据当前工具 schema 选择入口。原生 `ida` 可用时，进入 [omp-ida-native](../.omp/skills/omp-ida-native/SKILL.md)；该分支使用会话中的原生能力，不要求刷新外部 CLI 索引、注册 Codex MCP 或额外安装 `idalib-mcp`。其余后端按共享 IDA 入口和路由矩阵继续。

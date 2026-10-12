@@ -19,6 +19,8 @@ description: |
 
 `omp_ida_native` 是当前 OMP 会话的实时能力，只用于本次路由，不写入宿主 capability graph。OMP 原生入口不要求注册 Codex MCP 或安装额外的 `idalib-mcp` 服务。
 
+OMP 分支的快照、候选函数初筛、跨版本对照和动态观察计划入口见上述原生 skill 的工作流表；这批扩展处于开发已交付、运行未验收状态。
+
 ## idapro HTTP MCP 调用边界
 
 以下安装、协议、工具参数与示例只适用于 `idapro` MCP 分支。

@@ -8,9 +8,11 @@
 
 > This package can be placed in any directory. The AI will automatically detect its actual path. In the following text, `<SKILL_ROOT>` refers to your real installation path.
 
-## OMP native IDA
+## OMP native workflows
 
 Start OMP in this source project to discover `.omp/skills/omp-ida-native/`; invoke `/skill:omp-ida-native` explicitly when needed. To use it in another project, copy the **complete directory**, including `references/`, into that project's `.omp/skills/`. For user-wide use, copy it into the actual agent directory's `skills/` (default `~/.omp/agent/skills/`; profiles and environment settings can relocate it). Read [setup](.omp/skills/omp-ida-native/references/setup.md) for native IDA prerequisites and configuration. Skills are distributed as source files; pip/npm installation does not register this OMP entry. This package does not write model settings or API keys.
+
+New development, not functionally tested: the IDA skill now includes [snapshot/triage](.omp/skills/omp-ida-native/references/triage.md), [version comparison](.omp/skills/omp-ida-native/references/version-diff.md), and [Frida observation-plan generation](.omp/skills/omp-ida-native/references/dynamic-validation.md). `/skill:omp-js-replay` uses OMP's existing JavaScript eval to compare a supplied signer with captured fixtures; copy its complete `.omp/skills/omp-js-replay/` directory for portable use. See [replay instructions](.omp/skills/omp-js-replay/references/replay.md). Runtime acceptance is tracked in issues [#27](https://github.com/2233admin/reverse-skill-evolver/issues/27), [#28](https://github.com/2233admin/reverse-skill-evolver/issues/28), [#29](https://github.com/2233admin/reverse-skill-evolver/issues/29), and [#30](https://github.com/2233admin/reverse-skill-evolver/issues/30).
 
 For OMP IDA tasks, enter this skill before the general configuration process below. The shared [IDA skill](skills/ida-reverse/SKILL.md) selects the backend by the live schema: OMP native `ida` or `idapro` MCP. OMP's native branch uses discovered skills and its own database handles; it does not require global prompt injection, Codex MCP registration, or an additional MCP server. An official Hex-Rays OMP extension exposing `ida_*` tools follows its own guidance and schemas; this package does not implement that adapter.
 
@@ -18,7 +20,7 @@ For OMP IDA tasks, enter this skill before the general configuration process bel
 
 ## 0. First Instruction for the AI (Execute Immediately After Reading This README)
 
-The configuration process in this section applies to other client workflows; OMP IDA uses the entry above.
+The configuration process in this section applies to other client workflows; native OMP IDA and captured-signature replay use the entries above.
 
 > **After the AI finishes reading this file, it must automatically execute the following configuration process and then report what was changed. The user does not need to operate manually.**
 
