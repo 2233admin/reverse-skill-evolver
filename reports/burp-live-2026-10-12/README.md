@@ -10,7 +10,7 @@
 
 运行记录日期：2026-10-12。实际运行证据已取得；报告编写时尚未合入 main，issue #19 保持开放。后续整合状态以 PR #23、#24 和 issue #19 的远端记录为准。
 
-分支：`fix/burp-missing-response`。原始运行基于 PR #23 的 `3e81a0689093eef5c0c0001f82fb1e4ef26ca526`；集成时更新到 `a22a9e9bea80bbce97299b50f25b20fdb936f27b`。
+分支：`fix/burp-missing-response`。原始运行基于 PR #23 的 `3e81a0689093eef5c0c0001f82fb1e4ef26ca526`；集成时更新到 `16accf5fea1560cf2abcb44d814aa7c184e04fbc`。
 
 记录粒度：逐提交记录。实际修复运行与 JAR 对应 `d19105f6f7843f7dd28becdcfcdcdc0167d2b86c`。集成更新额外继承 PR #23 对数组 padding 的拒绝检查及 `[3]` 回归；这项变化由确定性回归和 CI 验证，未重跑真实 Burp，不能将下方 JAR 哈希当作集成版本的哈希。
 
