@@ -23,7 +23,27 @@ Use a finite native `ida` exec timeout. Native `functions()`, `strings()`, and `
 
 Large printed JSON may exceed OMP's inline output cap. Preserve the full returned artifact when available and confirm it contains complete parseable JSON before handing it to another workflow; a truncated display is not a snapshot.
 
+## Save a complete artifact
+
+After either collection call below, save `task_analysis_result` from the worker namespace to a new JSON file in the task's evidence directory. Use an absolute path accessible to the IDA worker; its parent directory must already exist. Serialize before opening the file, and use exclusive creation so an earlier snapshot cannot be overwritten:
+
+```python
+task_analysis_output = __import__("pathlib").Path("/absolute/task/evidence/triage.json")
+task_analysis_json = __import__("json").dumps(task_analysis_result, ensure_ascii=False, allow_nan=False)
+with task_analysis_output.open("x", encoding="utf-8") as task_analysis_file:
+    task_analysis_file.write(task_analysis_json + "\n")
+print(__import__("json").dumps({
+    "artifact": str(task_analysis_output),
+    "source_sha256": task_analysis_result["source"]["sha256"],
+    "database_id": task_analysis_result["source"]["database_id"],
+}, ensure_ascii=False))
+```
+
+Use a distinct filename such as `snapshot.json` for `collect_snapshot`. Pass the saved file to the version comparator or dynamic-plan generator. An existing file raises `FileExistsError`; choose a new filename. A missing parent or permission error propagates. A failed write may leave a partial new file; do not pass it downstream. Only a successfully closed, complete JSON file is the evidence artifact. This writes the task's report, without calling database-edit helpers.
+
 ## `collect_snapshot` contract
+
+After loading the script, assign the snapshot below, then run the save block above with a new `snapshot.json` path. The assignment alone retains the result in the worker; it does not display or save it.
 
 ```python
 task_analysis_snapshot = task_analysis_namespace["collect_snapshot"]
@@ -55,6 +75,8 @@ With `collect_pseudocode=False`, every row has `pseudocode: null` and `pseudocod
 ## `triage` contract
 
 `triage` accepts optional case-insensitive `function_pattern`, `string_pattern`, and `import_pattern` regexes. Defaults look for names concerning parsing, decoding, authentication, common copy/formatting APIs, network operations, and related strings. Patterns identify leads; a match does not establish a vulnerability.
+
+After loading the script, assign the custom triage result below, then run the save block above with a new `triage.json` path.
 
 ```python
 task_analysis_triage = task_analysis_namespace["triage"]
