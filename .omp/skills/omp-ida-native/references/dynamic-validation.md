@@ -24,7 +24,7 @@ fs.writeFileSync('hooks.js', taskPlan.frida_script, { flag: 'wx' });
 
 Before attachment, verify that the target module file matches the plan's source SHA-256. The generated script reports the expected source hash but does not independently verify the loaded module's bytes; `identity_verified` remains false.
 
-Use the existing Frida workflow to attach in the task's authorized environment. The script converts RVA using `module.base.add(offset)`, checks module bounds and executable memory, and records entry arguments as pointer values and return values. It does not dereference pointers, change return values, patch code, or attach on its own.
+Use the existing Frida workflow to attach in the task's authorized environment. The script converts RVA using `module.base.add(offset)`, checks module bounds and executable memory, and records entry arguments as pointer values and return values. It does not dereference pointers, replace functions, change argument/return values, or attach to a process on its own. Loading it into an attached process installs `Interceptor` instrumentation.
 
 Observe the prescribed trigger. A hit is an observation, not proof of the whole analysis; compare actual values with the recorded hypothesis. An absent hit remains unresolved. Event or time limits stop only this script's listeners; record any entry whose matching return was omitted by a limit.
 
