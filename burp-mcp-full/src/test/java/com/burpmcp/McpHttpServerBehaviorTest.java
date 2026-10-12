@@ -18,6 +18,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public final class McpHttpServerBehaviorTest {
     /** Run pagination, regex, serialization, and sequential attack regressions. */
     public static void main(String[] args) throws Exception {
+        numericPaddingIsBoundedBeforeAttackWork();
         paginationPreservesFilteredIndicesAndBoundaries();
         technologyNamesAreLiteralAndCaseInsensitive();
         numericRequestsReuseHeadersWithoutChangingWireFormat();
@@ -246,6 +247,63 @@ public final class McpHttpServerBehaviorTest {
         require(McpHttpServer.numericAttackRequest("GET", "/002", "b", block, "")
                 .equals("GET /002 HTTP/1.1\r\nHost: b\r\nX-Test: static @@\r\nHost: override.example\r\n\r\n"), "Empty-body wire format changed");
         require(conversions.get() == 1, "Invariant values must be converted once, without payload substitution");
+    }
+
+    /** Check the safe 1025 rejection first, before any potentially dangerous width regression. */
+    private static void numericPaddingIsBoundedBeforeAttackWork() throws Exception {
+        AtomicInteger requests = new AtomicInteger(), sends = new AtomicInteger();
+        String[] requestText = {null};
+        MontoyaObjectFactory previousFactory = ObjectFactoryLocator.FACTORY;
+        ObjectFactoryLocator.FACTORY = fake(MontoyaObjectFactory.class, (method, args) -> {
+            if (method.getName().equals("httpRequest")) {
+                requests.incrementAndGet();
+                requestText[0] = (String) args[1];
+            }
+            return fake(method.getReturnType(), (m, a) ->
+                    m.getName().equals("withResponseTimeout") ? fake(RequestOptions.class, (ignored, values) -> null) : null);
+        });
+        try {
+            Http http = fake(Http.class, (method, args) -> {
+                require(method.getName().equals("sendRequest") && args.length == 2,
+                        "Numeric attacks must retain explicit response options");
+                sends.incrementAndGet();
+                return fake(method.getReturnType(), (m, a) ->
+                        m.getName().equals("response") ? entry("GET", "Token:abc", 200).response() : null);
+            });
+            McpHttpServer server = new McpHttpServer(fake(MontoyaApi.class, (m, a) ->
+                    m.getName().equals("http") ? http : null), 0);
+            for (String operation : List.of("intruderAttack", "intruderAttackAsync", "intruderWithOptions")) {
+                for (String value : List.of("1025", "2147483647", "4294967297", "1e100000", "1024.5", "null", "true", "\"bad\"", "[]", "[3]", "{}")) {
+                    requests.set(0); sends.set(0);
+                    JsonObject params = JsonParser.parseString("{\"url_template\":\"https://example.invalid/@@\",\"from\":7,\"to\":7}").getAsJsonObject();
+                    params.add("pad_digits", JsonParser.parseString(value));
+                    // Huge values use an empty range, so a missing guard cannot allocate their payloads.
+                    if (!value.equals("1025")) { params.addProperty("from", 1); params.addProperty("to", 0); }
+                    JsonObject result = call(server, operation, params);
+                    require(result.size() == 1 && result.has("error") && result.get("error").getAsString().contains("pad_digits"),
+                            "Invalid padding must use the operation error envelope for " + operation + ": " + value);
+                    require(requests.get() == 0 && sends.get() == 0,
+                            "Invalid padding reached request construction or sending for " + operation + ": " + value);
+                }
+                String[] widths = {null, "0", "-1", "-4294967293", "3", "1024", "\"3\"", "3.9"};
+                String[] payloads = {"7", "7", "7", "7", "007", "0".repeat(1023) + "7", "007", "007"};
+                for (int i = 0; i < widths.length; i++) {
+                    requests.set(0); sends.set(0); requestText[0] = null;
+                    JsonObject params = JsonParser.parseString("{\"url_template\":\"https://example.invalid/@@\",\"from\":7,\"to\":7,\"success_length_not\":99}").getAsJsonObject();
+                    if (widths[i] != null) params.add("pad_digits", JsonParser.parseString(widths[i]));
+                    JsonObject result = call(server, operation, params);
+                    require(!result.has("error") && result.get("total_requests").getAsInt() == 1
+                            && result.get("errors").getAsInt() == 0 && result.get("hits").getAsInt() == 1,
+                            "Accepted padding changed request/hit counts for " + operation + ": " + widths[i]);
+                    require(requests.get() == 1 && sends.get() == 1
+                            && requestText[0].startsWith("GET /" + payloads[i] + " HTTP/1.1\r\n")
+                            && result.getAsJsonArray("hit_details").get(0).getAsJsonObject().get("payload").getAsString().equals(payloads[i]),
+                            "Accepted padding changed the request or hit payload for " + operation + ": " + widths[i]);
+                }
+            }
+        } finally {
+            ObjectFactoryLocator.FACTORY = previousFactory;
+        }
     }
 
     /** Verify sequential sends use Montoya request options with the remaining response timeout. */

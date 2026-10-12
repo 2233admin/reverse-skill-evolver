@@ -76,6 +76,8 @@ Burp Suite → Extensions → Add → Java → 选择 build/libs/burp-mcp-full.j
 
 ## 安装
 
+三个数字攻击工具 `intruder_attack`、`intruder_attack_async`、`intruder_with_options` 的 `pad_digits` 上限为 1024。默认值和非正值不补零；超出上限时在构造 payload 或发送请求前返回操作错误。
+
 ### 方法 1：直接用预编译 jar
 
 ```
