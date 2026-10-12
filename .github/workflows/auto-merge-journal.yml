@@ -56,9 +56,11 @@ jobs:
           fi
           
           # 3. 逐文件安全扫描
-          for file in $CHANGED_FILES; do
+          while IFS= read -r file; do
             if [ ! -f "$file" ]; then
-              continue
+              echo "❌ BLOCKED: 无法扫描变更文件 $file"
+              echo "valid=false" >> $GITHUB_OUTPUT
+              exit 1
             fi
             
             echo "--- Scanning: $file ---"
@@ -134,7 +136,7 @@ jobs:
             fi
             
             echo "✅ $file 通过安全检查"
-          done
+          done <<< "$CHANGED_FILES"
           
           echo ""
           echo "✅ 所有文件通过安全审核"
@@ -147,9 +149,10 @@ jobs:
         run: |
           gh pr merge ${{ github.event.pull_request.number }} \
             --auto --squash \
-            --subject "[field-journal] ${{ github.event.pull_request.title }}"
+            --subject "[field-journal] $PR_TITLE"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
 
       - name: Comment on failure
         if: steps.validate.outputs.valid == 'false'

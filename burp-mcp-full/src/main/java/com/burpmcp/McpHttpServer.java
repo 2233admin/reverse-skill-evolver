@@ -18,6 +18,7 @@ import com.google.re2j.PatternSyntaxException;
 import fi.iki.elonen.NanoHTTPD;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.net.URI;
 import java.util.*;
 import java.util.concurrent.*;
@@ -28,6 +29,7 @@ import java.util.function.LongFunction;
 public class McpHttpServer extends NanoHTTPD {
     private static final int MAX_IN_FLIGHT_ATTACKS = 50;
     private static final int ATTACK_TIMEOUT_SECONDS = 120;
+    private static final int MAX_NUMERIC_PADDING = 1024;
     private final MontoyaApi api;
     private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
     private CollaboratorClient collaborator;
@@ -281,6 +283,20 @@ public class McpHttpServer extends NanoHTTPD {
         return lines.toString();
     }
 
+    /** Bound numeric payload allocation before narrowing; nonpositive widths disable padding. */
+    private static int numericPadding(JsonObject params) {
+        JsonElement padding = params.get("pad_digits");
+        if (padding == null) return 0;
+        BigDecimal width;
+        try { width = padding.getAsBigDecimal(); }
+        catch (NumberFormatException | UnsupportedOperationException | IllegalStateException e) {
+            throw new IllegalArgumentException("pad_digits must be numeric", e);
+        }
+        if (width.compareTo(BigDecimal.valueOf(MAX_NUMERIC_PADDING)) > 0)
+            throw new IllegalArgumentException("pad_digits must be no greater than " + MAX_NUMERIC_PADDING);
+        return width.signum() <= 0 ? 0 : padding.getAsInt();
+    }
+
     /**
      * Build HTTP/1.1 request text from rendered headers and a substituted body.
      * Nonempty bodies retain the existing String.length() Content-Length convention.
@@ -400,7 +416,7 @@ public class McpHttpServer extends NanoHTTPD {
             String placeholder = params.has("placeholder") ? params.get("placeholder").getAsString() : "@@";
             int from = params.has("from") ? params.get("from").getAsInt() : 0;
             int to = params.has("to") ? params.get("to").getAsInt() : 100;
-            int padDigits = params.has("pad_digits") ? params.get("pad_digits").getAsInt() : 0;
+            int padDigits = numericPadding(params);
             String method = params.has("method") ? params.get("method").getAsString() : "GET";
             String bodyTemplate = params.has("body_template") ? params.get("body_template").getAsString() : "";
             JsonObject headers = params.has("headers") ? params.getAsJsonObject("headers") : new JsonObject();
@@ -462,7 +478,7 @@ public class McpHttpServer extends NanoHTTPD {
             String placeholder = params.has("placeholder") ? params.get("placeholder").getAsString() : "@@";
             int from = params.has("from") ? params.get("from").getAsInt() : 0;
             int to = params.has("to") ? params.get("to").getAsInt() : 100;
-            int padDigits = params.has("pad_digits") ? params.get("pad_digits").getAsInt() : 0;
+            int padDigits = numericPadding(params);
             String method = params.has("method") ? params.get("method").getAsString() : "GET";
             String bodyTemplate = params.has("body_template") ? params.get("body_template").getAsString() : "";
             JsonObject headers = params.has("headers") ? params.getAsJsonObject("headers") : new JsonObject();
@@ -1224,7 +1240,7 @@ public class McpHttpServer extends NanoHTTPD {
             String placeholder = params.has("placeholder") ? params.get("placeholder").getAsString() : "@@";
             int from = params.has("from") ? params.get("from").getAsInt() : 0;
             int to = params.has("to") ? params.get("to").getAsInt() : 100;
-            int padDigits = params.has("pad_digits") ? params.get("pad_digits").getAsInt() : 0;
+            int padDigits = numericPadding(params);
             String method = params.has("method") ? params.get("method").getAsString() : "GET";
             JsonObject headers = params.has("headers") ? params.getAsJsonObject("headers") : new JsonObject();
             String headerLines = renderHeaderLines(headers);
