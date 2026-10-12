@@ -241,6 +241,7 @@ def normal_cases(run):
                                       "Unsupported regex must return a clear error without target traffic"))
 
     for tool in ("intruder_attack", "intruder_attack_async"):
+        # shortcut: error checks do not assert fixture origin; inspect close events when adding failure routes.
         for route, hit_length, hits in (("ok", 99 if tool == "intruder_attack" else 9, 3 if tool == "intruder_attack" else 0), ("httpfail", 4, 0)):
             arguments = {"url_template": run.base + f"/{route}/@@", "from": 0, "to": 2, "threads": 2, "pad_digits": 3, "success_length_not": hit_length}
             run.case(route + "-" + tool, tool, arguments, lambda r, h=hits: counts(r, 3, 0, h))
@@ -366,6 +367,7 @@ def main():
         server = None
         try:
             server = ThreadingHTTPServer(FIXTURE, FixtureHandler)
+            server.daemon_threads = False  # Join owned request handlers before closing the event log.
             server.run = run
             thread = threading.Thread(target=server.serve_forever, daemon=True)
             thread.start()

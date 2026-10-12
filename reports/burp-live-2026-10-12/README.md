@@ -44,10 +44,12 @@
 | 缺响应得到正确处理 | 七类攻击、三个直接发送的 disconnect 案例 | 攻击 errors 1、hits 0；Cluster Bomb 保留尝试计数 1，其他攻击 completed count 0。三个直接发送返回操作 error。有效 204 空响应和 500 响应保留原成功条件与字段。 |
 | padding 保护覆盖实际入口 | 三个数字工具的 padding 案例 | 1024 接受，1025 在发送前拒绝；整数回绕值拒绝。巨大值使用空范围，并仅在 1025 拒绝已观察后测试。 |
 | 截止返回可观察 | `deadline-slow-seq`、`deadline-slow-async` | 顺序 120.0040 秒、并发 120.0037 秒返回，均 `timed_out:true`、无 hit；顺序 errors 1、并发 errors 0。 |
-| 本次在途连接终止可观察 | 两项 `observation-*` 和原始 fixture events | 130 秒内仅顺序候选 0、并发候选 0/1 到达，无截止后新流量。三条慢连接在约 120.545 秒观察到 EOF；125 秒响应写入以 WinError 10053 失败。不能据此给出所有版本、目标和请求都能取消的保证。 |
+| 本次在途连接终止可观察 | 两项 `observation-*` 和原始 fixture events | 130 秒内仅顺序候选 0、并发候选 0/1 到达，无截止后新流量。以本轮运行起点计，三条慢连接约 120.545 秒检测到 EOF；探测周期为 0.25 秒。125 秒后的写入以 WinError 10053 失败。不能据此给出所有版本、目标和请求都能取消的保证。 |
 | 确定性缺陷回归成立 | Gradle `schedulerRegressionTest` 红，再 `check jar` 绿 | 原实现在 `intruderAttack: 0` 失败；修复后 `BUILD SUCCESSFUL`，退出码 0。方法级矩阵覆盖十条发送路径的 null 结果、null 响应、status 0、204、500。 |
 
 原始记录由主执行者实际运行产生；独立只读复审核对了 case / fixture JSONL 与 summary 完全一致、源版本、十条缺响应路径、截止和 EOF/写入事件。独立复审未代替运行，也未自行重跑。
+
+fixture 的请求线程随后改为非守护线程，让 `server_close()` 在关闭事件日志前等待它们结束。使用本目录发布的脚本重跑完整模式，[joined-verified.json](joined-verified.json) 的 67 项再次全部通过，退出码 0，最后一个事件的 active count 为 0。这次修改仅涉及 fixture 清理，生产代码仍为 `d19105f`。
 
 ## 重现入口
 
@@ -105,6 +107,8 @@ fixture 为每轮生成唯一前缀，使用显式 HTTP proxy 请求捕获流量
 
 未验证全部 63 个工具、Pro 功能、GUI 安装路径、其他 Burp/JDK 版本、真实 IDA/OMP。既有 17 项审计发现和旧 build issue #22 没有被本次修复覆盖；Node bridge 的操作错误 `isError` 标记仍属于已知未处理项。
 
+Repowise 的 14 条提示已在当前差异上独立复核。两条 critical 来自测试矩阵和场景登记方法的复杂度阈值，其余为嵌套、长度和异常捕获等指标，没有确认生产缺陷。case、seed 和 runner 捕获异常后记录失败并退出 1；fixture 的晚写异常作为独立观察保留。自动断连断言以操作输出为准，本次十条断连案例均另外核对了新到达、主动关闭和 finished 事件；未来扩展失败路由时应保留这一来源核对。覆盖率没有上传，bot 的旧索引推断不代替实际执行证据。
+
 ## 进度与清理
 
 构建、独立审查、实际红绿对照、截止观察和证据整理完成。远端整合尚未完成，生命周期由 issue-workflow 按证据及相关 PR 状态判定。
@@ -117,6 +121,6 @@ fixture 为每轮生成唯一前缀，使用显式 HTTP proxy 请求捕获流量
 
 意外发现：真实 Montoya 缺响应对象不同于先前 null mock；SiteMap 与 Proxy history 不具有一一对应数量。两项均在本次记录和相应回归中表达。
 
-本目录文件：`README.md` 为综合报告；`baseline.json` / `verified.json` 为原实现与修复后完整实际记录；`mcp-verified.json` 为真实 stdio 请求响应；两个 Python 文件为重现工具。
+本目录文件：`README.md` 为综合报告；`baseline.json` / `verified.json` 为原实现与修复后完整实际记录；`joined-verified.json` 为等待 fixture 线程退出后的再次完整重放；`mcp-verified.json` 为真实 stdio 请求响应；两个 Python 文件为重现工具。
 
 结项后的更正与补记：无，issue 尚未结项。
