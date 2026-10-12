@@ -74,6 +74,8 @@ Burp Suite → Extensions → Add → Java → 选择 build/libs/burp-mcp-full.j
 | `scan` | 启动漏洞扫描 | `url` |
 | `add_to_scope` | 添加到 Scope | `url` |
 
+未收到 HTTP 响应时，攻击工具增加 `errors`，单次发送和 Repeater 工具返回 `error`。有效的 204 空响应和 500 响应保留正常响应统计及原有的成功判定条件。
+
 ## 安装
 
 三个数字攻击工具 `intruder_attack`、`intruder_attack_async`、`intruder_with_options` 的 `pad_digits` 上限为 1024。默认值和非正值不补零；超出上限时在构造 payload 或发送请求前返回操作错误。

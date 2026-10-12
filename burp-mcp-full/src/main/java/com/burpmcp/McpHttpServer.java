@@ -219,7 +219,7 @@ public class McpHttpServer extends NanoHTTPD {
 
             HttpService service = HttpService.httpService(host, port, isHttps);
             HttpRequest request = HttpRequest.httpRequest(service, rawReq.toString());
-            HttpResponse response = api.http().sendRequest(request).response();
+            HttpResponse response = requireResponse(api.http().sendRequest(request));
 
             result.addProperty("status", response.statusCode());
             result.addProperty("length", response.body().length());
@@ -313,11 +313,21 @@ public class McpHttpServer extends NanoHTTPD {
     }
 
     /**
-     * Send a request with Montoya's response timeout in milliseconds and return its result.
+     * Send a request with Montoya's response timeout in milliseconds and require an HTTP response.
      * Connection establishment remains Burp-controlled; Montoya runtime exceptions propagate.
      */
     static HttpRequestResponse sendRequestWithResponseTimeout(Http http, HttpRequest request, long timeoutMs) {
-        return http.sendRequest(request, RequestOptions.requestOptions().withResponseTimeout(timeoutMs));
+        HttpRequestResponse result = http.sendRequest(request, RequestOptions.requestOptions().withResponseTimeout(timeoutMs));
+        requireResponse(result);
+        return result;
+    }
+
+    /** Burp may represent a failed connection as a non-null response with status zero. */
+    private static HttpResponse requireResponse(HttpRequestResponse result) {
+        HttpResponse response = result == null ? null : result.response();
+        if (response == null || response.statusCode() == 0)
+            throw new IllegalStateException("No HTTP response was received");
+        return response;
     }
 
     /** Bounds the attack coordinator wait; interrupting the synchronous Montoya call may not abort its transport work. */
@@ -971,7 +981,7 @@ public class McpHttpServer extends NanoHTTPD {
             boolean isHttps = params.has("https") ? params.get("https").getAsBoolean() : true;
             HttpService service = HttpService.httpService(host, port, isHttps);
             HttpRequest request = HttpRequest.httpRequest(service, rawRequest);
-            HttpResponse response = api.http().sendRequest(request).response();
+            HttpResponse response = requireResponse(api.http().sendRequest(request));
             result.addProperty("status", response.statusCode());
             result.addProperty("length", response.body().length());
             String respBody = response.bodyToString();
@@ -1139,7 +1149,7 @@ public class McpHttpServer extends NanoHTTPD {
             }
             if (params.has("replace_body")) { int bodyStart = rawRequest.indexOf("\r\n\r\n"); if (bodyStart > 0) rawRequest = rawRequest.substring(0, bodyStart + 4) + params.get("replace_body").getAsString(); }
             HttpService svc = HttpService.httpService(host, port, isHttps);
-            HttpResponse resp = api.http().sendRequest(HttpRequest.httpRequest(svc, rawRequest)).response();
+            HttpResponse resp = requireResponse(api.http().sendRequest(HttpRequest.httpRequest(svc, rawRequest)));
             result.addProperty("status", resp.statusCode()); result.addProperty("length", resp.body().length());
             String responseText = resp.bodyToString();
             result.addProperty("body", responseText.substring(0, Math.min(10000, responseText.length())));

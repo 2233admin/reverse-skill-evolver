@@ -6,6 +6,7 @@ import burp.api.montoya.internal.ObjectFactoryLocator;
 import burp.api.montoya.http.Http;
 import burp.api.montoya.http.RequestOptions;
 import burp.api.montoya.http.message.requests.HttpRequest;
+import burp.api.montoya.http.message.responses.HttpResponse;
 import burp.api.montoya.proxy.ProxyHttpRequestResponse;
 import com.google.gson.*;
 import java.lang.reflect.Method;
@@ -18,6 +19,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public final class McpHttpServerBehaviorTest {
     /** Run pagination, regex, serialization, and sequential attack regressions. */
     public static void main(String[] args) throws Exception {
+        missingResponsesNeverBecomeHitsAndValidResponsesRemainIntact();
         numericPaddingIsBoundedBeforeAttackWork();
         paginationPreservesFilteredIndicesAndBoundaries();
         technologyNamesAreLiteralAndCaseInsensitive();
@@ -222,6 +224,68 @@ public final class McpHttpServerBehaviorTest {
         }
     }
 
+    /** A Burp disconnect can return a non-null status-zero response; empty HTTP 204 is still valid. */
+    private static void missingResponsesNeverBecomeHitsAndValidResponsesRemainIntact() throws Exception {
+        AtomicInteger sends = new AtomicInteger();
+        MontoyaObjectFactory previousFactory = ObjectFactoryLocator.FACTORY;
+        ObjectFactoryLocator.FACTORY = fake(MontoyaObjectFactory.class, (method, args) ->
+                fake(method.getReturnType(), (m, a) ->
+                        m.getName().equals("withResponseTimeout") ? fake(RequestOptions.class, (ignored, values) -> null) : null));
+        try {
+            for (int status : new int[]{0, 204, 500, -1, -2}) {
+                String body = status == 500 ? "FAIL" : "";
+                HttpResponse response = status == -1 ? null : fake(HttpResponse.class, (m, a) -> switch (m.getName()) {
+                    case "statusCode" -> (short) status;
+                    case "bodyToString", "toString" -> body;
+                    case "headers" -> List.of();
+                    case "body" -> fake(m.getReturnType(), (b, ignored) -> {
+                        require(b.getName().equals("length"), "Unexpected response-body operation: " + b.getName());
+                        return body.length();
+                    });
+                    default -> throw new AssertionError(m.getName());
+                });
+                Http http = fake(Http.class, (method, args) -> {
+                    require(method.getName().equals("sendRequest"), "Unexpected HTTP operation: " + method.getName());
+                    sends.incrementAndGet();
+                    return status == -2 ? null : fake(method.getReturnType(), (m, a) ->
+                            m.getName().equals("response") ? response : null);
+                });
+                McpHttpServer server = new McpHttpServer(fake(MontoyaApi.class, (m, a) ->
+                        m.getName().equals("http") ? http : null), 0);
+                for (String operation : List.of("intruderAttack", "intruderAttackAsync", "intruderWithOptions",
+                        "intruderAttackWordlist", "intruderPitchfork", "intruderClusterBomb", "intruderBatteringRam",
+                        "sendRequest", "repeaterSend", "repeaterModifySend")) {
+                    sends.set(0);
+                    JsonObject params = JsonParser.parseString("{\"url_template\":\"https://example.invalid/@@\",\"url\":\"https://example.invalid/0\",\"from\":0,\"to\":0,\"threads\":1,\"wordlist\":[\"0\"],\"placeholders\":{\"@@\":[\"0\"]},\"max_requests\":1,\"success_length_not\":99,\"host\":\"example.invalid\",\"request\":\"GET /0 HTTP/1.1\\r\\nHost: example.invalid\\r\\n\\r\\n\"}").getAsJsonObject();
+                    JsonObject result = call(server, operation, params);
+                    require(sends.get() == 1, "Operation changed its send count: " + operation);
+                    if (operation.startsWith("intruder")) {
+                        require(!result.has("error"), "Attack lost its count/error envelope: " + operation + ": " + result);
+                        require(result.get("hits").getAsInt() == (status > 0 ? 1 : 0),
+                                "Missing HTTP response became a hit or valid response was lost: " + operation + ": " + status);
+                        require(result.get("errors").getAsInt() == (status > 0 ? 0 : 1)
+                                && result.get("total_requests").getAsInt() == (status > 0 || operation.equals("intruderClusterBomb") ? 1 : 0),
+                                "Response/attempt counts changed: " + operation + ": " + status);
+                        require(result.getAsJsonArray("hit_details").size() == (status > 0 ? 1 : 0), "Hit details differ from hit count");
+                        if (status > 0) {
+                            JsonObject hit = result.getAsJsonArray("hit_details").get(0).getAsJsonObject();
+                            require(hit.get("length").getAsInt() == body.length(), "Valid response body length changed");
+                            if (hit.has("status")) require(hit.get("status").getAsInt() == status, "Valid HTTP status changed");
+                        }
+                    } else if (status <= 0) {
+                        require(result.size() == 1 && result.has("error"), "Missing direct response must use the error envelope: " + operation);
+                    } else {
+                        require(!result.has("error") && result.get("status").getAsInt() == status
+                                && result.get("length").getAsInt() == body.length() && result.get("body").getAsString().equals(body),
+                                "Valid direct response changed: " + operation + ": " + status);
+                    }
+                }
+            }
+        } finally {
+            ObjectFactoryLocator.FACTORY = previousFactory;
+        }
+    }
+
     /** Verify only complete supported header names match, regardless of case. */
     private static void technologyNamesAreLiteralAndCaseInsensitive() {
         for (String name : List.of("server", "SeRvEr", "X-POWERED-BY", "x-AspNet-Version"))
@@ -325,7 +389,8 @@ public final class McpHttpServerBehaviorTest {
                 require(args != null && args.length == 2 && args[1] == options[0],
                         "Sequential attack must use Montoya's explicit request-options overload");
                 requests.incrementAndGet();
-                return null;
+                return fake(method.getReturnType(), (m, a) ->
+                        m.getName().equals("response") ? entry("GET", "ok", 200).response() : null);
             });
             HttpRequest request = fake(HttpRequest.class, (method, args) -> null);
             try (var attack = new McpHttpServer.SequentialAttack(
