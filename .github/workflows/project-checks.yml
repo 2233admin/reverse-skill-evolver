@@ -39,3 +39,9 @@ jobs:
       - name: Run Gradle checks
         working-directory: burp-mcp-full
         run: ./gradlew check --no-daemon
+      - name: Build JAR through POSIX entrypoint
+        working-directory: burp-mcp-full
+        run: |
+          ./build.sh --no-daemon
+          cd ..
+          ./burp-mcp-full/build.sh --no-daemon
