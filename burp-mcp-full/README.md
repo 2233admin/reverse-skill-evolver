@@ -22,6 +22,8 @@ cd burp-mcp-full
 
 Windows 的 `build.bat` 同样调用 Wrapper 的 `jar` 任务，可从任意工作目录启动，不会覆盖 `JAVA_HOME`。两种方式均生成 `build/libs/burp-mcp-full.jar`；源码、依赖与构建配置未变化时，再次构建会将 `compileJava` 和 `jar` 标为 `UP-TO-DATE`，不重复编译或打包。不要在重复构建前运行 `clean`，否则会删除增量构建输出。
 
+POSIX 快捷入口 `./build.sh` 同样调用固定版本 Wrapper 的 `jar` 任务，可从其他工作目录通过脚本路径启动，并透传 Gradle 参数，例如 `./build.sh --offline --no-daemon`。构建失败时保留 Wrapper 的非零退出码。
+
 运行回归检查（`check` 包含确定性的 `schedulerRegressionTest`）：
 
 ```cmd
