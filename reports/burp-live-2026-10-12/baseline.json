@@ -1,0 +1,4910 @@
+{
+  "started_utc": "20261012T092505Z",
+  "requested_source_head": "3e81a0689093eef5c0c0001f82fb1e4ef26ca526",
+  "python": "3.14.7 (tags/v3.14.7:823f032, Aug  5 2026, 10:51:32) [MSC v.1944 64 bit (AMD64)]",
+  "api": [
+    "127.0.0.1",
+    9876
+  ],
+  "proxy": [
+    "127.0.0.1",
+    8080
+  ],
+  "fixture": [
+    "127.0.0.1",
+    18089
+  ],
+  "fixture_tag": "burp19-98f205501104",
+  "quick": true,
+  "elapsed_s": 0.8403691999992589,
+  "passed": false,
+  "cases": [
+    {
+      "name": "encode-runtime",
+      "kind": "tool",
+      "input": {
+        "tool": "encode",
+        "params": {
+          "input": "probe",
+          "type": "base64"
+        }
+      },
+      "started_s": 0.010225600002740975,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "31"
+        ]
+      ],
+      "raw_response": "{\n  \"output\": \"cHJvYmU\\u003d\"\n}",
+      "response": {
+        "output": "cHJvYmU="
+      },
+      "elapsed_s": 0.0023223999996844213
+    },
+    {
+      "name": "burp-version",
+      "kind": "tool",
+      "input": {
+        "tool": "burp_version",
+        "params": {}
+      },
+      "started_s": 0.01268039999922621,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "101"
+        ]
+      ],
+      "raw_response": "{\n  \"name\": \"Burp Suite Community Edition\",\n  \"major\": \"2026\",\n  \"minor\": \"9.2\",\n  \"build\": \"54622\"\n}",
+      "response": {
+        "name": "Burp Suite Community Edition",
+        "major": "2026",
+        "minor": "9.2",
+        "build": "54622"
+      },
+      "elapsed_s": 0.0020233000032021664
+    },
+    {
+      "name": "capture-old",
+      "kind": "proxy_seed",
+      "method": "GET",
+      "url": "http://127.0.0.1:18089/burp19-98f205501104/hist/old",
+      "started_s": 0.014827400002104696,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "SeRvEr",
+          "owned-fixture"
+        ],
+        [
+          "X-POWERED-BY",
+          "owned-runtime"
+        ],
+        [
+          "x-AspNet-Version",
+          "fixture-version"
+        ],
+        [
+          "Servers",
+          "exclude-this"
+        ],
+        [
+          "server-extra",
+          "exclude-this-too"
+        ],
+        [
+          "X-Fixture-Run",
+          "burp19-98f205501104"
+        ],
+        [
+          "Content-Length",
+          "19"
+        ],
+        [
+          "Connection",
+          "close"
+        ]
+      ],
+      "raw_response": "Token:abc Token:DEF",
+      "elapsed_s": 0.026876199997786898
+    },
+    {
+      "name": "capture-post",
+      "kind": "proxy_seed",
+      "method": "POST",
+      "url": "http://127.0.0.1:18089/burp19-98f205501104/hist/post",
+      "started_s": 0.04194920000009006,
+      "failures": [],
+      "http_status": 201,
+      "response_headers": [
+        [
+          "SeRvEr",
+          "owned-fixture"
+        ],
+        [
+          "X-POWERED-BY",
+          "owned-runtime"
+        ],
+        [
+          "x-AspNet-Version",
+          "fixture-version"
+        ],
+        [
+          "Servers",
+          "exclude-this"
+        ],
+        [
+          "server-extra",
+          "exclude-this-too"
+        ],
+        [
+          "X-Fixture-Run",
+          "burp19-98f205501104"
+        ],
+        [
+          "Content-Length",
+          "19"
+        ],
+        [
+          "Connection",
+          "close"
+        ]
+      ],
+      "raw_response": "Token:abc Token:DEF",
+      "elapsed_s": 0.0036051999995834194
+    },
+    {
+      "name": "capture-missing",
+      "kind": "proxy_seed",
+      "method": "GET",
+      "url": "http://127.0.0.1:18089/burp19-98f205501104/hist/missing",
+      "started_s": 0.04561870000179624,
+      "failures": [],
+      "http_status": 404,
+      "response_headers": [
+        [
+          "SeRvEr",
+          "owned-fixture"
+        ],
+        [
+          "X-POWERED-BY",
+          "owned-runtime"
+        ],
+        [
+          "x-AspNet-Version",
+          "fixture-version"
+        ],
+        [
+          "Servers",
+          "exclude-this"
+        ],
+        [
+          "server-extra",
+          "exclude-this-too"
+        ],
+        [
+          "X-Fixture-Run",
+          "burp19-98f205501104"
+        ],
+        [
+          "Content-Length",
+          "7"
+        ],
+        [
+          "Connection",
+          "close"
+        ]
+      ],
+      "raw_response": "MISSING",
+      "elapsed_s": 0.027135399999679066
+    },
+    {
+      "name": "capture-new",
+      "kind": "proxy_seed",
+      "method": "GET",
+      "url": "http://127.0.0.1:18089/burp19-98f205501104/hist/new",
+      "started_s": 0.07285300000148709,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "SeRvEr",
+          "owned-fixture"
+        ],
+        [
+          "X-POWERED-BY",
+          "owned-runtime"
+        ],
+        [
+          "x-AspNet-Version",
+          "fixture-version"
+        ],
+        [
+          "Servers",
+          "exclude-this"
+        ],
+        [
+          "server-extra",
+          "exclude-this-too"
+        ],
+        [
+          "X-Fixture-Run",
+          "burp19-98f205501104"
+        ],
+        [
+          "Content-Length",
+          "19"
+        ],
+        [
+          "Connection",
+          "close"
+        ]
+      ],
+      "raw_response": "Token:abc Token:DEF",
+      "elapsed_s": 0.014913999999407679
+    },
+    {
+      "name": "history-page",
+      "kind": "tool",
+      "input": {
+        "tool": "proxy_history",
+        "params": {
+          "url_filter": "/burp19-98f205501104/hist/",
+          "offset": 1,
+          "limit": 2
+        }
+      },
+      "started_s": 0.08783820000098785,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "362"
+        ]
+      ],
+      "raw_response": "{\n  \"total\": 4,\n  \"items\": [\n    {\n      \"index\": 1,\n      \"method\": \"GET\",\n      \"url\": \"http://127.0.0.1:18089/burp19-98f205501104/hist/missing\",\n      \"status\": 404,\n      \"length\": 7\n    },\n    {\n      \"index\": 2,\n      \"method\": \"POST\",\n      \"url\": \"http://127.0.0.1:18089/burp19-98f205501104/hist/post\",\n      \"status\": 201,\n      \"length\": 19\n    }\n  ]\n}",
+      "response": {
+        "total": 4,
+        "items": [
+          {
+            "index": 1,
+            "method": "GET",
+            "url": "http://127.0.0.1:18089/burp19-98f205501104/hist/missing",
+            "status": 404,
+            "length": 7
+          },
+          {
+            "index": 2,
+            "method": "POST",
+            "url": "http://127.0.0.1:18089/burp19-98f205501104/hist/post",
+            "status": 201,
+            "length": 19
+          }
+        ]
+      },
+      "elapsed_s": 0.0025667000008979812
+    },
+    {
+      "name": "history-filter",
+      "kind": "tool",
+      "input": {
+        "tool": "proxy_history",
+        "params": {
+          "url_filter": "/burp19-98f205501104/hist/",
+          "method_filter": "get",
+          "status_filter": 200,
+          "offset": 1,
+          "limit": 1
+        }
+      },
+      "started_s": 0.09050510000088252,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "195"
+        ]
+      ],
+      "raw_response": "{\n  \"total\": 2,\n  \"items\": [\n    {\n      \"index\": 1,\n      \"method\": \"GET\",\n      \"url\": \"http://127.0.0.1:18089/burp19-98f205501104/hist/old\",\n      \"status\": 200,\n      \"length\": 19\n    }\n  ]\n}",
+      "response": {
+        "total": 2,
+        "items": [
+          {
+            "index": 1,
+            "method": "GET",
+            "url": "http://127.0.0.1:18089/burp19-98f205501104/hist/old",
+            "status": 200,
+            "length": 19
+          }
+        ]
+      },
+      "elapsed_s": 0.002039099999819882
+    },
+    {
+      "name": "history-end",
+      "kind": "tool",
+      "input": {
+        "tool": "proxy_history",
+        "params": {
+          "url_filter": "/burp19-98f205501104/hist/",
+          "offset": 4,
+          "limit": 2
+        }
+      },
+      "started_s": 0.09261360000164132,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "31"
+        ]
+      ],
+      "raw_response": "{\n  \"total\": 4,\n  \"items\": []\n}",
+      "response": {
+        "total": 4,
+        "items": []
+      },
+      "elapsed_s": 0.001972300000488758
+    },
+    {
+      "name": "sitemap-fixture-rows",
+      "kind": "tool",
+      "input": {
+        "tool": "sitemap",
+        "params": {
+          "url_prefix": "http://127.0.0.1:18089/burp19-98f205501104/hist/"
+        }
+      },
+      "started_s": 0.0946351999991748,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "658"
+        ]
+      ],
+      "raw_response": "{\n  \"total\": 5,\n  \"items\": [\n    {\n      \"url\": \"http://127.0.0.1:18089/burp19-98f205501104/hist/old\",\n      \"method\": \"GET\",\n      \"status\": 200\n    },\n    {\n      \"url\": \"http://127.0.0.1:18089/burp19-98f205501104/hist/post\",\n      \"method\": \"GET\",\n      \"status\": 0\n    },\n    {\n      \"url\": \"http://127.0.0.1:18089/burp19-98f205501104/hist/post\",\n      \"method\": \"POST\",\n      \"status\": 201\n    },\n    {\n      \"url\": \"http://127.0.0.1:18089/burp19-98f205501104/hist/missing\",\n      \"method\": \"GET\",\n      \"status\": 404\n    },\n    {\n      \"url\": \"http://127.0.0.1:18089/burp19-98f205501104/hist/new\",\n      \"method\": \"GET\",\n      \"status\": 200\n    }\n  ]\n}",
+      "response": {
+        "total": 5,
+        "items": [
+          {
+            "url": "http://127.0.0.1:18089/burp19-98f205501104/hist/old",
+            "method": "GET",
+            "status": 200
+          },
+          {
+            "url": "http://127.0.0.1:18089/burp19-98f205501104/hist/post",
+            "method": "GET",
+            "status": 0
+          },
+          {
+            "url": "http://127.0.0.1:18089/burp19-98f205501104/hist/post",
+            "method": "POST",
+            "status": 201
+          },
+          {
+            "url": "http://127.0.0.1:18089/burp19-98f205501104/hist/missing",
+            "method": "GET",
+            "status": 404
+          },
+          {
+            "url": "http://127.0.0.1:18089/burp19-98f205501104/hist/new",
+            "method": "GET",
+            "status": 200
+          }
+        ]
+      },
+      "elapsed_s": 0.0019086000029346906
+    },
+    {
+      "name": "technology-headers",
+      "kind": "tool",
+      "input": {
+        "tool": "target_info",
+        "params": {
+          "url": "http://127.0.0.1:18089/burp19-98f205501104/hist/"
+        }
+      },
+      "started_s": 0.09661090000008699,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "190"
+        ]
+      ],
+      "raw_response": "{\n  \"hosts\": [\n    \"127.0.0.1\"\n  ],\n  \"technologies\": [\n    \"SeRvEr: owned-fixture\",\n    \"X-POWERED-BY: owned-runtime\",\n    \"x-AspNet-Version: fixture-version\"\n  ],\n  \"requests_sampled\": 5\n}",
+      "response": {
+        "hosts": [
+          "127.0.0.1"
+        ],
+        "technologies": [
+          "SeRvEr: owned-fixture",
+          "X-POWERED-BY: owned-runtime",
+          "x-AspNet-Version: fixture-version"
+        ],
+        "requests_sampled": 5
+      },
+      "elapsed_s": 0.00220890000127838
+    },
+    {
+      "name": "search-original-index",
+      "kind": "tool",
+      "input": {
+        "tool": "search_history",
+        "params": {
+          "regex": "/burp19-98f205501104/hist/new$",
+          "search_in": "url",
+          "limit": 10
+        }
+      },
+      "started_s": 0.09892640000180108,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "178"
+        ]
+      ],
+      "raw_response": "{\n  \"matches\": 1,\n  \"items\": [\n    {\n      \"index\": 11,\n      \"method\": \"GET\",\n      \"url\": \"http://127.0.0.1:18089/burp19-98f205501104/hist/new\",\n      \"status\": 200\n    }\n  ]\n}",
+      "response": {
+        "matches": 1,
+        "items": [
+          {
+            "index": 11,
+            "method": "GET",
+            "url": "http://127.0.0.1:18089/burp19-98f205501104/hist/new",
+            "status": 200
+          }
+        ]
+      },
+      "elapsed_s": 0.002453199998853961
+    },
+    {
+      "name": "search-response-insensitive",
+      "kind": "tool",
+      "input": {
+        "tool": "search_history",
+        "params": {
+          "regex": "(?s)X-Fixture-Run: burp19-98f205501104.*token:[a-z]+",
+          "search_in": "response",
+          "limit": 10
+        }
+      },
+      "started_s": 0.10146960000201943,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "464"
+        ]
+      ],
+      "raw_response": "{\n  \"matches\": 3,\n  \"items\": [\n    {\n      \"index\": 11,\n      \"method\": \"GET\",\n      \"url\": \"http://127.0.0.1:18089/burp19-98f205501104/hist/new\",\n      \"status\": 200\n    },\n    {\n      \"index\": 9,\n      \"method\": \"POST\",\n      \"url\": \"http://127.0.0.1:18089/burp19-98f205501104/hist/post\",\n      \"status\": 201\n    },\n    {\n      \"index\": 8,\n      \"method\": \"GET\",\n      \"url\": \"http://127.0.0.1:18089/burp19-98f205501104/hist/old\",\n      \"status\": 200\n    }\n  ]\n}",
+      "response": {
+        "matches": 3,
+        "items": [
+          {
+            "index": 11,
+            "method": "GET",
+            "url": "http://127.0.0.1:18089/burp19-98f205501104/hist/new",
+            "status": 200
+          },
+          {
+            "index": 9,
+            "method": "POST",
+            "url": "http://127.0.0.1:18089/burp19-98f205501104/hist/post",
+            "status": 201
+          },
+          {
+            "index": 8,
+            "method": "GET",
+            "url": "http://127.0.0.1:18089/burp19-98f205501104/hist/old",
+            "status": 200
+          }
+        ]
+      },
+      "elapsed_s": 0.00409869999930379
+    },
+    {
+      "name": "extract-full-match",
+      "kind": "tool",
+      "input": {
+        "tool": "extract_from_response",
+        "params": {
+          "index": 11,
+          "regex": "Token:([a-z]+)"
+        }
+      },
+      "started_s": 0.10566670000116574,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "60"
+        ]
+      ],
+      "raw_response": "{\n  \"total_matches\": 1,\n  \"matches\": [\n    \"Token:abc\"\n  ]\n}",
+      "response": {
+        "total_matches": 1,
+        "matches": [
+          "Token:abc"
+        ]
+      },
+      "elapsed_s": 0.001881899999716552
+    },
+    {
+      "name": "grep-full-match",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_with_options",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/ok/@@",
+          "from": 0,
+          "to": 0,
+          "success_length_not": 99,
+          "grep_extract": "Token:([a-z]+)",
+          "record_time": true
+        }
+      },
+      "started_s": 0.10761370000182069,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "202"
+        ]
+      ],
+      "raw_response": "{\n  \"total_requests\": 1,\n  \"errors\": 0,\n  \"hits\": 1,\n  \"hit_details\": [\n    {\n      \"payload\": \"0\",\n      \"status\": 200,\n      \"length\": 9,\n      \"time_ms\": 2,\n      \"extracted\": \"Token:abc\"\n    }\n  ]\n}",
+      "response": {
+        "total_requests": 1,
+        "errors": 0,
+        "hits": 1,
+        "hit_details": [
+          {
+            "payload": "0",
+            "status": 200,
+            "length": 9,
+            "time_ms": 2,
+            "extracted": "Token:abc"
+          }
+        ]
+      },
+      "elapsed_s": 0.0036075999996683095
+    },
+    {
+      "name": "unsupported-search_history",
+      "kind": "tool",
+      "input": {
+        "tool": "search_history",
+        "params": {
+          "regex": "(?=Token)"
+        }
+      },
+      "started_s": 0.11129630000141333,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "86"
+        ]
+      ],
+      "raw_response": "{\n  \"error\": \"Invalid or unsupported RE2J regex: invalid or unsupported Perl syntax\"\n}",
+      "response": {
+        "error": "Invalid or unsupported RE2J regex: invalid or unsupported Perl syntax"
+      },
+      "elapsed_s": 0.0013963999990664888
+    },
+    {
+      "name": "unsupported-extract_from_response",
+      "kind": "tool",
+      "input": {
+        "tool": "extract_from_response",
+        "params": {
+          "index": 11,
+          "regex": "(?=Token)"
+        }
+      },
+      "started_s": 0.1127371000002313,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "86"
+        ]
+      ],
+      "raw_response": "{\n  \"error\": \"Invalid or unsupported RE2J regex: invalid or unsupported Perl syntax\"\n}",
+      "response": {
+        "error": "Invalid or unsupported RE2J regex: invalid or unsupported Perl syntax"
+      },
+      "elapsed_s": 0.0016997000020637643
+    },
+    {
+      "name": "unsupported-intruder_with_options",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_with_options",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/ok/@@",
+          "from": 1,
+          "to": 0,
+          "grep_extract": "(?=Token)"
+        }
+      },
+      "started_s": 0.11447790000238456,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "86"
+        ]
+      ],
+      "raw_response": "{\n  \"error\": \"Invalid or unsupported RE2J regex: invalid or unsupported Perl syntax\"\n}",
+      "response": {
+        "error": "Invalid or unsupported RE2J regex: invalid or unsupported Perl syntax"
+      },
+      "elapsed_s": 0.017123399997217348
+    },
+    {
+      "name": "ok-intruder_attack",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_attack",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/ok/@@",
+          "from": 0,
+          "to": 2,
+          "threads": 2,
+          "pad_digits": 3,
+          "success_length_not": 99
+        }
+      },
+      "started_s": 0.13170739999986836,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "409"
+        ]
+      ],
+      "raw_response": "{\n  \"total_requests\": 3,\n  \"errors\": 0,\n  \"hits\": 3,\n  \"hit_details\": [\n    {\n      \"payload\": \"000\",\n      \"status\": 200,\n      \"length\": 9,\n      \"body_preview\": \"Token:abc\"\n    },\n    {\n      \"payload\": \"001\",\n      \"status\": 200,\n      \"length\": 9,\n      \"body_preview\": \"Token:abc\"\n    },\n    {\n      \"payload\": \"002\",\n      \"status\": 200,\n      \"length\": 9,\n      \"body_preview\": \"Token:abc\"\n    }\n  ]\n}",
+      "response": {
+        "total_requests": 3,
+        "errors": 0,
+        "hits": 3,
+        "hit_details": [
+          {
+            "payload": "000",
+            "status": 200,
+            "length": 9,
+            "body_preview": "Token:abc"
+          },
+          {
+            "payload": "001",
+            "status": 200,
+            "length": 9,
+            "body_preview": "Token:abc"
+          },
+          {
+            "payload": "002",
+            "status": 200,
+            "length": 9,
+            "body_preview": "Token:abc"
+          }
+        ]
+      },
+      "elapsed_s": 0.007951100000354927
+    },
+    {
+      "name": "httpfail-intruder_attack",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_attack",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/httpfail/@@",
+          "from": 0,
+          "to": 2,
+          "threads": 2,
+          "pad_digits": 3,
+          "success_length_not": 4
+        }
+      },
+      "started_s": 0.13974100000268663,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "74"
+        ]
+      ],
+      "raw_response": "{\n  \"total_requests\": 3,\n  \"errors\": 0,\n  \"hits\": 0,\n  \"hit_details\": []\n}",
+      "response": {
+        "total_requests": 3,
+        "errors": 0,
+        "hits": 0,
+        "hit_details": []
+      },
+      "elapsed_s": 0.008061499996983912
+    },
+    {
+      "name": "socket-close-intruder_attack",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_attack",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/disconnect/@@",
+          "from": 0,
+          "to": 0,
+          "threads": 2,
+          "success_length_not": 99
+        }
+      },
+      "started_s": 0.1478705000008631,
+      "failures": [
+        "AssertionError: Socket-close must record an error"
+      ],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "174"
+        ]
+      ],
+      "raw_response": "{\n  \"total_requests\": 1,\n  \"errors\": 0,\n  \"hits\": 1,\n  \"hit_details\": [\n    {\n      \"payload\": \"0\",\n      \"status\": 0,\n      \"length\": 0,\n      \"body_preview\": \"\"\n    }\n  ]\n}",
+      "response": {
+        "total_requests": 1,
+        "errors": 0,
+        "hits": 1,
+        "hit_details": [
+          {
+            "payload": "0",
+            "status": 0,
+            "length": 0,
+            "body_preview": ""
+          }
+        ]
+      },
+      "elapsed_s": 0.003480300001683645
+    },
+    {
+      "name": "ok-intruder_attack_async",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_attack_async",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/ok/@@",
+          "from": 0,
+          "to": 2,
+          "threads": 2,
+          "pad_digits": 3,
+          "success_length_not": 9
+        }
+      },
+      "started_s": 0.15142689999993308,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "74"
+        ]
+      ],
+      "raw_response": "{\n  \"total_requests\": 3,\n  \"errors\": 0,\n  \"hits\": 0,\n  \"hit_details\": []\n}",
+      "response": {
+        "total_requests": 3,
+        "errors": 0,
+        "hits": 0,
+        "hit_details": []
+      },
+      "elapsed_s": 0.004336600002716295
+    },
+    {
+      "name": "httpfail-intruder_attack_async",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_attack_async",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/httpfail/@@",
+          "from": 0,
+          "to": 2,
+          "threads": 2,
+          "pad_digits": 3,
+          "success_length_not": 4
+        }
+      },
+      "started_s": 0.1558316000009654,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "74"
+        ]
+      ],
+      "raw_response": "{\n  \"total_requests\": 3,\n  \"errors\": 0,\n  \"hits\": 0,\n  \"hit_details\": []\n}",
+      "response": {
+        "total_requests": 3,
+        "errors": 0,
+        "hits": 0,
+        "hit_details": []
+      },
+      "elapsed_s": 0.004803899999387795
+    },
+    {
+      "name": "socket-close-intruder_attack_async",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_attack_async",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/disconnect/@@",
+          "from": 0,
+          "to": 0,
+          "threads": 2,
+          "success_length_not": 99
+        }
+      },
+      "started_s": 0.1607082000009541,
+      "failures": [
+        "AssertionError: Socket-close must record an error"
+      ],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "155"
+        ]
+      ],
+      "raw_response": "{\n  \"total_requests\": 1,\n  \"errors\": 0,\n  \"hits\": 1,\n  \"hit_details\": [\n    {\n      \"payload\": \"0\",\n      \"length\": 0,\n      \"body_preview\": \"\"\n    }\n  ]\n}",
+      "response": {
+        "total_requests": 1,
+        "errors": 0,
+        "hits": 1,
+        "hit_details": [
+          {
+            "payload": "0",
+            "length": 0,
+            "body_preview": ""
+          }
+        ]
+      },
+      "elapsed_s": 0.004356599998573074
+    },
+    {
+      "name": "async-single-hit",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_attack_async",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/ok/@@",
+          "from": 0,
+          "to": 0,
+          "threads": 2,
+          "success_length_not": 99
+        }
+      },
+      "started_s": 0.16515760000038426,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "164"
+        ]
+      ],
+      "raw_response": "{\n  \"total_requests\": 1,\n  \"errors\": 0,\n  \"hits\": 1,\n  \"hit_details\": [\n    {\n      \"payload\": \"0\",\n      \"length\": 9,\n      \"body_preview\": \"Token:abc\"\n    }\n  ]\n}",
+      "response": {
+        "total_requests": 1,
+        "errors": 0,
+        "hits": 1,
+        "hit_details": [
+          {
+            "payload": "0",
+            "length": 9,
+            "body_preview": "Token:abc"
+          }
+        ]
+      },
+      "elapsed_s": 0.0033996000020124484
+    },
+    {
+      "name": "empty-204-intruder_attack",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_attack",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/empty/@@",
+          "from": 0,
+          "to": 0,
+          "threads": 2,
+          "success_length_not": 99
+        }
+      },
+      "started_s": 0.168626900001982,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "176"
+        ]
+      ],
+      "raw_response": "{\n  \"total_requests\": 1,\n  \"errors\": 0,\n  \"hits\": 1,\n  \"hit_details\": [\n    {\n      \"payload\": \"0\",\n      \"status\": 204,\n      \"length\": 0,\n      \"body_preview\": \"\"\n    }\n  ]\n}",
+      "response": {
+        "total_requests": 1,
+        "errors": 0,
+        "hits": 1,
+        "hit_details": [
+          {
+            "payload": "0",
+            "status": 204,
+            "length": 0,
+            "body_preview": ""
+          }
+        ]
+      },
+      "elapsed_s": 0.0037907000005361624
+    },
+    {
+      "name": "empty-204-intruder_attack_async",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_attack_async",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/empty/@@",
+          "from": 0,
+          "to": 0,
+          "threads": 2,
+          "success_length_not": 99
+        }
+      },
+      "started_s": 0.17247710000083316,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "155"
+        ]
+      ],
+      "raw_response": "{\n  \"total_requests\": 1,\n  \"errors\": 0,\n  \"hits\": 1,\n  \"hit_details\": [\n    {\n      \"payload\": \"0\",\n      \"length\": 0,\n      \"body_preview\": \"\"\n    }\n  ]\n}",
+      "response": {
+        "total_requests": 1,
+        "errors": 0,
+        "hits": 1,
+        "hit_details": [
+          {
+            "payload": "0",
+            "length": 0,
+            "body_preview": ""
+          }
+        ]
+      },
+      "elapsed_s": 0.003430699998716591
+    },
+    {
+      "name": "empty-204-intruder_with_options",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_with_options",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/empty/@@",
+          "from": 0,
+          "to": 0,
+          "threads": 2,
+          "success_length_not": 99
+        }
+      },
+      "started_s": 0.17598759999964386,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "150"
+        ]
+      ],
+      "raw_response": "{\n  \"total_requests\": 1,\n  \"errors\": 0,\n  \"hits\": 1,\n  \"hit_details\": [\n    {\n      \"payload\": \"0\",\n      \"status\": 204,\n      \"length\": 0\n    }\n  ]\n}",
+      "response": {
+        "total_requests": 1,
+        "errors": 0,
+        "hits": 1,
+        "hit_details": [
+          {
+            "payload": "0",
+            "status": 204,
+            "length": 0
+          }
+        ]
+      },
+      "elapsed_s": 0.0032581000014033634
+    },
+    {
+      "name": "socket-close-intruder_with_options",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_with_options",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/disconnect/@@",
+          "success_length_not": 99,
+          "from": 0,
+          "to": 0
+        }
+      },
+      "started_s": 0.17932719999953406,
+      "failures": [
+        "AssertionError: total_requests: expected 0, observed 1"
+      ],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "148"
+        ]
+      ],
+      "raw_response": "{\n  \"total_requests\": 1,\n  \"errors\": 0,\n  \"hits\": 1,\n  \"hit_details\": [\n    {\n      \"payload\": \"0\",\n      \"status\": 0,\n      \"length\": 0\n    }\n  ]\n}",
+      "response": {
+        "total_requests": 1,
+        "errors": 0,
+        "hits": 1,
+        "hit_details": [
+          {
+            "payload": "0",
+            "status": 0,
+            "length": 0
+          }
+        ]
+      },
+      "elapsed_s": 0.0032433000014862046
+    },
+    {
+      "name": "socket-close-intruder_attack_wordlist",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_attack_wordlist",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/disconnect/@@",
+          "success_length_not": 99,
+          "wordlist": [
+            "0"
+          ]
+        }
+      },
+      "started_s": 0.1826282000001811,
+      "failures": [
+        "AssertionError: total_requests: expected 0, observed 1"
+      ],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "148"
+        ]
+      ],
+      "raw_response": "{\n  \"total_requests\": 1,\n  \"errors\": 0,\n  \"hits\": 1,\n  \"hit_details\": [\n    {\n      \"payload\": \"0\",\n      \"status\": 0,\n      \"length\": 0\n    }\n  ]\n}",
+      "response": {
+        "total_requests": 1,
+        "errors": 0,
+        "hits": 1,
+        "hit_details": [
+          {
+            "payload": "0",
+            "status": 0,
+            "length": 0
+          }
+        ]
+      },
+      "elapsed_s": 0.0029221000004326925
+    },
+    {
+      "name": "socket-close-intruder_pitchfork",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_pitchfork",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/disconnect/@@",
+          "success_length_not": 99,
+          "placeholders": {
+            "@@": [
+              "0"
+            ]
+          }
+        }
+      },
+      "started_s": 0.1856195000000298,
+      "failures": [
+        "AssertionError: total_requests: expected 0, observed 1"
+      ],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "129"
+        ]
+      ],
+      "raw_response": "{\n  \"total_requests\": 1,\n  \"errors\": 0,\n  \"hits\": 1,\n  \"hit_details\": [\n    {\n      \"iteration\": 0,\n      \"length\": 0\n    }\n  ]\n}",
+      "response": {
+        "total_requests": 1,
+        "errors": 0,
+        "hits": 1,
+        "hit_details": [
+          {
+            "iteration": 0,
+            "length": 0
+          }
+        ]
+      },
+      "elapsed_s": 0.0035306999998283572
+    },
+    {
+      "name": "socket-close-intruder_cluster_bomb",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_cluster_bomb",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/disconnect/@@",
+          "success_length_not": 99,
+          "placeholders": {
+            "@@": [
+              "0"
+            ]
+          },
+          "max_requests": 1
+        }
+      },
+      "started_s": 0.18921740000223508,
+      "failures": [
+        "AssertionError: errors: expected 1, observed 0"
+      ],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "149"
+        ]
+      ],
+      "raw_response": "{\n  \"total_requests\": 1,\n  \"errors\": 0,\n  \"hits\": 1,\n  \"hit_details\": [\n    {\n      \"payload\": \"0|\",\n      \"status\": 0,\n      \"length\": 0\n    }\n  ]\n}",
+      "response": {
+        "total_requests": 1,
+        "errors": 0,
+        "hits": 1,
+        "hit_details": [
+          {
+            "payload": "0|",
+            "status": 0,
+            "length": 0
+          }
+        ]
+      },
+      "elapsed_s": 0.0027931000004173256
+    },
+    {
+      "name": "socket-close-intruder_battering_ram",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_battering_ram",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/disconnect/@@",
+          "success_length_not": 99,
+          "wordlist": [
+            "0"
+          ],
+          "placeholder": "@@"
+        }
+      },
+      "started_s": 0.1920769000025757,
+      "failures": [
+        "AssertionError: total_requests: expected 0, observed 1"
+      ],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "148"
+        ]
+      ],
+      "raw_response": "{\n  \"total_requests\": 1,\n  \"errors\": 0,\n  \"hits\": 1,\n  \"hit_details\": [\n    {\n      \"payload\": \"0\",\n      \"status\": 0,\n      \"length\": 0\n    }\n  ]\n}",
+      "response": {
+        "total_requests": 1,
+        "errors": 0,
+        "hits": 1,
+        "hit_details": [
+          {
+            "payload": "0",
+            "status": 0,
+            "length": 0
+          }
+        ]
+      },
+      "elapsed_s": 0.0027433999966888223
+    },
+    {
+      "name": "disconnect-send_request",
+      "kind": "tool",
+      "input": {
+        "tool": "send_request",
+        "params": {
+          "url": "http://127.0.0.1:18089/burp19-98f205501104/disconnect/0",
+          "method": "GET"
+        }
+      },
+      "started_s": 0.19488769999952638,
+      "failures": [
+        "AssertionError: A missing HTTP response must return an operation error"
+      ],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "63"
+        ]
+      ],
+      "raw_response": "{\n  \"status\": 0,\n  \"length\": 0,\n  \"body\": \"\",\n  \"headers\": {}\n}",
+      "response": {
+        "status": 0,
+        "length": 0,
+        "body": "",
+        "headers": {}
+      },
+      "elapsed_s": 0.015877300000283867
+    },
+    {
+      "name": "empty-send_request",
+      "kind": "tool",
+      "input": {
+        "tool": "send_request",
+        "params": {
+          "url": "http://127.0.0.1:18089/burp19-98f205501104/empty/0",
+          "method": "GET"
+        }
+      },
+      "started_s": 0.2108583000008366,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "347"
+        ]
+      ],
+      "raw_response": "{\n  \"status\": 204,\n  \"length\": 0,\n  \"body\": \"\",\n  \"headers\": {\n    \"SeRvEr\": \"owned-fixture\",\n    \"X-POWERED-BY\": \"owned-runtime\",\n    \"x-AspNet-Version\": \"fixture-version\",\n    \"Servers\": \"exclude-this\",\n    \"server-extra\": \"exclude-this-too\",\n    \"X-Fixture-Run\": \"burp19-98f205501104\",\n    \"Content-Length\": \"0\",\n    \"Connection\": \"close\"\n  }\n}",
+      "response": {
+        "status": 204,
+        "length": 0,
+        "body": "",
+        "headers": {
+          "SeRvEr": "owned-fixture",
+          "X-POWERED-BY": "owned-runtime",
+          "x-AspNet-Version": "fixture-version",
+          "Servers": "exclude-this",
+          "server-extra": "exclude-this-too",
+          "X-Fixture-Run": "burp19-98f205501104",
+          "Content-Length": "0",
+          "Connection": "close"
+        }
+      },
+      "elapsed_s": 0.0037609999999403954
+    },
+    {
+      "name": "httpfail-send_request",
+      "kind": "tool",
+      "input": {
+        "tool": "send_request",
+        "params": {
+          "url": "http://127.0.0.1:18089/burp19-98f205501104/httpfail/0",
+          "method": "GET"
+        }
+      },
+      "started_s": 0.21472200000062003,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "351"
+        ]
+      ],
+      "raw_response": "{\n  \"status\": 500,\n  \"length\": 4,\n  \"body\": \"FAIL\",\n  \"headers\": {\n    \"SeRvEr\": \"owned-fixture\",\n    \"X-POWERED-BY\": \"owned-runtime\",\n    \"x-AspNet-Version\": \"fixture-version\",\n    \"Servers\": \"exclude-this\",\n    \"server-extra\": \"exclude-this-too\",\n    \"X-Fixture-Run\": \"burp19-98f205501104\",\n    \"Content-Length\": \"4\",\n    \"Connection\": \"close\"\n  }\n}",
+      "response": {
+        "status": 500,
+        "length": 4,
+        "body": "FAIL",
+        "headers": {
+          "SeRvEr": "owned-fixture",
+          "X-POWERED-BY": "owned-runtime",
+          "x-AspNet-Version": "fixture-version",
+          "Servers": "exclude-this",
+          "server-extra": "exclude-this-too",
+          "X-Fixture-Run": "burp19-98f205501104",
+          "Content-Length": "4",
+          "Connection": "close"
+        }
+      },
+      "elapsed_s": 0.00294190000204253
+    },
+    {
+      "name": "disconnect-repeater_send",
+      "kind": "tool",
+      "input": {
+        "tool": "repeater_send",
+        "params": {
+          "request": "GET /burp19-98f205501104/disconnect/0 HTTP/1.1\r\nHost: 127.0.0.1:18089\r\n\r\n",
+          "host": "127.0.0.1",
+          "port": 18089,
+          "https": false
+        }
+      },
+      "started_s": 0.21774240000013378,
+      "failures": [
+        "AssertionError: A missing HTTP response must return an operation error"
+      ],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "46"
+        ]
+      ],
+      "raw_response": "{\n  \"status\": 0,\n  \"length\": 0,\n  \"body\": \"\"\n}",
+      "response": {
+        "status": 0,
+        "length": 0,
+        "body": ""
+      },
+      "elapsed_s": 0.0023614000019733794
+    },
+    {
+      "name": "empty-repeater_send",
+      "kind": "tool",
+      "input": {
+        "tool": "repeater_send",
+        "params": {
+          "request": "GET /burp19-98f205501104/empty/0 HTTP/1.1\r\nHost: 127.0.0.1:18089\r\n\r\n",
+          "host": "127.0.0.1",
+          "port": 18089,
+          "https": false
+        }
+      },
+      "started_s": 0.22016889999940759,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "48"
+        ]
+      ],
+      "raw_response": "{\n  \"status\": 204,\n  \"length\": 0,\n  \"body\": \"\"\n}",
+      "response": {
+        "status": 204,
+        "length": 0,
+        "body": ""
+      },
+      "elapsed_s": 0.003143000001728069
+    },
+    {
+      "name": "httpfail-repeater_send",
+      "kind": "tool",
+      "input": {
+        "tool": "repeater_send",
+        "params": {
+          "request": "GET /burp19-98f205501104/httpfail/0 HTTP/1.1\r\nHost: 127.0.0.1:18089\r\n\r\n",
+          "host": "127.0.0.1",
+          "port": 18089,
+          "https": false
+        }
+      },
+      "started_s": 0.22337640000114334,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "52"
+        ]
+      ],
+      "raw_response": "{\n  \"status\": 500,\n  \"length\": 4,\n  \"body\": \"FAIL\"\n}",
+      "response": {
+        "status": 500,
+        "length": 4,
+        "body": "FAIL"
+      },
+      "elapsed_s": 0.002562599998782389
+    },
+    {
+      "name": "disconnect-repeater_modify_send",
+      "kind": "tool",
+      "input": {
+        "tool": "repeater_modify_send",
+        "params": {
+          "request": "GET /burp19-98f205501104/disconnect/0 HTTP/1.1\r\nHost: 127.0.0.1:18089\r\n\r\n",
+          "host": "127.0.0.1",
+          "port": 18089,
+          "https": false
+        }
+      },
+      "started_s": 0.22601900000154274,
+      "failures": [
+        "AssertionError: A missing HTTP response must return an operation error"
+      ],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "46"
+        ]
+      ],
+      "raw_response": "{\n  \"status\": 0,\n  \"length\": 0,\n  \"body\": \"\"\n}",
+      "response": {
+        "status": 0,
+        "length": 0,
+        "body": ""
+      },
+      "elapsed_s": 0.0023342999993474223
+    },
+    {
+      "name": "empty-repeater_modify_send",
+      "kind": "tool",
+      "input": {
+        "tool": "repeater_modify_send",
+        "params": {
+          "request": "GET /burp19-98f205501104/empty/0 HTTP/1.1\r\nHost: 127.0.0.1:18089\r\n\r\n",
+          "host": "127.0.0.1",
+          "port": 18089,
+          "https": false
+        }
+      },
+      "started_s": 0.22841780000089784,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "48"
+        ]
+      ],
+      "raw_response": "{\n  \"status\": 204,\n  \"length\": 0,\n  \"body\": \"\"\n}",
+      "response": {
+        "status": 204,
+        "length": 0,
+        "body": ""
+      },
+      "elapsed_s": 0.027383299999200972
+    },
+    {
+      "name": "httpfail-repeater_modify_send",
+      "kind": "tool",
+      "input": {
+        "tool": "repeater_modify_send",
+        "params": {
+          "request": "GET /burp19-98f205501104/httpfail/0 HTTP/1.1\r\nHost: 127.0.0.1:18089\r\n\r\n",
+          "host": "127.0.0.1",
+          "port": 18089,
+          "https": false
+        }
+      },
+      "started_s": 0.2558950000020559,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "52"
+        ]
+      ],
+      "raw_response": "{\n  \"status\": 500,\n  \"length\": 4,\n  \"body\": \"FAIL\"\n}",
+      "response": {
+        "status": 500,
+        "length": 4,
+        "body": "FAIL"
+      },
+      "elapsed_s": 0.002781699997285614
+    },
+    {
+      "name": "padding-1025-intruder_attack",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_attack",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/ok/@@",
+          "from": 7,
+          "to": 7,
+          "threads": 2,
+          "success_length_not": 99,
+          "pad_digits": 1025
+        }
+      },
+      "started_s": 0.25878930000180844,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "56"
+        ]
+      ],
+      "raw_response": "{\n  \"error\": \"pad_digits must be no greater than 1024\"\n}",
+      "response": {
+        "error": "pad_digits must be no greater than 1024"
+      },
+      "elapsed_s": 0.0013440999973681755
+    },
+    {
+      "name": "padding-2147483647-intruder_attack",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_attack",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/ok/@@",
+          "from": 1,
+          "to": 0,
+          "threads": 2,
+          "success_length_not": 99,
+          "pad_digits": 2147483647
+        }
+      },
+      "started_s": 0.2601962000007916,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "56"
+        ]
+      ],
+      "raw_response": "{\n  \"error\": \"pad_digits must be no greater than 1024\"\n}",
+      "response": {
+        "error": "pad_digits must be no greater than 1024"
+      },
+      "elapsed_s": 0.0016346000011253636
+    },
+    {
+      "name": "padding-4294967297-intruder_attack",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_attack",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/ok/@@",
+          "from": 1,
+          "to": 0,
+          "threads": 2,
+          "success_length_not": 99,
+          "pad_digits": 4294967297
+        }
+      },
+      "started_s": 0.2619157000008272,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "56"
+        ]
+      ],
+      "raw_response": "{\n  \"error\": \"pad_digits must be no greater than 1024\"\n}",
+      "response": {
+        "error": "pad_digits must be no greater than 1024"
+      },
+      "elapsed_s": 0.0015853000004426576
+    },
+    {
+      "name": "padding-0-intruder_attack",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_attack",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/ok/@@",
+          "from": 7,
+          "to": 7,
+          "threads": 2,
+          "success_length_not": 99,
+          "pad_digits": 0
+        }
+      },
+      "started_s": 0.2635587000004307,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "185"
+        ]
+      ],
+      "raw_response": "{\n  \"total_requests\": 1,\n  \"errors\": 0,\n  \"hits\": 1,\n  \"hit_details\": [\n    {\n      \"payload\": \"7\",\n      \"status\": 200,\n      \"length\": 9,\n      \"body_preview\": \"Token:abc\"\n    }\n  ]\n}",
+      "response": {
+        "total_requests": 1,
+        "errors": 0,
+        "hits": 1,
+        "hit_details": [
+          {
+            "payload": "7",
+            "status": 200,
+            "length": 9,
+            "body_preview": "Token:abc"
+          }
+        ]
+      },
+      "elapsed_s": 0.0030537999991793185
+    },
+    {
+      "name": "padding--4294967293-intruder_attack",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_attack",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/ok/@@",
+          "from": 7,
+          "to": 7,
+          "threads": 2,
+          "success_length_not": 99,
+          "pad_digits": -4294967293
+        }
+      },
+      "started_s": 0.2666843000006338,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "185"
+        ]
+      ],
+      "raw_response": "{\n  \"total_requests\": 1,\n  \"errors\": 0,\n  \"hits\": 1,\n  \"hit_details\": [\n    {\n      \"payload\": \"7\",\n      \"status\": 200,\n      \"length\": 9,\n      \"body_preview\": \"Token:abc\"\n    }\n  ]\n}",
+      "response": {
+        "total_requests": 1,
+        "errors": 0,
+        "hits": 1,
+        "hit_details": [
+          {
+            "payload": "7",
+            "status": 200,
+            "length": 9,
+            "body_preview": "Token:abc"
+          }
+        ]
+      },
+      "elapsed_s": 0.005518699999811361
+    },
+    {
+      "name": "padding-3-intruder_attack",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_attack",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/ok/@@",
+          "from": 7,
+          "to": 7,
+          "threads": 2,
+          "success_length_not": 99,
+          "pad_digits": 3
+        }
+      },
+      "started_s": 0.27229060000172467,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "187"
+        ]
+      ],
+      "raw_response": "{\n  \"total_requests\": 1,\n  \"errors\": 0,\n  \"hits\": 1,\n  \"hit_details\": [\n    {\n      \"payload\": \"007\",\n      \"status\": 200,\n      \"length\": 9,\n      \"body_preview\": \"Token:abc\"\n    }\n  ]\n}",
+      "response": {
+        "total_requests": 1,
+        "errors": 0,
+        "hits": 1,
+        "hit_details": [
+          {
+            "payload": "007",
+            "status": 200,
+            "length": 9,
+            "body_preview": "Token:abc"
+          }
+        ]
+      },
+      "elapsed_s": 0.0032815999984450173
+    },
+    {
+      "name": "padding-1024-intruder_attack",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_attack",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/ok/@@",
+          "from": 7,
+          "to": 7,
+          "threads": 2,
+          "success_length_not": 99,
+          "pad_digits": 1024
+        }
+      },
+      "started_s": 0.27564780000102473,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "1208"
+        ]
+      ],
+      "raw_response": "{\n  \"total_requests\": 1,\n  \"errors\": 0,\n  \"hits\": 1,\n  \"hit_details\": [\n    {\n      \"payload\": \"0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007\",\n      \"status\": 200,\n      \"length\": 9,\n      \"body_preview\": \"Token:abc\"\n    }\n  ]\n}",
+      "response": {
+        "total_requests": 1,
+        "errors": 0,
+        "hits": 1,
+        "hit_details": [
+          {
+            "payload": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007",
+            "status": 200,
+            "length": 9,
+            "body_preview": "Token:abc"
+          }
+        ]
+      },
+      "elapsed_s": 0.0030583000007027294
+    },
+    {
+      "name": "padding-1025-intruder_attack_async",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_attack_async",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/ok/@@",
+          "from": 7,
+          "to": 7,
+          "threads": 2,
+          "success_length_not": 99,
+          "pad_digits": 1025
+        }
+      },
+      "started_s": 0.2788304000023345,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "56"
+        ]
+      ],
+      "raw_response": "{\n  \"error\": \"pad_digits must be no greater than 1024\"\n}",
+      "response": {
+        "error": "pad_digits must be no greater than 1024"
+      },
+      "elapsed_s": 0.0011379999996279366
+    },
+    {
+      "name": "padding-2147483647-intruder_attack_async",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_attack_async",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/ok/@@",
+          "from": 1,
+          "to": 0,
+          "threads": 2,
+          "success_length_not": 99,
+          "pad_digits": 2147483647
+        }
+      },
+      "started_s": 0.2800353999991785,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "56"
+        ]
+      ],
+      "raw_response": "{\n  \"error\": \"pad_digits must be no greater than 1024\"\n}",
+      "response": {
+        "error": "pad_digits must be no greater than 1024"
+      },
+      "elapsed_s": 0.001126500003010733
+    },
+    {
+      "name": "padding-4294967297-intruder_attack_async",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_attack_async",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/ok/@@",
+          "from": 1,
+          "to": 0,
+          "threads": 2,
+          "success_length_not": 99,
+          "pad_digits": 4294967297
+        }
+      },
+      "started_s": 0.28122740000253543,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "56"
+        ]
+      ],
+      "raw_response": "{\n  \"error\": \"pad_digits must be no greater than 1024\"\n}",
+      "response": {
+        "error": "pad_digits must be no greater than 1024"
+      },
+      "elapsed_s": 0.0009976999972423073
+    },
+    {
+      "name": "padding-0-intruder_attack_async",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_attack_async",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/ok/@@",
+          "from": 7,
+          "to": 7,
+          "threads": 2,
+          "success_length_not": 99,
+          "pad_digits": 0
+        }
+      },
+      "started_s": 0.28227700000206823,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "164"
+        ]
+      ],
+      "raw_response": "{\n  \"total_requests\": 1,\n  \"errors\": 0,\n  \"hits\": 1,\n  \"hit_details\": [\n    {\n      \"payload\": \"7\",\n      \"length\": 9,\n      \"body_preview\": \"Token:abc\"\n    }\n  ]\n}",
+      "response": {
+        "total_requests": 1,
+        "errors": 0,
+        "hits": 1,
+        "hit_details": [
+          {
+            "payload": "7",
+            "length": 9,
+            "body_preview": "Token:abc"
+          }
+        ]
+      },
+      "elapsed_s": 0.004046899997774744
+    },
+    {
+      "name": "padding--4294967293-intruder_attack_async",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_attack_async",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/ok/@@",
+          "from": 7,
+          "to": 7,
+          "threads": 2,
+          "success_length_not": 99,
+          "pad_digits": -4294967293
+        }
+      },
+      "started_s": 0.2863825000022189,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "164"
+        ]
+      ],
+      "raw_response": "{\n  \"total_requests\": 1,\n  \"errors\": 0,\n  \"hits\": 1,\n  \"hit_details\": [\n    {\n      \"payload\": \"7\",\n      \"length\": 9,\n      \"body_preview\": \"Token:abc\"\n    }\n  ]\n}",
+      "response": {
+        "total_requests": 1,
+        "errors": 0,
+        "hits": 1,
+        "hit_details": [
+          {
+            "payload": "7",
+            "length": 9,
+            "body_preview": "Token:abc"
+          }
+        ]
+      },
+      "elapsed_s": 0.0027945999972871505
+    },
+    {
+      "name": "padding-3-intruder_attack_async",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_attack_async",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/ok/@@",
+          "from": 7,
+          "to": 7,
+          "threads": 2,
+          "success_length_not": 99,
+          "pad_digits": 3
+        }
+      },
+      "started_s": 0.2892305000023043,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "166"
+        ]
+      ],
+      "raw_response": "{\n  \"total_requests\": 1,\n  \"errors\": 0,\n  \"hits\": 1,\n  \"hit_details\": [\n    {\n      \"payload\": \"007\",\n      \"length\": 9,\n      \"body_preview\": \"Token:abc\"\n    }\n  ]\n}",
+      "response": {
+        "total_requests": 1,
+        "errors": 0,
+        "hits": 1,
+        "hit_details": [
+          {
+            "payload": "007",
+            "length": 9,
+            "body_preview": "Token:abc"
+          }
+        ]
+      },
+      "elapsed_s": 0.0029247999991639517
+    },
+    {
+      "name": "padding-1024-intruder_attack_async",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_attack_async",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/ok/@@",
+          "from": 7,
+          "to": 7,
+          "threads": 2,
+          "success_length_not": 99,
+          "pad_digits": 1024
+        }
+      },
+      "started_s": 0.2922156000022369,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "1187"
+        ]
+      ],
+      "raw_response": "{\n  \"total_requests\": 1,\n  \"errors\": 0,\n  \"hits\": 1,\n  \"hit_details\": [\n    {\n      \"payload\": \"0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007\",\n      \"length\": 9,\n      \"body_preview\": \"Token:abc\"\n    }\n  ]\n}",
+      "response": {
+        "total_requests": 1,
+        "errors": 0,
+        "hits": 1,
+        "hit_details": [
+          {
+            "payload": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007",
+            "length": 9,
+            "body_preview": "Token:abc"
+          }
+        ]
+      },
+      "elapsed_s": 0.003760600000532577
+    },
+    {
+      "name": "padding-1025-intruder_with_options",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_with_options",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/ok/@@",
+          "from": 7,
+          "to": 7,
+          "threads": 2,
+          "success_length_not": 99,
+          "pad_digits": 1025
+        }
+      },
+      "started_s": 0.2960640000019339,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "56"
+        ]
+      ],
+      "raw_response": "{\n  \"error\": \"pad_digits must be no greater than 1024\"\n}",
+      "response": {
+        "error": "pad_digits must be no greater than 1024"
+      },
+      "elapsed_s": 0.0010228999999526422
+    },
+    {
+      "name": "padding-2147483647-intruder_with_options",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_with_options",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/ok/@@",
+          "from": 1,
+          "to": 0,
+          "threads": 2,
+          "success_length_not": 99,
+          "pad_digits": 2147483647
+        }
+      },
+      "started_s": 0.29714310000053956,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "56"
+        ]
+      ],
+      "raw_response": "{\n  \"error\": \"pad_digits must be no greater than 1024\"\n}",
+      "response": {
+        "error": "pad_digits must be no greater than 1024"
+      },
+      "elapsed_s": 0.0013337999989744276
+    },
+    {
+      "name": "padding-4294967297-intruder_with_options",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_with_options",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/ok/@@",
+          "from": 1,
+          "to": 0,
+          "threads": 2,
+          "success_length_not": 99,
+          "pad_digits": 4294967297
+        }
+      },
+      "started_s": 0.29852840000239667,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "56"
+        ]
+      ],
+      "raw_response": "{\n  \"error\": \"pad_digits must be no greater than 1024\"\n}",
+      "response": {
+        "error": "pad_digits must be no greater than 1024"
+      },
+      "elapsed_s": 0.0011561999999685213
+    },
+    {
+      "name": "padding-0-intruder_with_options",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_with_options",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/ok/@@",
+          "from": 7,
+          "to": 7,
+          "threads": 2,
+          "success_length_not": 99,
+          "pad_digits": 0
+        }
+      },
+      "started_s": 0.299734800002625,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "150"
+        ]
+      ],
+      "raw_response": "{\n  \"total_requests\": 1,\n  \"errors\": 0,\n  \"hits\": 1,\n  \"hit_details\": [\n    {\n      \"payload\": \"7\",\n      \"status\": 200,\n      \"length\": 9\n    }\n  ]\n}",
+      "response": {
+        "total_requests": 1,
+        "errors": 0,
+        "hits": 1,
+        "hit_details": [
+          {
+            "payload": "7",
+            "status": 200,
+            "length": 9
+          }
+        ]
+      },
+      "elapsed_s": 0.02016419999927166
+    },
+    {
+      "name": "padding--4294967293-intruder_with_options",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_with_options",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/ok/@@",
+          "from": 7,
+          "to": 7,
+          "threads": 2,
+          "success_length_not": 99,
+          "pad_digits": -4294967293
+        }
+      },
+      "started_s": 0.31996129999970435,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "150"
+        ]
+      ],
+      "raw_response": "{\n  \"total_requests\": 1,\n  \"errors\": 0,\n  \"hits\": 1,\n  \"hit_details\": [\n    {\n      \"payload\": \"7\",\n      \"status\": 200,\n      \"length\": 9\n    }\n  ]\n}",
+      "response": {
+        "total_requests": 1,
+        "errors": 0,
+        "hits": 1,
+        "hit_details": [
+          {
+            "payload": "7",
+            "status": 200,
+            "length": 9
+          }
+        ]
+      },
+      "elapsed_s": 0.004002800000307616
+    },
+    {
+      "name": "padding-3-intruder_with_options",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_with_options",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/ok/@@",
+          "from": 7,
+          "to": 7,
+          "threads": 2,
+          "success_length_not": 99,
+          "pad_digits": 3
+        }
+      },
+      "started_s": 0.3240423000024748,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "152"
+        ]
+      ],
+      "raw_response": "{\n  \"total_requests\": 1,\n  \"errors\": 0,\n  \"hits\": 1,\n  \"hit_details\": [\n    {\n      \"payload\": \"007\",\n      \"status\": 200,\n      \"length\": 9\n    }\n  ]\n}",
+      "response": {
+        "total_requests": 1,
+        "errors": 0,
+        "hits": 1,
+        "hit_details": [
+          {
+            "payload": "007",
+            "status": 200,
+            "length": 9
+          }
+        ]
+      },
+      "elapsed_s": 0.004248299999744631
+    },
+    {
+      "name": "padding-1024-intruder_with_options",
+      "kind": "tool",
+      "input": {
+        "tool": "intruder_with_options",
+        "params": {
+          "url_template": "http://127.0.0.1:18089/burp19-98f205501104/ok/@@",
+          "from": 7,
+          "to": 7,
+          "threads": 2,
+          "success_length_not": 99,
+          "pad_digits": 1024
+        }
+      },
+      "started_s": 0.32836800000222865,
+      "failures": [],
+      "http_status": 200,
+      "response_headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Mon, 12 Oct 2026 09:25:05 GMT"
+        ],
+        [
+          "Access-Control-Allow-Origin",
+          "*"
+        ],
+        [
+          "Access-Control-Allow-Methods",
+          "GET, POST, OPTIONS"
+        ],
+        [
+          "Access-Control-Allow-Headers",
+          "Content-Type"
+        ],
+        [
+          "Connection",
+          "keep-alive"
+        ],
+        [
+          "Content-Length",
+          "1173"
+        ]
+      ],
+      "raw_response": "{\n  \"total_requests\": 1,\n  \"errors\": 0,\n  \"hits\": 1,\n  \"hit_details\": [\n    {\n      \"payload\": \"0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007\",\n      \"status\": 200,\n      \"length\": 9\n    }\n  ]\n}",
+      "response": {
+        "total_requests": 1,
+        "errors": 0,
+        "hits": 1,
+        "hit_details": [
+          {
+            "payload": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007",
+            "status": 200,
+            "length": 9
+          }
+        ]
+      },
+      "elapsed_s": 0.004109499997866806
+    }
+  ],
+  "fixture_events": [
+    {
+      "t": 0.04038360000049579,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/hist/old"
+    },
+    {
+      "t": 0.04048560000228463,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/hist/old",
+      "status": 200,
+      "body_bytes": 19
+    },
+    {
+      "t": 0.040597600000182865,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/hist/old"
+    },
+    {
+      "t": 0.04061260000162292,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/hist/old"
+    },
+    {
+      "t": 0.044611299999814946,
+      "event": "accepted",
+      "active": 1,
+      "method": "POST",
+      "path": "/burp19-98f205501104/hist/post"
+    },
+    {
+      "t": 0.0446537999996508,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/hist/post",
+      "status": 201,
+      "body_bytes": 19
+    },
+    {
+      "t": 0.044729700002790196,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/hist/post"
+    },
+    {
+      "t": 0.04474510000000009,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/hist/post"
+    },
+    {
+      "t": 0.0715490000002319,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/hist/missing"
+    },
+    {
+      "t": 0.0716195000022708,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/hist/missing",
+      "status": 404,
+      "body_bytes": 7
+    },
+    {
+      "t": 0.0717027999999118,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/hist/missing"
+    },
+    {
+      "t": 0.07171390000075917,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/hist/missing"
+    },
+    {
+      "t": 0.08626809999987017,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/hist/new"
+    },
+    {
+      "t": 0.0863205999994534,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/hist/new",
+      "status": 200,
+      "body_bytes": 19
+    },
+    {
+      "t": 0.0864562000024307,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/hist/new"
+    },
+    {
+      "t": 0.08647660000133328,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/hist/new"
+    },
+    {
+      "t": 0.1100566000022809,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/ok/0"
+    },
+    {
+      "t": 0.110091000002285,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/0",
+      "status": 200,
+      "body_bytes": 9
+    },
+    {
+      "t": 0.11039549999986775,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/0"
+    },
+    {
+      "t": 0.1104421000018192,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/ok/0"
+    },
+    {
+      "t": 0.13488370000050054,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/ok/000"
+    },
+    {
+      "t": 0.13491840000278899,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/000",
+      "status": 200,
+      "body_bytes": 9
+    },
+    {
+      "t": 0.13498430000254302,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/000"
+    },
+    {
+      "t": 0.1349965000008524,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/ok/000"
+    },
+    {
+      "t": 0.13646440000229632,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/ok/001"
+    },
+    {
+      "t": 0.13651200000094832,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/001",
+      "status": 200,
+      "body_bytes": 9
+    },
+    {
+      "t": 0.13658090000171796,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/001"
+    },
+    {
+      "t": 0.13659340000231168,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/ok/001"
+    },
+    {
+      "t": 0.13858380000237958,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/ok/002"
+    },
+    {
+      "t": 0.13862000000153785,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/002",
+      "status": 200,
+      "body_bytes": 9
+    },
+    {
+      "t": 0.1386875999996846,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/002"
+    },
+    {
+      "t": 0.13870020000103978,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/ok/002"
+    },
+    {
+      "t": 0.1433011000008264,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/httpfail/000"
+    },
+    {
+      "t": 0.14335030000074767,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/httpfail/000",
+      "status": 500,
+      "body_bytes": 4
+    },
+    {
+      "t": 0.14341820000117877,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/httpfail/000"
+    },
+    {
+      "t": 0.14346049999949173,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/httpfail/000"
+    },
+    {
+      "t": 0.145234800002072,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/httpfail/001"
+    },
+    {
+      "t": 0.14526710000063758,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/httpfail/001",
+      "status": 500,
+      "body_bytes": 4
+    },
+    {
+      "t": 0.14532150000013644,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/httpfail/001"
+    },
+    {
+      "t": 0.14533220000157598,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/httpfail/001"
+    },
+    {
+      "t": 0.1468739000010828,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/httpfail/002"
+    },
+    {
+      "t": 0.14690500000142492,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/httpfail/002",
+      "status": 500,
+      "body_bytes": 4
+    },
+    {
+      "t": 0.1469747000010102,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/httpfail/002"
+    },
+    {
+      "t": 0.1469853000016883,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/httpfail/002"
+    },
+    {
+      "t": 0.15057350000279257,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/disconnect/0"
+    },
+    {
+      "t": 0.1506532999992487,
+      "event": "fixture_closed_socket",
+      "active": 1,
+      "path": "/burp19-98f205501104/disconnect/0"
+    },
+    {
+      "t": 0.1506678000005195,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/disconnect/0"
+    },
+    {
+      "t": 0.15356320000137202,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/ok/000"
+    },
+    {
+      "t": 0.1535905000018829,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/000",
+      "status": 200,
+      "body_bytes": 9
+    },
+    {
+      "t": 0.15364899999985937,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/000"
+    },
+    {
+      "t": 0.15365920000112965,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/ok/000"
+    },
+    {
+      "t": 0.15411410000160686,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/ok/001"
+    },
+    {
+      "t": 0.15415240000220365,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/001",
+      "status": 200,
+      "body_bytes": 9
+    },
+    {
+      "t": 0.1542211000014504,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/001"
+    },
+    {
+      "t": 0.15422980000221287,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/ok/001"
+    },
+    {
+      "t": 0.15482540000084555,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/ok/002"
+    },
+    {
+      "t": 0.15486059999966528,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/002",
+      "status": 200,
+      "body_bytes": 9
+    },
+    {
+      "t": 0.15493269999933545,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/002"
+    },
+    {
+      "t": 0.154945599999337,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/ok/002"
+    },
+    {
+      "t": 0.15827680000074906,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/httpfail/001"
+    },
+    {
+      "t": 0.15832080000109272,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/httpfail/001",
+      "status": 500,
+      "body_bytes": 4
+    },
+    {
+      "t": 0.15848920000280486,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/httpfail/001"
+    },
+    {
+      "t": 0.15855890000239015,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/httpfail/001"
+    },
+    {
+      "t": 0.15867550000257324,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/httpfail/000"
+    },
+    {
+      "t": 0.1586992000011378,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/httpfail/000",
+      "status": 500,
+      "body_bytes": 4
+    },
+    {
+      "t": 0.15881290000106674,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/httpfail/000"
+    },
+    {
+      "t": 0.1588389000025927,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/httpfail/000"
+    },
+    {
+      "t": 0.15995370000018738,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/httpfail/002"
+    },
+    {
+      "t": 0.15998160000162898,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/httpfail/002",
+      "status": 500,
+      "body_bytes": 4
+    },
+    {
+      "t": 0.1600499000014679,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/httpfail/002"
+    },
+    {
+      "t": 0.1600633000016387,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/httpfail/002"
+    },
+    {
+      "t": 0.1640822000008484,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/disconnect/0"
+    },
+    {
+      "t": 0.16414699999950244,
+      "event": "fixture_closed_socket",
+      "active": 1,
+      "path": "/burp19-98f205501104/disconnect/0"
+    },
+    {
+      "t": 0.16415950000009616,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/disconnect/0"
+    },
+    {
+      "t": 0.16763540000101784,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/ok/0"
+    },
+    {
+      "t": 0.16767710000203806,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/0",
+      "status": 200,
+      "body_bytes": 9
+    },
+    {
+      "t": 0.16774780000196188,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/0"
+    },
+    {
+      "t": 0.16776369999934104,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/ok/0"
+    },
+    {
+      "t": 0.17103280000083032,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/empty/0"
+    },
+    {
+      "t": 0.17106670000066515,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/empty/0",
+      "status": 204,
+      "body_bytes": 0
+    },
+    {
+      "t": 0.17112059999999474,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/empty/0"
+    },
+    {
+      "t": 0.17113220000101137,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/empty/0"
+    },
+    {
+      "t": 0.17495280000002822,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/empty/0"
+    },
+    {
+      "t": 0.17499809999935678,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/empty/0",
+      "status": 204,
+      "body_bytes": 0
+    },
+    {
+      "t": 0.17506110000249464,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/empty/0"
+    },
+    {
+      "t": 0.175074400001904,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/empty/0"
+    },
+    {
+      "t": 0.17847400000027847,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/empty/0"
+    },
+    {
+      "t": 0.178509600002144,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/empty/0",
+      "status": 204,
+      "body_bytes": 0
+    },
+    {
+      "t": 0.17856880000181263,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/empty/0"
+    },
+    {
+      "t": 0.17858139999952982,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/empty/0"
+    },
+    {
+      "t": 0.18168270000023767,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/disconnect/0"
+    },
+    {
+      "t": 0.18174809999982244,
+      "event": "fixture_closed_socket",
+      "active": 1,
+      "path": "/burp19-98f205501104/disconnect/0"
+    },
+    {
+      "t": 0.18176120000134688,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/disconnect/0"
+    },
+    {
+      "t": 0.18481550000069547,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/disconnect/0"
+    },
+    {
+      "t": 0.18489640000188956,
+      "event": "fixture_closed_socket",
+      "active": 1,
+      "path": "/burp19-98f205501104/disconnect/0"
+    },
+    {
+      "t": 0.1849130000009609,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/disconnect/0"
+    },
+    {
+      "t": 0.1884049000000232,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/disconnect/0"
+    },
+    {
+      "t": 0.18846530000155326,
+      "event": "fixture_closed_socket",
+      "active": 1,
+      "path": "/burp19-98f205501104/disconnect/0"
+    },
+    {
+      "t": 0.18847860000096262,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/disconnect/0"
+    },
+    {
+      "t": 0.19140230000266456,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/disconnect/0"
+    },
+    {
+      "t": 0.1914716999999655,
+      "event": "fixture_closed_socket",
+      "active": 1,
+      "path": "/burp19-98f205501104/disconnect/0"
+    },
+    {
+      "t": 0.19148430000132066,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/disconnect/0"
+    },
+    {
+      "t": 0.19407270000010612,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/disconnect/0"
+    },
+    {
+      "t": 0.1941292000010435,
+      "event": "fixture_closed_socket",
+      "active": 1,
+      "path": "/burp19-98f205501104/disconnect/0"
+    },
+    {
+      "t": 0.194146500001807,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/disconnect/0"
+    },
+    {
+      "t": 0.20924200000081328,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/disconnect/0"
+    },
+    {
+      "t": 0.20930439999938244,
+      "event": "fixture_closed_socket",
+      "active": 1,
+      "path": "/burp19-98f205501104/disconnect/0"
+    },
+    {
+      "t": 0.2093155000002298,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/disconnect/0"
+    },
+    {
+      "t": 0.21361330000218004,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/empty/0"
+    },
+    {
+      "t": 0.21365879999939352,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/empty/0",
+      "status": 204,
+      "body_bytes": 0
+    },
+    {
+      "t": 0.21371970000109286,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/empty/0"
+    },
+    {
+      "t": 0.2137317000015173,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/empty/0"
+    },
+    {
+      "t": 0.21664349999991828,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/httpfail/0"
+    },
+    {
+      "t": 0.21667380000144476,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/httpfail/0",
+      "status": 500,
+      "body_bytes": 4
+    },
+    {
+      "t": 0.2167336000020441,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/httpfail/0"
+    },
+    {
+      "t": 0.21674410000196076,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/httpfail/0"
+    },
+    {
+      "t": 0.21952190000229166,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/disconnect/0"
+    },
+    {
+      "t": 0.21960870000111754,
+      "event": "fixture_closed_socket",
+      "active": 1,
+      "path": "/burp19-98f205501104/disconnect/0"
+    },
+    {
+      "t": 0.21962809999968158,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/disconnect/0"
+    },
+    {
+      "t": 0.22243820000221604,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/empty/0"
+    },
+    {
+      "t": 0.2224755000024743,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/empty/0",
+      "status": 204,
+      "body_bytes": 0
+    },
+    {
+      "t": 0.22253940000155126,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/empty/0"
+    },
+    {
+      "t": 0.22255040000163717,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/empty/0"
+    },
+    {
+      "t": 0.2250437000002421,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/httpfail/0"
+    },
+    {
+      "t": 0.22507630000109202,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/httpfail/0",
+      "status": 500,
+      "body_bytes": 4
+    },
+    {
+      "t": 0.22513230000186013,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/httpfail/0"
+    },
+    {
+      "t": 0.22514150000279187,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/httpfail/0"
+    },
+    {
+      "t": 0.227843100001337,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/disconnect/0"
+    },
+    {
+      "t": 0.22791620000134571,
+      "event": "fixture_closed_socket",
+      "active": 1,
+      "path": "/burp19-98f205501104/disconnect/0"
+    },
+    {
+      "t": 0.22793390000151703,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/disconnect/0"
+    },
+    {
+      "t": 0.25497080000059213,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/empty/0"
+    },
+    {
+      "t": 0.2550054999992426,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/empty/0",
+      "status": 204,
+      "body_bytes": 0
+    },
+    {
+      "t": 0.255058700000518,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/empty/0"
+    },
+    {
+      "t": 0.25507070000094245,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/empty/0"
+    },
+    {
+      "t": 0.25800470000103815,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/httpfail/0"
+    },
+    {
+      "t": 0.25804820000121254,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/httpfail/0",
+      "status": 500,
+      "body_bytes": 4
+    },
+    {
+      "t": 0.2581246000008832,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/httpfail/0"
+    },
+    {
+      "t": 0.2581361000011384,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/httpfail/0"
+    },
+    {
+      "t": 0.2654072000004817,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/ok/7"
+    },
+    {
+      "t": 0.2654562999996415,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/7",
+      "status": 200,
+      "body_bytes": 9
+    },
+    {
+      "t": 0.26553810000041267,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/7"
+    },
+    {
+      "t": 0.2655498999993142,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/ok/7"
+    },
+    {
+      "t": 0.27120470000227215,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/ok/7"
+    },
+    {
+      "t": 0.2712377000025299,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/7",
+      "status": 200,
+      "body_bytes": 9
+    },
+    {
+      "t": 0.27130640000177664,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/7"
+    },
+    {
+      "t": 0.2713179000020318,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/ok/7"
+    },
+    {
+      "t": 0.2743932000012137,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/ok/007"
+    },
+    {
+      "t": 0.2744371000007959,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/007",
+      "status": 200,
+      "body_bytes": 9
+    },
+    {
+      "t": 0.27451420000215876,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/007"
+    },
+    {
+      "t": 0.2745286000026681,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/ok/007"
+    },
+    {
+      "t": 0.2777373000026273,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/ok/0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007"
+    },
+    {
+      "t": 0.277776900002209,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007",
+      "status": 200,
+      "body_bytes": 9
+    },
+    {
+      "t": 0.2778528000017104,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007"
+    },
+    {
+      "t": 0.2778729000019666,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/ok/0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007"
+    },
+    {
+      "t": 0.2851708000016515,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/ok/7"
+    },
+    {
+      "t": 0.2852234000019962,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/7",
+      "status": 200,
+      "body_bytes": 9
+    },
+    {
+      "t": 0.2853138000027684,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/7"
+    },
+    {
+      "t": 0.2853324000025168,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/ok/7"
+    },
+    {
+      "t": 0.28855400000247755,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/ok/7"
+    },
+    {
+      "t": 0.28859550000197487,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/7",
+      "status": 200,
+      "body_bytes": 9
+    },
+    {
+      "t": 0.2886720999995305,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/7"
+    },
+    {
+      "t": 0.288684999999532,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/ok/7"
+    },
+    {
+      "t": 0.2910990000018501,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/ok/007"
+    },
+    {
+      "t": 0.29113019999931566,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/007",
+      "status": 200,
+      "body_bytes": 9
+    },
+    {
+      "t": 0.2912023000026238,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/007"
+    },
+    {
+      "t": 0.291213799999241,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/ok/007"
+    },
+    {
+      "t": 0.2950149999996938,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/ok/0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007"
+    },
+    {
+      "t": 0.2950717999992776,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007",
+      "status": 200,
+      "body_bytes": 9
+    },
+    {
+      "t": 0.29515380000157165,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007"
+    },
+    {
+      "t": 0.2951716000025044,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/ok/0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007"
+    },
+    {
+      "t": 0.31857980000131647,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/ok/7"
+    },
+    {
+      "t": 0.3186347000009846,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/7",
+      "status": 200,
+      "body_bytes": 9
+    },
+    {
+      "t": 0.3187130000005709,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/7"
+    },
+    {
+      "t": 0.3187285999993037,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/ok/7"
+    },
+    {
+      "t": 0.3228409000003012,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/ok/7"
+    },
+    {
+      "t": 0.3228908000019146,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/7",
+      "status": 200,
+      "body_bytes": 9
+    },
+    {
+      "t": 0.3229629000015848,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/7"
+    },
+    {
+      "t": 0.3229752000006556,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/ok/7"
+    },
+    {
+      "t": 0.3268936999993457,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/ok/007"
+    },
+    {
+      "t": 0.32693140000264975,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/007",
+      "status": 200,
+      "body_bytes": 9
+    },
+    {
+      "t": 0.3269995000009658,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/007"
+    },
+    {
+      "t": 0.32701190000079805,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/ok/007"
+    },
+    {
+      "t": 0.3312695000022359,
+      "event": "accepted",
+      "active": 1,
+      "method": "GET",
+      "path": "/burp19-98f205501104/ok/0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007"
+    },
+    {
+      "t": 0.331322199999704,
+      "event": "response_attempt",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007",
+      "status": 200,
+      "body_bytes": 9
+    },
+    {
+      "t": 0.3313978000005591,
+      "event": "write_success",
+      "active": 1,
+      "path": "/burp19-98f205501104/ok/0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007"
+    },
+    {
+      "t": 0.33141900000191526,
+      "event": "finished",
+      "active": 0,
+      "path": "/burp19-98f205501104/ok/0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007"
+    }
+  ],
+  "unknowns": [
+    "The actual RequestOptions response-timeout argument is not exposed by the HTTP API.",
+    "Coordinator return does not establish that in-flight transport terminated.",
+    "Fixture arrivals observe network activity, not exact Java task-submission timestamps.",
+    "A successful late fixture write does not prove that Burp consumed the response."
+  ]
+}
