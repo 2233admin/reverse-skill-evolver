@@ -25,7 +25,7 @@ jobs:
           set -e
           
           # 1. 只允许修改 field-journal 目录下的 .md 文件
-          CHANGED_FILES=$(gh pr diff ${{ github.event.pull_request.number }} --name-only)
+          CHANGED_FILES=$(gh api --paginate repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files --jq '.[] | .filename | if contains("\n") or contains("\r") then error("Journal filename contains a line break") else . end')
           echo "Changed files:"
           echo "$CHANGED_FILES"
           
