@@ -420,6 +420,33 @@ frida-ps -U
 
 If `apksigner` / `zipalign` still show as `no` in `tool-index.md`, Android Build-Tools have not been installed yet.
 
+## 6.6 Contributor Verification
+
+Use Python 3.10 or newer, JDK 21 (Temurin in CI), and Gradle 8.7. From the repository root, install the Python test dependencies and run the Python gate (Windows or POSIX):
+
+```sh
+python -m pip install -e ".[test]"
+python -m pytest -q
+```
+
+The Gradle Wrapper downloads pinned Gradle 8.7. Set `JAVA_HOME` to JDK 21 and run the Java gate from `burp-mcp-full`.
+
+Windows (PowerShell):
+
+```powershell
+.\gradlew.bat check --no-daemon
+```
+
+POSIX:
+
+```sh
+./gradlew check --no-daemon
+```
+
+Gradle `check` includes `schedulerRegressionTest`, the scheduler regression suite. Both the Python and Java gates must pass before a change is considered verified. The Project checks workflow runs these same gates on pull requests and pushes to `main`.
+
+Cargo is not applicable: this is a Python/Java repository without a `Cargo.toml`. Do not run `cargo test` as a project gate or add an empty Rust project to satisfy it.
+
 ---
 
 ## 7. How to Integrate with Claude Code / Codex CLI / Other AI Clients

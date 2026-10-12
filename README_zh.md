@@ -418,6 +418,33 @@ frida-ps -U
 
 如果 `apksigner` / `zipalign` 在 `tool-index.md` 里仍然是 `no`，说明 Android Build-Tools 还没补齐。
 
+## 6.6 贡献者验收
+
+使用 Python 3.10 或更新版本、JDK 21（CI 使用 Temurin），以及 Gradle 8.7。在仓库根目录安装 Python 测试依赖并执行 Python 门禁（Windows 或 POSIX 通用）：
+
+```sh
+python -m pip install -e ".[test]"
+python -m pytest -q
+```
+
+Gradle Wrapper 会下载固定版本的 Gradle 8.7。将 `JAVA_HOME` 指向 JDK 21，在 `burp-mcp-full` 目录执行 Java 门禁。
+
+Windows（PowerShell）：
+
+```powershell
+.\gradlew.bat check --no-daemon
+```
+
+POSIX：
+
+```sh
+./gradlew check --no-daemon
+```
+
+Gradle `check` 包含调度器回归测试 `schedulerRegressionTest`。Python 和 Java 两项门禁都通过后，才能视为变更已验证。Project checks 工作流在拉取请求和向 `main` 推送时执行相同门禁。
+
+Cargo 不适用：本仓库是 Python/Java 项目，没有 `Cargo.toml`。不要将 `cargo test` 作为项目门禁，也不要为满足它而添加空 Rust 工程。
+
 ---
 
 ## 7. Claude Code / Codex CLI / 其他 AI 客户端如何接入
