@@ -147,7 +147,14 @@ public class McpHttpServer extends NanoHTTPD {
         }
     }
 
-    /** Return a newest-first filtered history page with filtered indices and the full match count. */
+    /**
+     * Return a newest-first filtered history page with filtered indices and the full match count.
+     * Offset and returned indices are zero-based positions in the filtered order;
+     * they cannot be used as the original history indices expected by proxyDetail.
+     * An offset at or beyond the match count returns an empty page.
+     * @throws IndexOutOfBoundsException if a negative offset precedes the lesser
+     *         of offset + limit and the match count
+     */
     private JsonObject proxyHistory(JsonObject params) {
         JsonObject result = new JsonObject();
         List<ProxyHttpRequestResponse> history = api.proxy().history();
@@ -287,7 +294,10 @@ public class McpHttpServer extends NanoHTTPD {
         return request.toString();
     }
 
-    /** Applies Montoya's response timeout; its connection-establishment timeout remains Burp-controlled. */
+    /**
+     * Send a request with Montoya's response timeout in milliseconds and return its result.
+     * Connection establishment remains Burp-controlled; Montoya runtime exceptions propagate.
+     */
     static HttpRequestResponse sendRequestWithResponseTimeout(Http http, HttpRequest request, long timeoutMs) {
         return http.sendRequest(request, RequestOptions.requestOptions().withResponseTimeout(timeoutMs));
     }
@@ -329,6 +339,11 @@ public class McpHttpServer extends NanoHTTPD {
         /**
          * Run a callback with remaining milliseconds, bounding the wait and propagating failures.
          * Timeout or interruption records cancellation and attempts to interrupt pending work.
+         * The callback receives at least one millisecond; cancellation may leave it running.
+         * @return the callback result
+         * @throws TimeoutException if the deadline expires or the coordinator has already stopped
+         * @throws InterruptedException if the coordinating thread is interrupted
+         * @throws Exception if the callback fails; non-Exception causes remain wrapped in ExecutionException
          */
         <T> T send(LongFunction<T> request) throws Exception {
             if (!canContinue()) {
@@ -431,7 +446,14 @@ public class McpHttpServer extends NanoHTTPD {
         return result;
     }
 
-    /** Run numeric payloads with bounded concurrency and a coordinator deadline, returning counts and hits. */
+    /**
+     * Run numeric payloads with bounded concurrency and a coordinator deadline, returning counts and hits.
+     * The range is inclusive; threads is capped at 50 and must be positive.
+     * A hit stops new submissions while already submitted requests may finish.
+     * Deadline expiry after 120 seconds or interruption returns partial results with
+     * timed_out or interrupted set; cancellation may leave Burp requests running.
+     * Per-request exceptions increment errors; setup exceptions become an error property.
+     */
     private JsonObject intruderAttackAsync(JsonObject params) {
         // Multi-threaded version for high-speed attacks
         JsonObject result = new JsonObject();
@@ -718,7 +740,11 @@ public class McpHttpServer extends NanoHTTPD {
         return result;
     }
 
-    /** Run wordlist payloads within the coordinator deadline and return successful request counts, errors, and hits. */
+    /**
+     * Run wordlist payloads within the coordinator deadline and return counts, errors, and hits.
+     * total_requests counts completed sends even if later response processing fails;
+     * request and response-processing exceptions increment errors; other exceptions become an error property.
+     */
     private JsonObject intruderAttackWordlist(JsonObject params) {
         JsonObject result = new JsonObject();
         try (SequentialAttack attack = new SequentialAttack(result, System.nanoTime() + TimeUnit.SECONDS.toNanos(ATTACK_TIMEOUT_SECONDS))) {
@@ -937,7 +963,11 @@ public class McpHttpServer extends NanoHTTPD {
         return result;
     }
 
-    /** Substitute same-index payloads across parameter lists within the coordinator deadline and summarize results. */
+    /**
+     * Substitute same-index payloads across parameter lists within the coordinator deadline and summarize results.
+     * The first list determines the iteration count. Empty placeholders or accessing
+     * a missing list element produces an error property; per-request exceptions increment errors.
+     */
     private JsonObject intruderPitchfork(JsonObject params) {
         JsonObject result = new JsonObject();
         try (SequentialAttack attack = new SequentialAttack(result, System.nanoTime() + TimeUnit.SECONDS.toNanos(ATTACK_TIMEOUT_SECONDS))) {
@@ -1178,7 +1208,14 @@ public class McpHttpServer extends NanoHTTPD {
         return result;
     }
 
-    /** Run a bounded numeric attack with encoding, throttling, timing, and optional case-sensitive RE2J extraction. */
+    /**
+     * Run a bounded numeric attack with encoding, throttling, timing, and optional case-sensitive RE2J extraction.
+     * throttle_ms and returned time_ms use milliseconds. Only length-based hits
+     * include extraction, using the first full match. Invalid or unsupported regexes
+     * return an error property before any request is sent, even for an empty range.
+     * Per-request exceptions increment errors; deadline expiry or interruption
+     * returns partial results with timed_out or interrupted set.
+     */
     private JsonObject intruderWithOptions(JsonObject params) {
         // Intruder attack with payload processing, throttle, response time, grep extract
         JsonObject result = new JsonObject();

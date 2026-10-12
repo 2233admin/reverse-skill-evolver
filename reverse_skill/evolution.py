@@ -383,8 +383,14 @@ def evolve(candidate_path: Path, catalog_path: Path, fixtures_path: Path, output
     Evaluate the baseline and curated prompt, then reflect on eligible Pareto
     candidates within the evaluation and reflection budgets. Return the report
     and archive inputs, candidates, and results in a new output directory.
-    Invalid inputs or budgets raise ToolOperationError; model failures propagate.
-    The timeout in seconds applies to each model call.
+    max_evaluations counts full fixture-suite evaluations, including baseline
+    and curated, and must be at least 3. max_reflections must be between 1 and
+    max_evaluations - 2. Stop early if every frontier candidate passes all fixtures.
+    Invalid inputs, budgets, or an existing output path raise ToolOperationError.
+    Missing OMP raises EnvironmentUnavailable; OMP failures raise ToolOperationError.
+    Archive I/O errors propagate as OSError and may leave partial output.
+    The timeout in seconds applies to each OMP call, with 10 additional seconds
+    allowed before the subprocess is killed.
     """
     if max_evaluations < 3:
         raise ToolOperationError("max_evaluations must cover baseline, curated candidate, and at least one proposal (minimum 3)")
