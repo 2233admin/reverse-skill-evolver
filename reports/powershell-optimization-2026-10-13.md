@@ -47,3 +47,14 @@ Frida 的默认恢复与 `--pause` 行为核对了[官方 CLI 实现](https://gi
 | 所属包元数据、CLI 身份及索引输出符合预期 | 改后执行同文件测试，筛选 `tool_alias_reports or refresh_entry or required_tool_bootstraps` | 退出码 0，6 passed、26 deselected，21.61 秒；PowerShell 5.1 和 7 均运行。使用自有临时 manifest、已有 MCP 配置和 CLI 替身；检查所有辅助 CLI、非 alias、未知名称、注册/服务状态、原配置字节不变及实际索引入口输出。 |
 
 原始输出位于本次修复会话的工具记录。未进行实际安装、设备操作或 SSH/SCP 同步。
+
+## PR #44：capability 行的定义边界
+
+[CodeRabbit 审查意见](https://github.com/2233admin/reverse-skill-evolver/pull/44#discussion_r4260385172) 已核实：索引在复用工具报告前没有校验 capability 定义，因而为 `idapro` 等只有 CLI 的工具生成了虚假的 capability 行。现在先检查缓存中的 manifest 定义，存在定义才复用报告或查询能力状态；不会为已有工具报告重复探测注册或服务。`idapro` 保留原 CLI 工具行，不映射到 `idalib-mcp`。
+
+| 结论 | 验证方式 | 结果与局限 |
+|---|---|---|
+| 新回归能检出无定义的 capability 行 | 改前筛选 `test_refresh_entry_writes_consistent_indexes` | 退出码 1，2 failed、30 deselected，6.95 秒；两个引擎均在 capability 名称集合断言失败。 |
+| 定义边界、三种索引输出及共用入口符合预期 | 改后执行 `python -m pytest tests/test_powershell_scripts.py -q -p no:cacheprovider -k 'tool_alias_reports or refresh_entry or required_tool_bootstraps or all_powershell_scripts_parse' --tb=short` | 退出码 0，8 passed、24 deselected，17.72 秒；PowerShell 5.1 和 7 均运行，无跳过。索引测试执行真实脚本的临时副本，使用自有 manifest、已有 MCP 配置及 `reverse-skill` 替身；JSON/graph capability 集合与字段一致，Markdown 没有虚假 `idapro` capability 行，CLI 路径和可用性保留，独立 `idalib-mcp` 注册状态保留，配置字节不变。 |
+
+原始输出位于本次修复会话的工具记录。未运行真实 IDA/模型、工具安装、设备操作或 SSH/SCP 同步；原 30 个双引擎用例的既有结果保留，本轮只重跑受影响入口和解析检查。

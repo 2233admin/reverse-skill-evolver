@@ -85,6 +85,9 @@ foreach ($report in $reports) {
 $capabilityNames = @('jadx', 'apktool', 'frida', 'idalib-mcp', 'jshookmcp', 'anything-analyzer', 'idapro', 'r2', 'adb', 'agent-browser', 'ghidra-mcp', 'seclists', 'proxycat', 'burpsuite-mcp', 'nmap')
 $capabilityRows = @()
 foreach ($capName in $capabilityNames) {
+    # CLI reports can exist without a manifest capability definition.
+    $definition = Get-ReverseBootstrapDefinition -Name (Get-ReverseCapabilityName -Name $capName)
+    if ($null -eq $definition) { continue }
     $report = $reportsByName[$capName]
     if ($report) {
         $capabilityRows += [pscustomobject]@{

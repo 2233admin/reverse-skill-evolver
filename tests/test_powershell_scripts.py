@@ -301,12 +301,31 @@ $names = @({', '.join(quote(name) for name in owners)})
 
 
 def test_refresh_entry_writes_consistent_indexes(engine: str, tmp_path: Path) -> None:
+    scripts = tmp_path / "skills/scripts"
+    (scripts / "lib").mkdir(parents=True)
+    shutil.copy2(ROOT / "skills/scripts/refresh-tool-index.ps1", scripts)
+    shutil.copy2(LIBRARY, scripts / "lib")
+    (scripts / "bootstrap-manifest.json").write_text(json.dumps({"capabilities": [
+        {"name": "frida", "bootstrapKind": "uv-tool", "canAutoInstall": True,
+         "docsUrl": "https://example.invalid/frida"},
+        {"name": "r2", "bootstrapKind": "github-release-zip", "canAutoInstall": True,
+         "docsUrl": "https://example.invalid/r2"},
+        {"name": "idalib-mcp", "bootstrapKind": "local-http-mcp", "canAutoInstall": False,
+         "docsUrl": "https://example.invalid/idalib", "mcpNames": ["fixture-ida"]},
+    ]}), encoding="utf-8")
+    config = tmp_path / ".claude/mcp.json"
+    config.parent.mkdir()
+    config.write_text(json.dumps({"mcpServers": {"fixture-ida": {"command": "fixture-only"}}}),
+                      encoding="utf-8")
+    original_config = config.read_bytes()
+    bin_dir, _ = fake_tools(tmp_path, ["reverse-skill"])
     markdown = tmp_path / "tools.md"
     index = tmp_path / "tools.json"
     graph = tmp_path / "graph.json"
     run_ps(engine, tmp_path,
-           f"& {quote(ROOT / 'skills/scripts/refresh-tool-index.ps1')} "
-           f"-OutputMarkdown {quote(markdown)} -OutputJson {quote(index)} -OutputCapabilityGraph {quote(graph)}")
+           f"& {quote(scripts / 'refresh-tool-index.ps1')} "
+           f"-OutputMarkdown {quote(markdown)} -OutputJson {quote(index)} -OutputCapabilityGraph {quote(graph)}",
+           bin_dir)
     payload = json.loads(index.read_text(encoding="utf-8-sig"))
     nodes = json.loads(graph.read_text(encoding="utf-8-sig"))["nodes"]
     tools = {tool["name"]: tool for tool in payload["tools"]}
@@ -323,4 +342,17 @@ def test_refresh_entry_writes_consistent_indexes(engine: str, tmp_path: Path) ->
         assert node["bootstrap_kind"] == tool_nodes[owner]["bootstrap_kind"]
         assert node["available"] == tools[name]["available"]
         assert node["resolved_path"] == tools[name]["resolved_path"]
-    assert "## 能力状态视图" in markdown.read_text(encoding="utf-8-sig")
+    capabilities = {row["name"]: row for row in payload["capabilities"]}
+    capability_nodes = {node["id"]: node for node in nodes if node["kind"] == "capability"}
+    assert capabilities.keys() == capability_nodes.keys() == {"frida", "r2", "idalib-mcp"}
+    for name, capability in capabilities.items():
+        for field in ("tool_available", "mcp_registered", "service_online", "can_auto_install", "bootstrap_kind"):
+            assert capability_nodes[name][field] == capability[field]
+    assert capabilities["idalib-mcp"]["mcp_registered"] is True
+    assert tools["idapro"]["available"] is tool_nodes["idapro"]["available"] is True
+    assert tools["idapro"]["resolved_path"] == tool_nodes["idapro"]["resolved_path"] == str(bin_dir / "reverse-skill.cmd")
+    tool_table, capability_table = markdown.read_text(encoding="utf-8-sig").split("## 能力状态视图", 1)
+    assert "| idapro |" in tool_table
+    assert "| idapro |" not in capability_table
+    assert "| idalib-mcp |" in capability_table
+    assert config.read_bytes() == original_config
