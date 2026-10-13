@@ -218,28 +218,113 @@ def _terminate_stale_server(port: int, executable: str) -> None:
         raise EnvironmentUnavailable(
             "--replace-stale requires Windows ownership inspection; inspect the target port manually"
         )
-    # Bind a process handle before checking ownership so a reused PID cannot select another process.
+    # Keep handles open through verification and kill only the selected port's listener.
     script = r"""
 $ErrorActionPreference = 'Stop'
+$held = [System.Collections.Generic.List[System.Diagnostics.Process]]::new()
 try {
+    Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public static class ReverseSkillCommandLine {
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    static extern IntPtr CommandLineToArgvW(string commandLine, out int argc);
+    [DllImport("kernel32.dll")] static extern IntPtr LocalFree(IntPtr memory);
+    public static string[] Parse(string commandLine) {
+        int count;
+        IntPtr argv = CommandLineToArgvW(commandLine, out count);
+        if (argv == IntPtr.Zero) throw new System.ComponentModel.Win32Exception();
+        try {
+            string[] result = new string[count];
+            for (int i = 0; i < count; i++)
+                result[i] = Marshal.PtrToStringUni(Marshal.ReadIntPtr(argv, i * IntPtr.Size));
+            return result;
+        } finally { LocalFree(argv); }
+    }
+}
+'@
+    function Read-Identity([int]$processId) {
+        $process = Get-Process -Id $processId
+        $null = $process.Handle
+        $held.Add($process)
+        $info = Get-CimInstance Win32_Process -Filter "ProcessId = $processId"
+        if (!$info.ExecutablePath -or !$info.CommandLine -or !$info.CreationDate -or
+            $process.HasExited -or $process.Path -ne $info.ExecutablePath -or
+            [Math]::Abs(($process.StartTime.ToUniversalTime() - $info.CreationDate.ToUniversalTime()).TotalMilliseconds) -ge 1) {
+            throw 'process identity changed or is unavailable; no process was stopped'
+        }
+        return [pscustomobject]@{ Process = $process; Info = $info }
+    }
+    function Read-PythonInvocation($identity) {
+        $arguments = [ReverseSkillCommandLine]::Parse($identity.Info.CommandLine)
+        if ([IO.Path]::GetFileName($identity.Info.ExecutablePath) -notin @('python.exe', 'pythonw.exe') -or
+            $arguments.Count -ne 6 -or
+            [IO.Path]::GetFullPath($arguments[1]) -ne $env:REVERSE_SKILL_SERVER -or
+            $arguments[2] -cne '--host' -or $arguments[3] -cne '127.0.0.1' -or
+            $arguments[4] -cne '--port' -or $arguments[5] -cne $env:REVERSE_SKILL_PORT) {
+            throw 'listener command does not match the selected launcher and endpoint; no process was stopped'
+        }
+        return [IO.Path]::GetFullPath($arguments[0])
+    }
     $owners = @(Get-NetTCPConnection -State Listen | Where-Object {
         $_.LocalPort -eq [int]$env:REVERSE_SKILL_PORT
     } | Select-Object -ExpandProperty OwningProcess -Unique)
     if ($owners.Count -gt 1) { throw 'multiple listener owners; no process was stopped' }
     foreach ($owner in $owners) {
-        $process = Get-Process -Id $owner
-        $null = $process.Handle
-        $info = Get-CimInstance Win32_Process -Filter "ProcessId = $owner"
-        if (!$info.ExecutablePath -or $info.ExecutablePath -ne $env:REVERSE_SKILL_SERVER) {
-            throw "port owner PID $owner does not match the selected executable; no process was stopped"
+        $listener = Read-Identity $owner
+        $chain = @($listener)
+        if ($listener.Info.ExecutablePath -ne $env:REVERSE_SKILL_SERVER) {
+            # distlib runs python.exe <launcher.exe>; venv Python may add a redirector parent.
+            $interpreter = Read-PythonInvocation $listener
+            $child = $listener
+            $foundLauncher = $false
+            for ($depth = 0; $depth -lt 4; $depth++) {
+                $parent = Read-Identity $child.Info.ParentProcessId
+                if ($parent.Info.CreationDate -gt $child.Info.CreationDate) {
+                    throw 'parent PID was reused; no process was stopped'
+                }
+                $chain += $parent
+                if ($parent.Info.ExecutablePath -eq $env:REVERSE_SKILL_SERVER) {
+                    $arguments = [ReverseSkillCommandLine]::Parse($parent.Info.CommandLine)
+                    if ($arguments.Count -ne 5 -or
+                        [IO.Path]::GetFullPath($arguments[0]) -ne $env:REVERSE_SKILL_SERVER -or
+                        $arguments[1] -cne '--host' -or $arguments[2] -cne '127.0.0.1' -or
+                        $arguments[3] -cne '--port' -or $arguments[4] -cne $env:REVERSE_SKILL_PORT) {
+                        throw 'launcher command does not match the selected endpoint; no process was stopped'
+                    }
+                    $foundLauncher = $true
+                    break
+                }
+                if ((Read-PythonInvocation $parent) -ne $interpreter) {
+                    throw 'interpreter ancestry does not match; no process was stopped'
+                }
+                $child = $parent
+            }
+            if (!$foundLauncher -or !($chain | Where-Object { $_.Info.ExecutablePath -eq $interpreter })) {
+                throw "port owner PID $owner does not match the selected executable ancestry; no process was stopped"
+            }
         }
-        if ($process.Path -ne $info.ExecutablePath -or $process.HasExited) {
+        foreach ($identity in $chain) {
+            $current = Get-CimInstance Win32_Process -Filter "ProcessId = $($identity.Info.ProcessId)"
+            if ($identity.Process.HasExited -or !$current -or
+                $current.CreationDate -ne $identity.Info.CreationDate -or
+                $current.ParentProcessId -ne $identity.Info.ParentProcessId -or
+                $current.ExecutablePath -ne $identity.Info.ExecutablePath -or
+                $current.CommandLine -cne $identity.Info.CommandLine) {
+                throw 'process ancestry changed during inspection; no process was stopped'
+            }
+        }
+        $currentOwners = @(Get-NetTCPConnection -State Listen | Where-Object {
+            $_.LocalPort -eq [int]$env:REVERSE_SKILL_PORT
+        } | Select-Object -ExpandProperty OwningProcess -Unique)
+        if ($currentOwners.Count -ne 1 -or $currentOwners[0] -ne $owner) {
             throw 'port owner changed during inspection; no process was stopped'
         }
-        $process.Kill()
-        if (!$process.WaitForExit(3000)) { throw "PID $owner did not stop within 3 seconds" }
+        $listener.Process.Kill()
+        if (!$listener.Process.WaitForExit(3000)) { throw "PID $owner did not stop within 3 seconds" }
     }
 } catch { [Console]::Error.WriteLine($_.Exception.Message); exit 1 }
+finally { foreach ($process in $held) { $process.Dispose() } }
 """
     env = os.environ.copy()
     env.update(REVERSE_SKILL_PORT=str(port), REVERSE_SKILL_SERVER=str(Path(executable).resolve()))

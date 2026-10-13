@@ -1,7 +1,10 @@
 from pathlib import Path
+from contextlib import contextmanager
+import json
 import os
 import subprocess
 import sys
+import socket
 import time
 from types import SimpleNamespace
 
@@ -82,7 +85,7 @@ def test_replace_checks_only_target_port_and_preserves_unknown_owner(tmp_path, m
     command, kwargs = calls[0]
     assert kwargs["env"]["REVERSE_SKILL_PORT"] == "14441"
     assert kwargs["env"]["REVERSE_SKILL_SERVER"] == options["server_path"]
-    assert "ExecutablePath" in command[-1] and "$process.Kill()" in command[-1]
+    assert "ExecutablePath" in command[-1] and "$listener.Process.Kill()" in command[-1]
     assert "taskkill" not in command[-1] and "/IM" not in command[-1]
     assert kwargs["timeout"] == 10
 
@@ -157,3 +160,103 @@ def test_replace_real_isolated_listeners_preserves_other_port_and_unknown_owner(
             if child.poll() is None:
                 child.terminate()
             child.wait(timeout=3)
+
+
+def _inert_console_launcher(directory, interpreter=sys.executable):
+    from pip._vendor.distlib.scripts import ScriptMaker
+
+    directory.mkdir()
+    maker = ScriptMaker(None, str(directory))
+    maker.executable = interpreter
+    filenames = []
+    source = b"""import json, os, socket, sys
+from pathlib import Path
+s = socket.socket()
+s.bind(('127.0.0.1', int(os.environ['OWNED_LISTEN_PORT'])))
+s.listen()
+Path(os.environ['OWNED_READY_FILE']).write_text(json.dumps({
+    'pid': os.getpid(), 'parent_pid': os.getppid(), 'port': s.getsockname()[1]
+}))
+sys.stdin.read()
+s.close()
+"""
+    maker._write_script({'idalib-mcp'}, maker._get_shebang('utf-8'), source, filenames, 'py')
+    return Path(filenames[0])
+
+
+@contextmanager
+def _owned_launcher_listener(tmp_path, launcher, *, direct_python=False, host='127.0.0.1', wrong_port=False):
+    import _winapi
+
+    with socket.socket() as reservation:
+        reservation.bind(('127.0.0.1', 0))
+        port = reservation.getsockname()[1]
+    marker = tmp_path / 'listener-ready.json'
+    env = dict(os.environ, OWNED_LISTEN_PORT=str(port), OWNED_READY_FILE=str(marker))
+    command = ([sys.executable] if direct_python else []) + [
+        str(launcher), '--host', host, '--port', str(port + 1 if wrong_port else port)
+    ]
+    process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
+                               stderr=subprocess.PIPE, env=env)
+    listener_handle = None
+    try:
+        deadline = time.monotonic() + 10
+        while not marker.exists() and process.poll() is None and time.monotonic() < deadline:
+            time.sleep(0.02)
+        assert marker.exists(), 'owned inert launcher did not become ready'
+        info = json.loads(marker.read_text())
+        listener_handle = _winapi.OpenProcess(_winapi.PROCESS_ALL_ACCESS, False, info['pid'])
+        yield process, info
+    finally:
+        process.stdin.close()
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            if listener_handle is not None:
+                _winapi.TerminateProcess(listener_handle, 1)
+            process.terminate()
+            process.wait(timeout=3)
+        if listener_handle is not None:
+            _winapi.CloseHandle(listener_handle)
+        process.stderr.close()
+
+
+@pytest.mark.skipif(os.name != 'nt', reason='Windows console-script launcher ownership')
+@pytest.mark.parametrize('interpreter_kind', ['current', 'venv'])
+def test_replace_real_distlib_launcher_preserves_other_launcher(tmp_path, interpreter_kind):
+    interpreter = sys.executable
+    if interpreter_kind == 'venv':
+        import venv
+        venv.EnvBuilder(with_pip=False).create(tmp_path / 'owned venv')
+        interpreter = str(tmp_path / 'owned venv/Scripts/python.exe')
+    selected = _inert_console_launcher(tmp_path / 'selected scripts', interpreter)
+    companion = _inert_console_launcher(tmp_path / 'other scripts')
+    primary_dir, companion_dir = tmp_path / 'primary', tmp_path / 'companion'
+    primary_dir.mkdir()
+    companion_dir.mkdir()
+    with _owned_launcher_listener(primary_dir, selected) as (primary, info):
+        with _owned_launcher_listener(companion_dir, companion) as (other, other_info):
+            assert primary.pid != info['pid']
+            if interpreter_kind == 'current':
+                assert info['parent_pid'] == primary.pid
+            assert other.pid != other_info['pid'] and info['port'] != other_info['port']
+            ida._terminate_stale_server(info['port'], str(selected))
+            primary.wait(timeout=5)
+            assert other.poll() is None
+            with socket.create_connection(('127.0.0.1', other_info['port']), timeout=1):
+                pass
+
+
+@pytest.mark.skipif(os.name != 'nt', reason='Windows console-script launcher ownership')
+@pytest.mark.parametrize('mismatch', ['launcher', 'port', 'host', 'parent'])
+def test_replace_distlib_listener_rejects_unrelated_identity(tmp_path, mismatch):
+    selected = _inert_console_launcher(tmp_path / 'selected scripts')
+    running = _inert_console_launcher(tmp_path / 'other scripts') if mismatch == 'launcher' else selected
+    with _owned_launcher_listener(tmp_path, running, direct_python=mismatch == 'parent',
+                                 host='0.0.0.0' if mismatch == 'host' else '127.0.0.1',
+                                 wrong_port=mismatch == 'port') as (process, info):
+        with pytest.raises(EnvironmentUnavailable, match='no process was stopped'):
+            ida._terminate_stale_server(info['port'], str(selected))
+        assert process.poll() is None
+        with socket.create_connection(('127.0.0.1', info['port']), timeout=1):
+            pass
