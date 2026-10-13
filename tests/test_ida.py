@@ -90,15 +90,26 @@ def test_replace_checks_only_target_port_and_preserves_unknown_owner(tmp_path, m
     assert kwargs["timeout"] == 10
 
 
-@pytest.mark.parametrize("failure", [OSError("PowerShell unavailable"), subprocess.TimeoutExpired("powershell", 10)])
-def test_replace_inspection_failure_is_bounded_and_actionable(monkeypatch, failure):
+@pytest.mark.parametrize(("failure", "message"), [
+    pytest.param(OSError("PowerShell unavailable"),
+                 "cannot start ownership helper for port 14441; processes preserved", id="launch-error"),
+    pytest.param(subprocess.TimeoutExpired("powershell", 10),
+                 "inspection/replacement of port 14441 timed out; target state unknown", id="helper-timeout"),
+])
+def test_replace_inspection_failure_is_bounded_and_actionable(monkeypatch, failure, message):
     if os.name != "nt":
         pytest.skip("Windows ownership inspection")
     def fail(*a, **kw):
         raise failure
     monkeypatch.setattr(ida.subprocess, "run", fail)
-    with pytest.raises(EnvironmentUnavailable, match="port 14441.*preserved"):
+    with pytest.raises(EnvironmentUnavailable, match=message) as raised:
         ida._terminate_stale_server(14441, sys.executable)
+    assert raised.value.__cause__ is failure
+    if isinstance(failure, subprocess.TimeoutExpired):
+        detail = str(raised.value)
+        assert "processes preserved" not in detail
+        assert "Get-NetTCPConnection -LocalPort 14441" in detail
+        assert "OwningProcess before retrying" in detail
 
 
 def test_start_reports_real_child_exit_and_stderr(tmp_path, monkeypatch):

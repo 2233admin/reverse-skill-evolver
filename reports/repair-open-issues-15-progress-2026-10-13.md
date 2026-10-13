@@ -24,7 +24,7 @@
 
 ## #40 验证
 
-改动：移除进程名批量清理；Windows 按目标端口核实监听者 executable，持有 process handle 后核对再停止。归属不明/检查失败保留进程并诊断；健康端口始终复用。每次启动保存独立日志，返回 PID/logPath；提前退出报告实际退出码和日志尾；readiness 使用单调时钟截止，超时保留当前子进程供用户检查。
+改动：移除进程名批量清理；Windows 按目标端口核实监听者 executable，持有 process handle 后核对再停止。归属不明或helper未启动时保留进程并诊断；helper超时可能发生在Kill之后，明确报告目标状态未知，检查端口/PID后重试。健康端口始终复用。每次启动保存独立日志，返回 PID/logPath；提前退出报告实际退出码和日志尾；readiness 使用单调时钟截止，超时保留当前子进程供用户检查。
 
 实际运行：`python -m pytest tests/test_ida.py tests/test_cli.py -q` → **55 passed**。包括真实隔离 Python 监听进程的两端口保护/未知归属保留，以及真实子进程退出码 17/stderr 保留、0.5 秒超时及日志/PID 检查。
 
@@ -157,3 +157,9 @@ f92196f 修正 replay 参考页的旧“仅静态检查”状态。工作流 REA
 根会话报告其OMP独立核查56项、19冻结hash、28原response oracle、两版native对照、七个Frida case及两个HMAC oracle均未发现高置信运行bug；这是根会话在6c6b3a6的验收记录，本Session没有重跑模型或冒充亲跑上述独立验收。相应归档和模块在新head保持相同Git blob。Repowise复杂度指标不触发无关重构。
 
 本Session保留专属分支及#32子树写入权；#41正文更新窗口唯一写入者为根会话，本Session保持正文只读。#43/#44由根会话负责，不重叠写入；#26/#31原提交已由#42综合承接，避免重复合入。PR仍Draft，未获新合并/关闭/模型预算授权。
+
+## helper超时诊断的后续定点修正
+
+根会话复核launcher17项通过后发现helper外层TimeoutExpired可能发生在Kill之后，原processes preserved承诺不成立。只拆分OSError（未启动helper/保留进程）和TimeoutExpired（inspection/replacement超时/目标状态未知/检查端口OwningProcess后重试），不改变PS校验、停止范围、超时值或其他代码。
+
+原两项措辞回归在旧实现上失败；本次对应回归及CLI/合同 **76 passed，20.26秒**，原始输出及根会话实测来源见[审查修正R5](pr42-review-fixes-2026-10-13.md)。未重演正常系统11秒pause，未重新调用模型；2d0e4c7的全量Windows333/5是基线，当前局部证据与最新headCI区分记录。#41正文/远端恢复快照6147112456由根会话唯一负责，本Session只读。所有权和未合并状态保持。

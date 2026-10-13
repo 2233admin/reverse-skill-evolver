@@ -46,3 +46,17 @@
 `python -m pytest -q --tb=short`，TEMP/TMP 仅指向本 worktree `.verification/final-test-temp`：**333 passed、5 skipped，61.19 秒，退出码 0**；原始输出见 [最终 Python 日志](pr42-review-python-2026-10-13.txt)。可选 YARA 和 Windows 不支持的引号/反斜线文件名仍未执行，跳过不计通过。完整 Python 包含本次十一项新增回归及原 Node suites；不把它当作新的模型/真实IDA/BurpGUI验收。
 
 相对6c6b3a6，`.github` 工作流、签名模块、真实模型归档和eval metadata保持相同Git内容；改动仅为#40定点源码/隔离回归及所列说明。无模型/SDK/设备/外部服务新调用，没有PID精确复用实测或自动skill发现证据。两个原OMP PR仍由本PR综合承接；#41正文只读，#43/#44不写，修复分支和#32子树所有权保留，待根会话按新固定SHA复验。
+
+## R5：helper 超时不能承诺进程保留
+
+根会话独立复核 dc90554 的 current/venv launcher 和四种负例 **17 passed、33.77秒**，确认身份/祖先/只停止 listener 边界未扩大；本Session引用该验收，不冒充亲跑。其另行在真实自有Python socket与真实PS脚本中仅内存于Kill后注入11秒pause：外层10秒TimeoutExpired时目标已退出4294967295，而原错误仍称processes preserved，故诊断P2成立。该暂停重演来自根会话反馈，本Session未执行。
+
+定点修正：OSError单独报告未能启动ownership helper及processes preserved；TimeoutExpired报告inspection/replacement timed out、target state unknown，并给出目标port的Get-NetTCPConnection及OwningProcess检查动作。保留EnvironmentUnavailable/原异常cause/10秒上限，不改PS脚本、归属校验、Kill或readiness行为。
+
+| 结论 | 验证方式 | 结果与局限 |
+| --- | --- | --- |
+| 两种失败的承诺不同 | 修改原两项`test_replace_inspection_failure_is_bounded_and_actionable`，先运行旧实现再修正 | 旧实现 **2 failed、20 deselected，0.22秒**；新断言区分helper未启动与超时状态未知，禁止超时错误含processes preserved，检查port/PID恢复动作与原cause |
+| 诊断及公开CLI合同保持 | `python -m pytest tests/test_ida.py::test_replace_inspection_failure_is_bounded_and_actionable tests/test_cli.py tests/test_contract.py -q --tb=short` | **76 passed，20.26秒，退出码0**；[原始输出](pr42-helper-timeout-verification-2026-10-13.txt)。helper异常为替身，无强制暂停或真实服务操作 |
+| 其他实现冻结 | 比对2d0e4c7的PS脚本、MCP、.github、.omp、模型及native证据归档 | 内容未变；新code diff仅拆开helper异常和两条消息，测试数量未变 |
+
+全量Windows **333 passed/5 skipped**与日志仍属于2d0e4c7基线；本次本地验证只报告上述受影响76项，最新SHA的CI另由最终冻结回执绑定。没有模型调用，预算/候选状态不变。#41正文及快照6147112456由根会话负责，本Session保持正文只读；专属分支及#32子树写入权仍保留。

@@ -36,8 +36,10 @@ OMP 项复用原 Draft PR #26/#31 的原始 Git lineage（本分支本地 merge�
 
 #30：校验前拒绝 Proxy/非标准数组，防止 fixture 自定义陷阱/迭代器执行。Node/Bun 各 9 passed；真实 OMP 18.8.9 的一轮 MiniMax 会话实际调用3个js eval cells，通过显式绝对路径导入模块并复用持久变量。该轮使用 --no-skills，skill自动发现未验；现有frames只证明模块导入、replay和kernel复用。完整HMAC用例2/2，部分用例remaining=1不通过，独立Python oracle/工具frames核对；9.501秒、1次逻辑OMP调用，全批32/37，物理请求/费用unknown。输入为自制fixtures，不是第三方网络capture。缓存/临时目录限于本worktree进程环境，未清理宿主缓存/改配置。
 
-最终回归 **333 passed, 5 skipped**（61.19秒）；受影响IDA/MCP/CLI/合同 **114 passed**（51.99秒）。另有原#41在精确632cf1a快照上39 passed，独立交付Draft PR #44，由根会话验收。doctor内部OSError/解码错误仍保留原退出码1。Git中冻结输入/候选和native DLL身份已核对，报告无提供的API key。
+Windows全量基线（2d0e4c7）**333 passed, 5 skipped**（61.19秒）；该轮受影响IDA/MCP/CLI/合同 **114 passed**（51.99秒）。本次helper错误措辞回归及CLI/合同 **76 passed**（20.26秒），未重跑真实暂停或模型。另有原#41在精确632cf1a快照上39 passed，独立交付Draft PR #44，由根会话验收。doctor内部OSError/解码错误仍保留原退出码1。Git中冻结输入/候选和native DLL身份已核对，报告无提供的API key。
 
 独立审查后的#40修正：distlib console-script launcher由Python子进程监听，现在核对精确launcher路径/参数/目标host和port、存活父子或venv redirector祖先链、创建时间及PID/handle身份，停止前重读身份与端口。未知或不匹配归属保留，只停止目标listener，不清理进程树。新增六个真实隔离launcher场景，没有安装IDA或操作共享服务。readiness的discovery/legacy握手/tools/list/清理共用绝对deadline，probe成功返回后再次核查启动截止；新增真实多请求loopback及晚到probe负例。逐项红绿与边界见 [审查修正记录](reports/pr42-review-fixes-2026-10-13.md)，最终原始输出见 [Python日志](reports/pr42-review-python-2026-10-13.txt)。
+
+helper后续诊断修正：OSError报告helper未能启动/进程保留；TimeoutExpired可能发生在Kill之后，改报inspection/replacement超时、目标状态未知，检查目标端口及OwningProcess后重试，保持原错误类型/cause。PS归属校验、Kill范围及10秒上限未变，76项对应检查的[原始输出](reports/pr42-helper-timeout-verification-2026-10-13.txt)已保存；没有在正常系统强行11秒暂停。
 
 CI/审阅：旧冻结6c6b3a6的Project Python/Java和GitGuardian成功；最新head的结果以最终冻结回执为准。纯field-journal自动合并工作流因本PR也改了代码而按原白名单拒绝，未修改或绕过规则，没有请求自动合并。main此前未配置保护/required checks，不能冒充已满足门控。CodeRabbit跳过Draft审查；RepoWise结构复杂度告警不代替功能结论或审查批准。PR保持Draft、未合并，Issue不提前关闭。原#26/#31提交已包含在本PR的Git lineage，由本综合交付承接，避免重复合入。

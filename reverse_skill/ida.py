@@ -333,9 +333,14 @@ finally { foreach ($process in $held) { $process.Dispose() } }
             ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script],
             capture_output=True, text=True, check=False, timeout=10, env=env,
         )
-    except (OSError, subprocess.TimeoutExpired) as exc:
+    except OSError as exc:
         raise EnvironmentUnavailable(
-            f"cannot verify ownership of port {port}; processes preserved: {exc}"
+            f"cannot start ownership helper for port {port}; processes preserved: {exc}"
+        ) from exc
+    except subprocess.TimeoutExpired as exc:
+        raise EnvironmentUnavailable(
+            f"inspection/replacement of port {port} timed out; target state unknown; "
+            f"inspect `Get-NetTCPConnection -LocalPort {port}` and its OwningProcess before retrying: {exc}"
         ) from exc
     if completed.returncode:
         raise EnvironmentUnavailable(
