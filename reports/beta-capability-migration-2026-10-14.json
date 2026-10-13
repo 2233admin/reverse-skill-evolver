@@ -91,5 +91,21 @@
       "valid_auth_hash_review": "PASS",
       "long_fence_heading_indexed": true
     }
+  },
+  "coderabbit_repairs": {
+    "review_head": "38e516fc11f28fc313a20290ac49c08428ebc77d",
+    "handled": [
+      "read-only gitignore test",
+      "retryable case creation cleanup restricted to newly owned files",
+      "physical newline evidence ranges",
+      "explicit recovery instructions while preserving unreadable indexes and IDA data",
+      "CLI top-k bound",
+      "comparable per-stage FTS ranks",
+      "ASR ordering priority",
+      "correct review arguments and report destination guidance",
+      "scope documentation limited to procedural case workflows"
+    ],
+    "index_related_passed": 87,
+    "legacy_cli_scope_gate_added": false
   }
 }
