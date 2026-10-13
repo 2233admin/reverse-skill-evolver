@@ -1,6 +1,9 @@
-﻿# Reverse Engineering Skills Master Control
+# Reverse Engineering Skills Master Control
 
-本目录收录了一系列逆向工程相关的技能模块，每个子目录是一个独立模块，内含 `SKILL.md` 描述其适用场景、工具链和工作流程。
+This is shared reference material for the complete
+[`reverse-skill-evolver` skill](../SKILL.md), not a separately installed skill.
+
+本目录收录逆向与安全任务的包内模块，各模块的 `SKILL.md` 描述适用场景、工具链和工作流程。安装时保留完整 `reverse-skill-evolver` 包，模块复用包内路由、脚本与资源。
 
 OMP 中已有捕获样本与签名函数、需要本地逐项对照时，先进入 [omp-js-replay](../.omp/skills/omp-js-replay/SKILL.md)。该入口使用当前 JS eval 和本地数据，不需要为复现步骤刷新外部工具索引或注册浏览器 MCP；尚未采集证据的任务继续共享 JS 路由。
 
@@ -33,6 +36,7 @@ OMP 原生 IDA 分支的执行步骤以 `omp-ida-native` 为准；以下契约�
 
 | 模块 | 目录 | 适用场景 |
 |------|------|---------|
+| **Forefy ASR 注册表** | `asr-registry/` | 按当前任务检索已审计技能/目标/工作流，组合链路、安装、扫描、作者/插件查询与发布；排除 MCP servers |
 | **自进化路由内核** | `evolution/` | GOAL 契约、Capability Graph、步骤级 TraceCard、候选经验晋级门禁 |
 | **无人值守过夜运行** | `overnight-run/` | 无人值守跑到绝对 DEADLINE：slot 填表 → validate 冒烟 → 脚手架（.night/ + night 分支 + pre-commit 红线）→ 增量报告 → 经验回流（OVERNIGHT.md v2 契约） |
 | **通用逆向** | `reverse-engineering/` | GDB / Frida / angr / Unicorn / Qiling / 反分析对抗 / 全语言平台逆向 / CTF 模式库 |

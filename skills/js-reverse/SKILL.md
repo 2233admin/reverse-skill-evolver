@@ -1,4 +1,4 @@
-﻿---
+---
 name: js-reverse
 description: 用于前端 JavaScript 签名定位、页面取证、运行时采样与本地复现。已有签名函数和捕获样本且 OMP JS eval 可用时，进入 omp-js-replay；页面观察使用当前 js-reverse_* 工具，需要更强的 CDP/Hook 面时联动 jshookmcp。
 ---
@@ -186,7 +186,7 @@ description: 用于前端 JavaScript 签名定位、页面取证、运行时采�
 
 ## 路由上下文
 
-**上游入口**: `skills/SKILL.md`（总控）、`routing.md`
+**上游入口**: `SKILL.md`（总控）、`routing.md`
 **上游备选**:
 - anything-analyzer MCP（端口 23816）的浏览器工具可作为替代或补充
 - jshookmcp 可作为更强的浏览器/CDP/Hook/Network/SourceMap/AST 执行面

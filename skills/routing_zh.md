@@ -20,6 +20,7 @@
 
 | 目标类型 | 推荐入口 | 备选方案 |
 |---------|---------|---------|
+| Forefy ASR 条目 / 注册表技能链 / 安装 / 发布 | `asr-registry/SKILL.md` — 仅已审计技能、目标和工作流，排除 MCP servers | 按所选条目衔接对应目标的本地技能 |
 | APK / Android 应用 | `apk-reverse/SKILL.md` — APK 解包、Java 反编译与重打包 | `mobile-reverse/SKILL.md` — 跨 Android/iOS 的移动安全与动态分析；含 native `.so` 时转 `ida-reverse/` 或 `radare2/` |
 | iOS / IPA 应用 | `mobile-reverse/SKILL.md` — iOS 逆向 + Frida/Objection | `mobile-reverse/references/ios-reverse-guide.md` — iOS 专项 |
 | 二进制 exe/dll/so/elf | `ida-reverse/` — IDA Pro 反编译 | `radare2/` — CLI 分析，或 `reverse-engineering/tools.md` — GDB/Unicorn |

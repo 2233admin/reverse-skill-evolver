@@ -168,7 +168,7 @@ GhydraMCP 没有像 `idapro_*` 那样的单一共享前缀，工具按资源类�
 
 ## 路由上下文
 
-**上游入口**: `skills/SKILL.md`（总控）、`routing.md`
+**上游入口**: `SKILL.md`（总控）、`routing.md`
 **上游备选**: `ida-reverse/`（本机最新版 IDA 可运行时优先，已有本仓库真机验证的踩坑记录）；`radare2/`
 （都不可用时的开源备选）
 **下游出口**:

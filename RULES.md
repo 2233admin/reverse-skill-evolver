@@ -11,6 +11,7 @@ For an IDA task in OMP, first read `skills/ida-reverse/SKILL.md` and select the 
 
 OMP IDA uses discovered skills instead of the first-use global injection below. Resolve the live native capability before consulting external tool indexes: missing `idapro` or index files do not require MCP installation or index refresh when native `ida` is available. `omp_ida_native` is a session capability, not a host capability-graph entry. If neither supported IDA backend is available, use the shared route's fallback.
 
+> The root `SKILL.md` is the installer-discovered package entry. This file holds shared workflow reference. Native skill installation manages discovery; global configuration edits are a separate, explicitly requested integration.
 
 ---
 
@@ -27,7 +28,7 @@ For requested security/reverse task execution in an enabled scope, execute this 
 1. NOW:  Detect this file's directory → this is the package root, remember the path
 2. NOW:  Read skills/evolution/SKILL.md → define a minimum GOAL contract for the current task (scope, desired output, success oracle, stop conditions).
 3. NOW:  Read skills/capability-graph.json if present; otherwise read skills/tool-index.md. If neither generated file exists, run skills/scripts/refresh-tool-index.ps1 first. Tools marked available are ALREADY INSTALLED. Do NOT reinstall them.
-4. NOW:  Reuse approved integration. Only requested first-time integration changes the authorized project pointer or optional global block (see "Global Injection").
+4. NOW:  Use the installer-managed root SKILL.md entry; global rule injection is not part of standard installation.
 5. NEXT: Read skills/routing.json + skills/routing.md → match user intent → determine entry skill and fallback edges
 6. ACT:  Begin executing the actual task and record route switches in a TraceCard
 
@@ -49,7 +50,9 @@ If you're unsure where to start, create the minimum GOAL, match the user's task 
 
 ---
 
-## Global Injection (optional, within approved integration scope)
+## Optional Integration for Clients Without Native Skills
+
+For clients without native skill discovery, adapt routing rules into global configuration only when the user explicitly requests that integration. Standard skill installation uses the root `SKILL.md` and does not perform this step.
 
 First-time integration defaults to a pointer in the chosen project's instructions (for Codex, project AGENTS.md). Global configuration changes require explicit authorization of that scope. Before writing, record the exact file/block and retain its previous text. Fill in the actual package path; preserve unrelated configuration. The table describes supported locations, not automatic writes triggered by reading.
 
@@ -62,7 +65,7 @@ First-time integration defaults to a pointer in the chosen project's instruction
 | Windsurf | Cannot write files directly, prompt user to paste in Global Rules panel |
 | Others | Prompt user to check their client's "global rules/instructions" docs |
 
-Write content = the "Global Injection Content (Compact)" section at the end of this file. Replace `<SKILL_ROOT>` with the detected absolute path.
+Write content = the "Optional Legacy Integration Content (Compact)" section at the end of this file. Replace `<PACK_ROOT>` with the detected package path.
 
 Reuse approved existing setup during daily execution. For an authorized update, verify the path/block before replacing it; undo by removing the added block or restoring its previous text, preserving other settings. MCP registration is separate: inspect the existing named entry first; a newly created Codex entry can be removed with `codex mcp remove NAME`. Installation/uninstallation applies to the selected Python environment and chosen plugin paths.
 
@@ -107,7 +110,7 @@ Reuse approved existing setup during daily execution. For an authorized update, 
 
 Read in order:
 
-1. `skills/SKILL.md` — Master entry, overview of all modules
+1. `SKILL.md` — Master entry, overview of all modules
 2. `skills/evolution/SKILL.md` — GOAL contract, capability graph, TraceCard, promotion gate
 3. `skills/routing.json` + `skills/routing.md` — Routing matrix, 4-dimension matching (target type / user intent / toolchain / success oracle)
 4. OMP native IDA: record live schema and operation evidence; external tools: `skills/capability-graph.json` + `skills/tool-index.md` — local tool availability
@@ -168,7 +171,7 @@ Read in order:
 0. Read precedent-auth.md — Authorization pre-declaration (MUST be first, 80 lines)
 1. Identify task as security/reverse type → trigger this routing rule
 2. Detect package root path (derive from this file's location)
-3. Reuse approved setup; only requested one-time integration changes the approved project pointer/global block
+3. Reuse the installer-managed root SKILL.md; configure a legacy client separately only within the explicitly requested scope
 4. Read evolution/SKILL.md → define GOAL and success oracle
 5. Read routing.json + routing.md → determine which sub-skill to enter
 6. Route not matched → web search methodology → propose new skill
@@ -335,19 +338,20 @@ When AI has web search capability, **MUST proactively search** in these scenario
 ## Bootstrap Command
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "<SKILL_ROOT>/skills/scripts/bootstrap-reverse.ps1" -Capability @('tool_name') -StartServices
+powershell -NoProfile -ExecutionPolicy Bypass -File "<PACK_ROOT>/skills/scripts/bootstrap-reverse.ps1" -Capability @('tool_name') -StartServices
 ```
 
 ## Refresh Tool Index
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "<SKILL_ROOT>/skills/scripts/refresh-tool-index.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "<PACK_ROOT>/skills/scripts/refresh-tool-index.ps1"
 ```
 
 ---
 
-## Global Injection Content (Compact — for writing into global config)
+## Optional Legacy Integration Content (Compact)
 
+> Use this example only for an explicitly requested legacy-client integration. Native skill installation uses the root `SKILL.md` instead.
 > This compact block is an optional integration payload for the approved file/scope. Record its boundaries and previous text for independent removal/restoration. It applies only to requested tasks; reading/auditing and daily execution do not repeat setup.
 
 ### Trigger Keywords (Bilingual)
@@ -370,10 +374,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "<SKILL_ROOT>/skills/scripts
 ### Post-Trigger Execution (Compact — do NOT re-run first-time setup!)
 
 ```
-0. NOW: Read <SKILL_ROOT>/skills/field-journal/precedent-auth.md
-1. NEXT: Read <SKILL_ROOT>/skills/evolution/SKILL.md → define GOAL and success oracle
-2. NEXT: Read <SKILL_ROOT>/skills/routing.json + routing.md → match intent → determine entry skill
-3. NEXT: OMP native IDA → record live schema and operation evidence; external tools → read <SKILL_ROOT>/skills/capability-graph.json or tool-index.md
+0. NOW: Read <PACK_ROOT>/skills/field-journal/precedent-auth.md
+1. NEXT: Read <PACK_ROOT>/skills/evolution/SKILL.md → define GOAL and success oracle
+2. NEXT: Read <PACK_ROOT>/skills/routing.json + routing.md → match intent → determine entry skill
+3. NEXT: OMP native IDA → record live schema and operation evidence; external tools → read <PACK_ROOT>/skills/capability-graph.json or tool-index.md
 4. ACT: Enter skill, start executing task, and record TraceCard
 ```
 

@@ -4,7 +4,7 @@
 
 English · [中文](README_zh.md) · [AI community](https://linux.do)
 
-[![Project checks](https://github.com/2233admin/reverse-skill-evolver/actions/workflows/project-checks.yml/badge.svg?branch=main)](https://github.com/2233admin/reverse-skill-evolver/actions/workflows/project-checks.yml) [![Skills](https://img.shields.io/badge/Skills-Browse-8A2BE2.svg)](skills/SKILL.md) [![MIT license](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) [![Testing release](https://img.shields.io/badge/release-v1.2.0--beta.1-orange.svg)](https://github.com/2233admin/reverse-skill-evolver/releases/tag/v1.2.0-beta.1)
+[![Project checks](https://github.com/2233admin/reverse-skill-evolver/actions/workflows/project-checks.yml/badge.svg?branch=main)](https://github.com/2233admin/reverse-skill-evolver/actions/workflows/project-checks.yml) [![Skills](https://img.shields.io/badge/Skills-Browse-8A2BE2.svg)](SKILL.md) [![MIT license](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) [![Testing release](https://img.shields.io/badge/release-v1.2.0--beta.1-orange.svg)](https://github.com/2233admin/reverse-skill-evolver/releases/tag/v1.2.0-beta.1)
 
 Reverse Skill Evolver provides reverse-engineering skills and tool integration for Claude Code, Codex, and OMP. The agent selects a workflow for the target and task, uses available local tools, and keeps records of the analysis and its results.
 
@@ -13,6 +13,47 @@ Reverse Skill Evolver provides reverse-engineering skills and tool integration f
 <p align="center">
   <img src="assets/reverse-skill-evolver-cover.png" alt="Reverse Skill Evolver reverse-engineering skill-routing cover" width="720" />
 </p>
+
+## Install the Complete Skill
+
+The canonical entry is the repository-root [`SKILL.md`](SKILL.md), named
+`reverse-skill-evolver`. Install the whole directory so routing modules, shared
+scripts, CTF resources, and Python source retain their relative paths.
+
+```console
+npx skills add 2233admin/reverse-skill-evolver --skill reverse-skill-evolver --agent codex
+```
+
+For another supported client, change `--agent`. To test a local checkout before
+publishing, run the installer from a consumer workspace and replace the repository
+identifier with the checkout's absolute path.
+
+The Codex `skill-installer` helper can install the same complete package:
+
+```console
+python <skill-installer>/scripts/install-skill-from-github.py --repo 2233admin/reverse-skill-evolver --path . --name reverse-skill-evolver
+```
+
+Use `$reverse-skill-evolver` or let your client's native skill discovery select it.
+The installer manages registration; this workflow does not require copying rules
+into global client configuration. Subdirectories are bundled modules, not the
+supported distribution unit.
+
+Resolve `<PACK_ROOT>` from the installed root `SKILL.md`; `<SKILL_ROOT>` is
+`<PACK_ROOT>/skills`. The bundled CLI launcher works from any working directory:
+
+```console
+python "<PACK_ROOT>/scripts/run.py" --help
+python "<PACK_ROOT>/scripts/run.py" --json asr list
+```
+
+Python 3.10+ is required. First use prepares a private cached environment and
+installs the package's declared dependencies; later calls reuse it. Setup output
+goes to stderr, preserving the CLI's JSON stdout. `REVERSE_SKILL_RUNTIME` can select
+a dedicated environment directory for offline preparation or isolated testing.
+The selected directory must be empty or already owned by this package.
+
+---
 
 ## Start here
 
@@ -23,7 +64,7 @@ The testing release for this round is [v1.2.0-beta.1](https://github.com/2233adm
 | Try a swarm analysis | The three-call example in the [testing guide](https://github.com/2233admin/reverse-skill-evolver/blob/v1.2.0-beta.1/BETA-TEST.md) | OMP CLI with a configured model, and UTF-8 evidence you permit that model to receive |
 | Complete one local binary task | [Local IDA example](#0-start-with-one-local-ida-task) | Python 3.10+, licensed IDA/idalib, `idalib-mcp`, and your sample |
 | Connect skills to an existing client | [Client integration](#7-how-to-integrate-with-claude-code--codex-cli--other-ai-clients) | A working AI client and the tools needed for your task |
-| Browse skills and routes | [Skill entry](skills/SKILL.md) and [routing table](skills/routing.md) | A task selected for your target |
+| Browse skills and routes | [Skill entry](SKILL.md) and [routing table](skills/routing.md) | A task selected for your target |
 
 ## What you can analyze
 
@@ -65,7 +106,7 @@ The Python package installs the `reverse-skill` and `reverse-skill-swarm` CLIs. 
 
 Collect observations through the relevant workflow, then supply evidence you permit the model to receive. The current swarm disables tools in its OMP calls and analyzes only the supplied material.
 
-> This package can be placed in any directory. The AI will automatically detect its actual path. In the following text, `<SKILL_ROOT>` refers to your real installation path.
+> `<PACK_ROOT>` is the installed complete skill directory; `<SKILL_ROOT>` is `<PACK_ROOT>/skills`.
 
 ## OMP native workflows
 
@@ -128,10 +169,12 @@ At present, it is recommended to understand the whole package as two layers:
 
 ```text
 <package root>\
+├── SKILL.md                      # Installer-discovered package entry
+├── scripts/run.py                # Isolated Python CLI launcher
 ├── Readme.md                     # The installation/distribution guide you are reading now
 ├── CTF-Sandbox-Orchestrator\     # Full CTF competition stack (40+ sub-skills)
 └── skills\                       # Main skills directory
-    ├── SKILL.md                  # Main controller entry point
+    ├── ROUTER.md                 # Shared routing and tool conventions
     ├── evolution\                # GOAL contracts, capability graph, TraceCards, promotion gates
     ├── overnight-run\            # Unattended overnight run contract (OVERNIGHT.md v2) + scaffolding
     ├── routing.md                # Scenario → skill dispatching (routing matrix)
@@ -218,11 +261,11 @@ If you change drive letters, usernames, or tool installation directories, adjust
 The recipe above is the human CLI path. This reading order applies when enabling an agent to route tasks.
 
 1. Put the whole directory somewhere you like, for example: `<package root>\`
-2. Go to `skills\SKILL.md`
+2. Go to `SKILL.md`
 3. When handling a task, read files in this order:
    1. `SKILL.md`
-   2. `evolution\SKILL.md`
-   3. `routing.json` + `routing.md`
+   2. `skills\evolution\SKILL.md`
+   3. `skills/routing.json` + `skills/routing.md`
    4. The `SKILL.md` in the corresponding subdirectory
    5. Read `capability-graph.json` / `tool-index.md` only when you need to confirm local tools
 
@@ -233,7 +276,7 @@ You need at least:
 - A code CLI that supports custom rules / system prompts / project instructions / hooks
 - A way to inject “read the routing file first for reverse-engineering tasks" into the model context
 - If direct external capabilities are needed, configure MCP or an equivalent tool bridge
-- This package’s `SKILL.md`, `evolution\SKILL.md`, `routing.json`, `routing.md`, `capability-graph.json`, and `tool-index.md`
+- This package’s `SKILL.md`, `skills/evolution/SKILL.md`, `skills/routing.json`, `skills/routing.md`, `skills/capability-graph.json`, and `skills/tool-index.md`
 
 If you already have Claude hooks, Codex CLI project instructions, Cursor Rules, Cline custom instructions, or Windsurf Rules, update any old paths inside them to the current installation path.
 
@@ -359,7 +402,21 @@ After success, check:
 
 The Python command `reverse-skill` is the common entry point for both CLI workflows. Install it from the repository with `python -m pip install -e .`; a source checkout can run the same interface as `python -m reverse_skill`. Its `idapro` MCP workflow targets the same Streamable HTTP service as native Codex MCP registration:
 
-The CLI has two distinct journeys: IDA Pro MCP operations (service lifecycle, discovery, and tool calls) and bounded routing-evolution search (`evolve`). The latter only evaluates route selection against local fixtures; it does not execute child skills or promote candidates.
+The CLI provides IDA Pro MCP operations, Forefy ASR registry access, and bounded routing-evolution search (`evolve`). The latter only evaluates route selection against local fixtures; it does not execute child skills or promote candidates.
+
+### Forefy ASR
+
+Use [`skills/asr-registry/SKILL.md`](skills/asr-registry/SKILL.md) to recommend an ASR skill/goal/workflow chain for the current task. Registry discovery and installation accept **audited items only** and exclude MCP server types. The list follows every page by default; duplicate names are distinguished by registry id.
+
+```console
+python -m reverse_skill --json asr list
+python -m reverse_skill --json asr list --kind skill --search "python"
+python -m reverse_skill --json asr show ITEM_ID
+python -m reverse_skill --json asr install ITEM_ID --destination .agents/skills/ITEM_NAME
+python -m reverse_skill asr --help
+```
+
+ASR also supports upstream install-script previews, author/plugin inspection, security and quality scan submission/results, repository publishing/import, structured goal creation, and download accounting. See the [command/API reference](skills/asr-registry/references/commands.md). Installation saves raw files into a new directory without executing them. Publishing and `--mine` require `FOREFY_API_KEY`; imports always send `include_server=false`. A scan result is separate from a human audit.
 
 ### IDA Pro MCP
 
@@ -569,7 +626,7 @@ Whether you use Claude Code, Codex CLI, Cursor, Cline, Windsurf, or another code
 
 No matter whether you use hooks, RULES.md, Rules, workspace instructions, system prompts, or other project-level instructions, at minimum tell the AI about these entry files:
 
-- `skills\SKILL.md`
+- `SKILL.md`
 - `skills\evolution\SKILL.md`
 - `skills\routing.json`
 - `skills\routing.md`

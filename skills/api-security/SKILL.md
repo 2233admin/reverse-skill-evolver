@@ -1,3 +1,8 @@
+---
+name: api-security
+description: Test authorized REST, GraphQL, WebSocket, and SOAP APIs for authentication, authorization, input validation, and rate-limiting flaws. Use for API security assessments and JWT/OAuth testing.
+---
+
 # API 安全测试
 
 > 覆盖 REST / GraphQL / WebSocket / SOAP 全协议

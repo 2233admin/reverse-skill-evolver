@@ -1,4 +1,4 @@
-﻿---
+---
 name: browser-automation
 description: |
   统一自动化入口。覆盖浏览器自动化（Playwright）和 Windows 桌面应用自动化（OpenReverse）。
@@ -216,7 +216,7 @@ npm run doctor:network
 
 ## 路由上下文
 
-**上游入口**: `skills/SKILL.md`（总控）、`routing.md`
+**上游入口**: `SKILL.md`（总控）、`routing.md`
 **适用场景**: 任何需要自动化操作浏览器或桌面应用的任务
 **下游出口**:
 - 抓到的请求需要分析 → `anything-analyzer` 或 `js-reverse`

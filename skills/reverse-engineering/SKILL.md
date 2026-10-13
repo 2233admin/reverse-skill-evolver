@@ -167,7 +167,7 @@ Use [field-notes.md](field-notes.md) after the first round of triage when you kn
 
 ## 路由上下文
 
-**上游入口**: `skills/SKILL.md`（总控）、`routing.md`
+**上游入口**: `SKILL.md`（总控）、`routing.md`
 **下游出口**:
 - 需要 IDA 反编译 → `ida-reverse/`
 - 需要 radare2 CLI 分析 → `radare2/`

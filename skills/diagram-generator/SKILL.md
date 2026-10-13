@@ -164,7 +164,7 @@ For English user requests, respond in English. For Chinese user requests, respon
 
 ## 路由上下文
 
-**上游入口**: `skills/SKILL.md`（总控）、`routing.md`
+**上游入口**: `SKILL.md`（总控）、`routing.md`
 **触发条件**: 用户说"画图"、"流程图"、"架构图"、"攻击路径图"、"时序图"、"Mermaid"、"Graphviz"、"PlantUML"
 **下游出口**:
 - 生成的图表可嵌入 `docs-generator/` 的报告中

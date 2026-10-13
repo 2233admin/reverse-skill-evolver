@@ -104,7 +104,7 @@ additionally requires the `validated` tier; it never promotes automatically.
 Step evidence arrays may remain empty when no evidence was produced.
 
 Validate JSON TraceCards at the real acceptance boundary:
-`python -m reverse_skill tracecard-validate --input trace-card.json`.
+`python "<PACK_ROOT>/scripts/run.py" tracecard-validate --input trace-card.json`.
 The stdlib `reverse_skill.evolution.validate_trace_card` enforces structure,
 unique IDs and reference consistency beyond JSON Schema's structural checks.
 This proves neither authenticity nor truth of external evidence; human review
@@ -123,10 +123,10 @@ version 2; retain older version-1 records unchanged.
 
 The repository includes a bounded OMP-backed route-selection optimizer. It is scoped to the routing prompt and local fixtures; it does not run child reverse-engineering skills or prove their task outcomes.
 
-From the repository root:
+From any working directory, using paths within the complete installed package:
 
 ```console
-python -m reverse_skill evolve --candidate skills/routing.md --catalog skills/routing.json --fixtures skills/evolution/fixtures/route-selection.json --output candidate-runs/run-001 --max-evaluations 3 --max-reflections 1
+python "<PACK_ROOT>/scripts/run.py" evolve --candidate "<SKILL_ROOT>/routing.md" --catalog "<SKILL_ROOT>/routing.json" --fixtures "<SKILL_ROOT>/evolution/fixtures/route-selection.json" --output candidate-runs/run-001 --max-evaluations 3 --max-reflections 1
 ```
 
 The command uses the configured OMP model without a model override, disables tools, skills, rules, extensions, and session persistence, then evaluates the no-skill baseline, curated prompt, and each proposed prompt on the same complete frozen fixture suite. Reflection receives the full frozen routing catalog (including relevant route/fallback definitions), exact failed tasks, expected/observed routes, invalid-response diagnostics, untouched failed responses, and successful-case context. One bounded targeted proposal is evaluated at a time. Per-track pass rates and invalid responses determine the Pareto frontier; no source prompt is promoted or overwritten.

@@ -293,7 +293,7 @@ found_struct_offset → idapro_set_comments(addr=insn_va, comment="{struct_name}
 
 ## 路由上下文
 
-**上游入口**: `skills/SKILL.md`（总控）、`routing.md`
+**上游入口**: `SKILL.md`（总控）、`routing.md`
 **触发条件**: 有旧版符号/逆向结果，需要迁移到新版本
 **下游出口**:
 - 需要先打开二进制 → `ida-reverse/`

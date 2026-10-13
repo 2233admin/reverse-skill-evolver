@@ -9,6 +9,15 @@
   },
   "macro_routes": [
     {
+      "id": "asr-registry",
+      "target_kinds": ["asr_registry", "asr_item", "registry_chain"],
+      "intent_keywords": ["asr", "forefy", "audited skills", "registry chain", "list ASR items", "注册表", "已审计技能"],
+      "primary_skill": "asr-registry/SKILL.md",
+      "requires_capabilities": ["python"],
+      "fallback_edges": [],
+      "success_oracles": ["audited_items_verified", "mcp_servers_excluded", "task_relevant_chain_proposed"]
+    },
+    {
       "id": "apk-android",
       "target_kinds": ["apk", "android", "xapk", "dex", "smali"],
       "intent_keywords": ["decompile", "repack", "smali", "frida", "ssl pinning", "signature bypass", "root detection"],

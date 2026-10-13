@@ -151,7 +151,7 @@ command -v one_gadget >/dev/null || gem install one_gadget
 
 ## 路由上下文
 
-**上游入口**: `skills/SKILL.md`（总控）、`routing.md`
+**上游入口**: `SKILL.md`（总控）、`routing.md`
 **触发条件**: 有二进制 + 已识别漏洞点，需要写 exploit
 
 **上游 skill（先用它们再回到本 skill）**:

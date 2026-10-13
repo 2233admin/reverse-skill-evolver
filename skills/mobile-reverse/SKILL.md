@@ -1,4 +1,9 @@
-﻿# Mobile Reverse Engineering
+---
+name: mobile-reverse
+description: Reverse-engineer and assess authorized Android and iOS applications using Frida, Objection, and mobile security workflows. Use for runtime instrumentation, native code, certificate pinning, and device-integrity checks.
+---
+
+# Mobile Reverse Engineering
 
 > Android + iOS 统一逆向方法论
 > Frida / Objection / OWASP MSTG / SSL Pinning Bypass

@@ -1,3 +1,8 @@
+---
+name: llm-security
+description: Assess authorized LLM applications and AI agents for prompt injection, tool misuse, memory poisoning, and model supply-chain weaknesses. Use for AI application security testing and agent threat analysis.
+---
+
 # LLM / AI 安全测试
 
 > 覆盖 OWASP LLM Top 10 v2.0 + OWASP Agentic AI Top 10（ASI 2026）

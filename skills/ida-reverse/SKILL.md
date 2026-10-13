@@ -190,7 +190,7 @@ rename(batch={"func": [{"addr": "函数地址", "name": "有意义的名字"}]},
 
 ## 路由上下文
 
-**上游入口**: `skills/SKILL.md`（总控）、`routing.md`
+**上游入口**: `SKILL.md`（总控）、`routing.md`
 **上游备选**: `radare2/`（如果不想开 IDA，可以先 r2 快速侦察）
 **下游出口**:
 - 需 Frida 动态验证 → `reverse-engineering/tools-dynamic.md`

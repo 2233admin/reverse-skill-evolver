@@ -4,7 +4,7 @@
 
 [English](README.md) · 中文 · [AI 社区](https://linux.do)
 
-[![Project checks](https://github.com/2233admin/reverse-skill-evolver/actions/workflows/project-checks.yml/badge.svg?branch=main)](https://github.com/2233admin/reverse-skill-evolver/actions/workflows/project-checks.yml) [![Skills](https://img.shields.io/badge/Skills-Browse-8A2BE2.svg)](skills/SKILL.md) [![MIT license](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) [![Testing release](https://img.shields.io/badge/release-v1.2.0--beta.1-orange.svg)](https://github.com/2233admin/reverse-skill-evolver/releases/tag/v1.2.0-beta.1)
+[![Project checks](https://github.com/2233admin/reverse-skill-evolver/actions/workflows/project-checks.yml/badge.svg?branch=main)](https://github.com/2233admin/reverse-skill-evolver/actions/workflows/project-checks.yml) [![Skills](https://img.shields.io/badge/Skills-Browse-8A2BE2.svg)](SKILL.md) [![MIT license](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) [![Testing release](https://img.shields.io/badge/release-v1.2.0--beta.1-orange.svg)](https://github.com/2233admin/reverse-skill-evolver/releases/tag/v1.2.0-beta.1)
 
 Reverse Skill Evolver 为 Claude Code、Codex 和 OMP 提供逆向工程 skills 与工具接入。代理根据目标和任务选择工作流，使用本机可用的工具，并把分析过程和结果留成可复查的记录。
 
@@ -13,6 +13,43 @@ Reverse Skill Evolver 为 Claude Code、Codex 和 OMP 提供逆向工程 skills 
 <p align="center">
   <img src="assets/reverse-skill-evolver-cover.png" alt="Reverse Skill Evolver 的逆向技能路由示意封面" width="720" />
 </p>
+
+## 安装完整技能包
+
+规范入口是仓库根目录的 [`SKILL.md`](SKILL.md)，技能名称为
+`reverse-skill-evolver`。整个目录作为一个 skill 安装，保留路由模块、共享脚本、
+CTF 资源和 Python 源码之间的相对路径。
+
+```console
+npx skills add 2233admin/reverse-skill-evolver --skill reverse-skill-evolver --agent codex
+```
+
+使用其他支持的客户端时修改 `--agent`。发布前验证本地检出时，在另一个工作目录
+运行安装器，将仓库标识替换为本检出的绝对路径。
+
+Codex 的 `skill-installer` 也可以安装同一个完整目录：
+
+```console
+python <skill-installer>/scripts/install-skill-from-github.py --repo 2233admin/reverse-skill-evolver --path . --name reverse-skill-evolver
+```
+
+安装后通过 `$reverse-skill-evolver` 或客户端的原生技能发现使用本包。注册由安装器
+处理，无需把规则写入客户端全局配置。子目录是包内模块，完整目录是分发单位。
+
+从安装后的根 `SKILL.md` 确定 `<PACK_ROOT>`；`<SKILL_ROOT>` 为 `<PACK_ROOT>/skills`。
+CLI 启动脚本可从任意工作目录调用：
+
+```console
+python "<PACK_ROOT>/scripts/run.py" --help
+python "<PACK_ROOT>/scripts/run.py" --json asr list
+```
+
+需要 Python 3.10+。首次调用会在用户缓存中准备独立环境并安装本包声明的依赖，
+后续调用复用环境。初始化日志写入 stderr，CLI 的 JSON stdout 保持独立。
+`REVERSE_SKILL_RUNTIME` 可指定离线预备或隔离测试用的环境目录；目标目录须为空，
+或已经属于本包。
+
+---
 
 ## 从这里开始
 
@@ -23,7 +60,7 @@ Reverse Skill Evolver 为 Claude Code、Codex 和 OMP 提供逆向工程 skills 
 | 试一次蜂群分析 | [测试指南](https://github.com/2233admin/reverse-skill-evolver/blob/v1.2.0-beta.1/BETA-TEST.md)中的三次调用示例 | 已配置模型的 OMP CLI，以及允许发送给该模型的 UTF-8 证据 |
 | 完成一条本地二进制任务 | [本地 IDA 示例](#0-先完成一条本地-ida-任务) | Python 3.10+、已许可的 IDA/idalib、`idalib-mcp` 和自己的样本 |
 | 把技能接入现有客户端 | [客户端接入说明](#7-claude-code--codex-cli--其他-ai-客户端如何接入) | 可用的 AI 客户端，以及任务所需工具 |
-| 查看具体技能和路由 | [技能入口](skills/SKILL.md)与[路由表](skills/routing.md) | 按目标选定的任务 |
+| 查看具体技能和路由 | [技能入口](SKILL.md)与[路由表](skills/routing.md) | 按目标选定的任务 |
 
 ## 可分析的任务
 
@@ -65,7 +102,7 @@ Python 包安装 `reverse-skill` 与 `reverse-skill-swarm` CLI。完整 skills �
 
 先在对应工作流取得观察记录，再把允许发送给模型的证据交给蜂群。当前蜂群调用 OMP 时禁用工具，只分析提供的材料。
 
-> 本包放在哪个目录都行，AI 会自动检测实际路径。以下用 `<SKILL_ROOT>` 代指你的实际安装位置。
+> `<PACK_ROOT>` 是完整技能包的安装目录；`<SKILL_ROOT>` 是 `<PACK_ROOT>/skills`。
 
 ## OMP 原生工作流
 
@@ -128,10 +165,12 @@ python -m reverse_skill --json close SESSION_ID > reports/first-task/close.json
 
 ```text
 <本包根目录>\
+├── SKILL.md                      # Installer-discovered package entry
+├── scripts/run.py                # Isolated Python CLI launcher
 ├── Readme.md                     # 你现在看到的安装/分发说明
 ├── CTF-Sandbox-Orchestrator\     # CTF 竞赛全栈（40+ 子技能）
 └── skills\            # 主技能目录
-    ├── SKILL.md                  # 总控入口
+    ├── ROUTER.md                 # 包内共享路由与工具约定
     ├── evolution\                # GOAL 契约、能力图谱、TraceCard、晋级门禁
     ├── routing.md                # 场景 → 技能分流（路由矩阵）
     ├── routing.json              # 机读路由镜像
@@ -218,11 +257,11 @@ C:\Tools\radare2\                      # 可选
 上方示例是人工 CLI 路径；下列阅读顺序适用于让代理接入路由。
 
 1. 把整个目录放到你喜欢的位置，例如：`<本包根目录>\`
-2. 进入 `skills\SKILL.md`
+2. 进入 `SKILL.md`
 3. 遇到任务时按以下顺序读：
    1. `SKILL.md`
-   2. `evolution\SKILL.md`
-   3. `routing.json` + `routing.md`
+   2. `skills\evolution\SKILL.md`
+   3. `skills/routing.json` + `skills/routing.md`
    4. 对应子目录的 `SKILL.md`
    5. 需要确认本机工具时再看 `capability-graph.json` / `tool-index.md`
 
@@ -233,7 +272,7 @@ C:\Tools\radare2\                      # 可选
 - 一个支持自定义规则 / system prompt / 项目指令 / hook 之一的代码 CLI
 - 一种把“逆向任务先读路由文件”注入模型上下文的方式
 - 如需直接调用外部能力，再配好 MCP 或等价工具桥接
-- 本包的 `SKILL.md / evolution\SKILL.md / routing.json / routing.md / capability-graph.json / tool-index.md`
+- 本包的 `SKILL.md / skills/evolution/SKILL.md / skills/routing.json / skills/routing.md / skills/capability-graph.json / skills/tool-index.md`
 
 如果你已经有自己的 Claude hook、Codex CLI 项目指令、Cursor Rules、Cline 自定义指令或 Windsurf Rules，把里面指向旧路径的部分改成你当前安装位置即可。
 
@@ -358,7 +397,21 @@ powershell -File "<SKILL_ROOT>\scripts\refresh-tool-index.ps1"
 
 Python 命令 `reverse-skill` 是两条 CLI 工作流共用的入口。在仓库中执行 `python -m pip install -e .` 即可安装；源码检出也可直接使用 `python -m reverse_skill`。其中 `idapro` MCP 工作流与 Codex 原生 MCP 注册指向同一个 Streamable HTTP 服务：
 
-CLI 提供两条不同的使用路径：IDA Pro MCP 操作（服务生命周期、发现与工具调用），以及有界路由进化搜索（`evolve`）。后者只用本地用例评估路由选择，不执行子技能，也不会晋级候选。
+CLI 提供 IDA Pro MCP 操作、Forefy ASR 注册表接入，以及有界路由进化搜索（`evolve`）。后者只用本地用例评估路由选择，不执行子技能，也不会晋级候选。
+
+### Forefy ASR 注册表
+
+通过 [`skills/asr-registry/SKILL.md`](skills/asr-registry/SKILL.md) 按当前任务选择 ASR 技能、目标和工作流，组合执行链。检索与安装**仅接受已审计条目**，排除 MCP server 类型。列表默认遍历全部分页；同名条目按注册表 id 区分。
+
+```console
+python -m reverse_skill --json asr list
+python -m reverse_skill --json asr list --kind skill --search "python"
+python -m reverse_skill --json asr show ITEM_ID
+python -m reverse_skill --json asr install ITEM_ID --destination .agents/skills/ITEM_NAME
+python -m reverse_skill asr --help
+```
+
+支持上游安装脚本预览、作者/插件查询、安全与质量扫描及结果查询、仓库发布/导入、结构化目标创建、下载统计。完整映射见[命令/API 参考](skills/asr-registry/references/commands.md)。安装将原始文件写入新目录，不执行内容；发布和 `--mine` 读取 `FOREFY_API_KEY`，导入始终发送 `include_server=false`。自动扫描结果与人工审计状态分别报告。
 
 ### IDA Pro MCP
 
@@ -567,7 +620,7 @@ Cargo 不适用：本仓库是 Python/Java 项目，没有 `Cargo.toml`。不要
 
 无论你用的是 hook、RULES.md、Rules、workspace instructions、system prompt 还是其他项目级说明，至少要把以下入口文件告诉 AI：
 
-- `skills\SKILL.md`
+- `SKILL.md`
 - `skills\evolution\SKILL.md`
 - `skills\routing.json`
 - `skills\routing.md`
