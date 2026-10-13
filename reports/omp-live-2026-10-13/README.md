@@ -26,4 +26,6 @@
 
 验证：逐个核对两个成功 envelope 与 results.json 相等；每个输入及 candidate artifact 的 SHA-256 与报告相符；每个完整 candidate 均覆盖该次 suite 的全部 fixture；每个实际原始响应重新经严格 parser 得到同一 route/invalid；partial run 不含虚假评分；全部保持 not_promoted。凭据扫描通过，日志和报告不含提供的 API key。失败的真实默认 provider 请求及 Windows cleanup 中断证明 incomplete 路径，没有伪造完整结果。
 
+Git 字节保真：此目录在 .gitattributes 设为 `-text`，冻结 artifact 不经过自动换行转换。重新加入后，直接取当前 Git index/blob 中的输入与候选字节核对报告 SHA-256，全部一致；工作区核对不能单独替代该检查。
+
 可审阅结论：#21 要求的真实完整路由 suite、真实 framing、失败归档与独立有界反思已取得证据；下游逆向任务、真实攻击、长期模型质量和晋级均不由此次结果证明。下一责任人：审阅者，审阅 Draft PR #42；稳定候选仍需独立全套比较与人工审阅。
