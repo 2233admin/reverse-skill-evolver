@@ -115,16 +115,19 @@ def codex_registration(name: str, *, timeout: float = DEFAULT_TIMEOUT) -> dict[s
     try:
         completed = subprocess.run(
             [codex, "mcp", "get", name, "--json"],
-            capture_output=True, text=True, check=False, timeout=timeout,
+            capture_output=True, check=False, timeout=timeout,
         )
     except subprocess.TimeoutExpired as exc:
         raise EnvironmentUnavailable(
             f"failed to inspect Codex MCP registration {name!r}: timed out after {timeout:g} seconds"
         ) from exc
-    if completed.returncode != 0 or not completed.stdout.strip():
+    # Decode on the caller thread; Windows pipe-reader failures do not propagate.
+    stdout = completed.stdout.decode("utf-8")
+    completed.stderr.decode("utf-8")
+    if completed.returncode != 0 or not stdout.strip():
         return None
     try:
-        value = json.loads(completed.stdout)
+        value = json.loads(stdout)
     except json.JSONDecodeError:
         return None
     return value if isinstance(value, dict) else None
@@ -155,15 +158,17 @@ def register_codex(name: str, url: str, *, timeout: float = DEFAULT_TIMEOUT) -> 
     try:
         completed = subprocess.run(
             [codex, "mcp", "add", name, "--url", url],
-            capture_output=True, text=True, check=False, timeout=timeout,
+            capture_output=True, check=False, timeout=timeout,
         )
     except subprocess.TimeoutExpired as exc:
         raise EnvironmentUnavailable(
             f"failed to register Codex MCP server {name!r}: timed out after {timeout:g} seconds; "
             "Codex may have saved the registration; inspect it before retrying"
         ) from exc
+    stdout = completed.stdout.decode("utf-8")
+    stderr = completed.stderr.decode("utf-8")
     if completed.returncode != 0:
-        detail = completed.stderr.strip() or completed.stdout.strip()
+        detail = stderr.strip() or stdout.strip()
         raise EnvironmentUnavailable(
             f"failed to register Codex MCP server {name!r}: {detail}; "
             "Codex may have saved the registration; inspect it before retrying"

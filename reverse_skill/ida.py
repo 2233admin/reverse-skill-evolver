@@ -273,7 +273,8 @@ public static class ReverseSkillCommandLine {
     foreach ($owner in $owners) {
         $listener = Read-Identity $owner
         $chain = @($listener)
-        if ($listener.Info.ExecutablePath -ne $env:REVERSE_SKILL_SERVER) {
+        if ($listener.Info.ExecutablePath -ne $env:REVERSE_SKILL_SERVER -or
+            [IO.Path]::GetFileName($listener.Info.ExecutablePath) -in @('python.exe', 'pythonw.exe')) {
             # distlib runs python.exe <launcher.exe>; venv Python may add a redirector parent.
             $interpreter = Read-PythonInvocation $listener
             $child = $listener
@@ -285,6 +286,9 @@ public static class ReverseSkillCommandLine {
                 }
                 $chain += $parent
                 if ($parent.Info.ExecutablePath -eq $env:REVERSE_SKILL_SERVER) {
+                    if ($interpreter -ne $child.Info.ExecutablePath) {
+                        throw 'interpreter ancestry does not match; no process was stopped'
+                    }
                     $arguments = [ReverseSkillCommandLine]::Parse($parent.Info.CommandLine)
                     if ($arguments.Count -ne 5 -or
                         [IO.Path]::GetFullPath($arguments[0]) -ne $env:REVERSE_SKILL_SERVER -or
@@ -295,12 +299,17 @@ public static class ReverseSkillCommandLine {
                     $foundLauncher = $true
                     break
                 }
-                if ((Read-PythonInvocation $parent) -ne $interpreter) {
+                $parentInterpreter = Read-PythonInvocation $parent
+                # A self-bound venv redirector may retain its image as the child's argv[0].
+                if ($interpreter -ne $child.Info.ExecutablePath -and
+                    ($interpreter -ne $parent.Info.ExecutablePath -or
+                     $parentInterpreter -ne $parent.Info.ExecutablePath)) {
                     throw 'interpreter ancestry does not match; no process was stopped'
                 }
+                $interpreter = $parentInterpreter
                 $child = $parent
             }
-            if (!$foundLauncher -or !($chain | Where-Object { $_.Info.ExecutablePath -eq $interpreter })) {
+            if (!$foundLauncher) {
                 throw "port owner PID $owner does not match the selected executable ancestry; no process was stopped"
             }
         }
@@ -327,7 +336,7 @@ public static class ReverseSkillCommandLine {
 finally { foreach ($process in $held) { $process.Dispose() } }
 """
     env = os.environ.copy()
-    env.update(REVERSE_SKILL_PORT=str(port), REVERSE_SKILL_SERVER=str(Path(executable).resolve()))
+    env.update(REVERSE_SKILL_PORT=str(port), REVERSE_SKILL_SERVER=os.path.abspath(executable))
     try:
         completed = subprocess.run(
             ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script],
