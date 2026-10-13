@@ -10,7 +10,7 @@
 | #33 | 已推送 af900b4，Draft PR #42 | [交付回执](https://github.com/2233admin/reverse-skill-evolver/issues/33#issuecomment-6144196773) |
 | #34 | 已推送 dc09539，Draft PR #42 | [交付回执](https://github.com/2233admin/reverse-skill-evolver/issues/34#issuecomment-6144253174) |
 | #35 | 已推送 f410993，Draft PR #42 | [交付回执](https://github.com/2233admin/reverse-skill-evolver/issues/35#issuecomment-6144302542) |
-| #36 | 修复并验证，交付同一 Draft PR #42 | evolve 预算、进度、中断，见下方 |
+| #36 | 已推送 8a0ca33，Draft PR #42 | [交付回执](https://github.com/2233admin/reverse-skill-evolver/issues/36#issuecomment-6144429268) |
 | #37 | 待实施 | start 端口与根 URL |
 | #38 | 待实施 | 经验索引编码与引用 |
 | #39 | 待实施 | 首次上手文档，依赖前述行为 |
@@ -64,3 +64,7 @@
 完整 Python 回归：`python -m pytest -q --tb=short` → **257 passed, 5 skipped**（包含真实 Node bridge 检查）。
 
 尚未运行：本项检查没有真实模型调用；#21 将单独记录新获授权的真实 OMP 结果，不与本项模拟证据混同。
+
+## #21 当前真实验证
+
+[真实 OMP 记录](omp-live-2026-10-13/README.md)：默认 provider 首请求 402，显式 MiniMax 新 API 第一条真实路由响应通过；下一次调用遇到 Windows 临时 cwd 清理错误。累计转发 3/37，两个 run 均 incomplete。修复 cleanup 不再掩盖已取得的模型响应/错误，相关真实隔离 cwd 锁及 evolution 检查 **95 passed**。接续真实完整 suite，保持预算和 not_promoted。

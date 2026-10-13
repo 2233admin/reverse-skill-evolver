@@ -275,7 +275,7 @@ def _omp(prompt: str, system_prompt: str, timeout: int) -> str:
     executable = shutil.which("omp")
     if executable is None:
         raise EnvironmentUnavailable("OMP CLI is required for evolution; install or expose `omp` on PATH")
-    with tempfile.TemporaryDirectory(prefix="reverse-skill-evolve-") as working_dir:
+    with tempfile.TemporaryDirectory(prefix="reverse-skill-evolve-", ignore_cleanup_errors=True) as working_dir:
         args = _omp_args(executable, working_dir, system_prompt, timeout)
         _check_windows_argv(args)
         try:

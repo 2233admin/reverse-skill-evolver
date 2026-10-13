@@ -1,6 +1,7 @@
 import copy
 import io
 import json
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 import pytest
@@ -374,6 +375,27 @@ def test_omp_subprocess_failures_preserve_diagnostics(monkeypatch: pytest.Monkey
     expected = {"timeout": "exceeded 7 seconds", "oserror": "controlled start failure", "exit": "OMP exited 9: stderr detail"}
     with pytest.raises(ToolOperationError, match=expected[failure]):
         evolution._omp("task", "system", 7)
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows locks process working directories")
+def test_omp_keeps_response_when_owned_child_still_locks_temp_directory(tmp_path, monkeypatch):
+    import subprocess
+    original_directory = evolution.tempfile.TemporaryDirectory
+    children = []
+    monkeypatch.setattr(evolution.tempfile, "TemporaryDirectory", lambda **kwargs: original_directory(dir=tmp_path, **kwargs))
+    monkeypatch.setattr(evolution.shutil, "which", lambda _: "omp.exe")
+    def run(args, **kwargs):
+        directory = Path(args[args.index("--cwd") + 1])
+        assert directory.resolve().is_relative_to(tmp_path.resolve())
+        children.append(subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"], cwd=directory))
+        return SimpleNamespace(returncode=0, stdout='{"route_id":"reverse-engineering"}', stderr="")
+    monkeypatch.setattr(evolution.subprocess, "run", run)
+    try:
+        assert evolution._omp("task", "system", 1) == '{"route_id":"reverse-engineering"}'
+    finally:
+        for child in children:
+            child.terminate()
+            child.wait(timeout=3)
 
 
 def test_windows_limit_is_not_applied_to_non_windows_argv(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -1,0 +1,3 @@
+retry:
+  maxRetries: 0
+  fallbackChains: {}
