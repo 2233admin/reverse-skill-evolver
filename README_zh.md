@@ -21,11 +21,28 @@ Reverse Skill Evolver 为 Claude Code、Codex 和 OMP 提供逆向工程 skills 
 CTF 资源和 Python 源码之间的相对路径。
 
 ```console
-npx skills add 2233admin/reverse-skill-evolver --skill reverse-skill-evolver --agent codex
+npx skills add 2233admin/reverse-skill-evolver --skill reverse-skill-evolver
 ```
 
-使用其他支持的客户端时修改 `--agent`。发布前验证本地检出时，在另一个工作目录
-运行安装器，将仓库标识替换为本检出的绝对路径。
+这条命令没有指定客户端。安装器根据当前环境检测安装目标，需要时提示选择。
+需要明确指定目标时，在命令后追加对应的 `--agent` 参数：
+
+| 客户端 | 参数 |
+|---|---|
+| Claude Code | `--agent claude-code` |
+| Codex | `--agent codex` |
+| Cursor | `--agent cursor` |
+| OpenCode | `--agent opencode` |
+
+可以一次指定多个目标：
+
+```console
+npx skills add 2233admin/reverse-skill-evolver --skill reverse-skill-evolver --agent claude-code codex cursor opencode
+```
+
+追加 `--global` 可安装到用户级目录；默认安装范围是当前项目。客户端的 MCP 注册
+与技能目录安装分别处理。其他目标见[安装器支持的客户端](https://github.com/vercel-labs/skills#supported-agents)。
+发布前验证本地检出时，在另一个工作目录运行安装器，将仓库标识替换为本检出的绝对路径。
 
 Codex 的 `skill-installer` 也可以安装同一个完整目录：
 
@@ -33,7 +50,7 @@ Codex 的 `skill-installer` 也可以安装同一个完整目录：
 python <skill-installer>/scripts/install-skill-from-github.py --repo 2233admin/reverse-skill-evolver --path . --name reverse-skill-evolver
 ```
 
-安装后通过 `$reverse-skill-evolver` 或客户端的原生技能发现使用本包。注册由安装器
+安装后通过客户端的技能选择、显式调用语法或原生技能发现使用本包。注册由安装器
 处理，无需把规则写入客户端全局配置。子目录是包内模块，完整目录是分发单位。
 
 从安装后的根 `SKILL.md` 确定 `<PACK_ROOT>`；`<SKILL_ROOT>` 为 `<PACK_ROOT>/skills`。

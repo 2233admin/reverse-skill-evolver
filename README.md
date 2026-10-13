@@ -21,12 +21,31 @@ The canonical entry is the repository-root [`SKILL.md`](SKILL.md), named
 scripts, CTF resources, and Python source retain their relative paths.
 
 ```console
-npx skills add 2233admin/reverse-skill-evolver --skill reverse-skill-evolver --agent codex
+npx skills add 2233admin/reverse-skill-evolver --skill reverse-skill-evolver
 ```
 
-For another supported client, change `--agent`. To test a local checkout before
-publishing, run the installer from a consumer workspace and replace the repository
-identifier with the checkout's absolute path.
+This command does not pin a specific client. The installer detects target agents
+from the current environment and prompts when selection is needed. To select a target explicitly, append its
+`--agent` value:
+
+| Client | Option |
+|---|---|
+| Claude Code | `--agent claude-code` |
+| Codex | `--agent codex` |
+| Cursor | `--agent cursor` |
+| OpenCode | `--agent opencode` |
+
+You can select several targets in one command:
+
+```console
+npx skills add 2233admin/reverse-skill-evolver --skill reverse-skill-evolver --agent claude-code codex cursor opencode
+```
+
+Append `--global` for user-wide installation; the default scope is the current
+project. Client-specific MCP registration is separate from installing this skill.
+For other targets, see the [installer's supported agents](https://github.com/vercel-labs/skills#supported-agents).
+To test a local checkout before publishing, run the installer from a consumer
+workspace and replace the repository identifier with the checkout's absolute path.
 
 The Codex `skill-installer` helper can install the same complete package:
 
@@ -34,7 +53,8 @@ The Codex `skill-installer` helper can install the same complete package:
 python <skill-installer>/scripts/install-skill-from-github.py --repo 2233admin/reverse-skill-evolver --path . --name reverse-skill-evolver
 ```
 
-Use `$reverse-skill-evolver` or let your client's native skill discovery select it.
+Use your client's skill selector or explicit invocation syntax, or let its native
+skill discovery select this package.
 The installer manages registration; this workflow does not require copying rules
 into global client configuration. Subdirectories are bundled modules, not the
 supported distribution unit.
