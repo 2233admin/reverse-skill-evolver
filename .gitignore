@@ -57,3 +57,4 @@ BOOTSTRAP.md
 
 # Task-local verification runtimes, native caches and private agent state
 .verification/
+.reverse-skill/

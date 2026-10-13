@@ -16,6 +16,9 @@ Reverse Skill Evolver 为 Claude Code、Codex 和 OMP 提供逆向工程 skills 
 
 ## 安装完整技能包
 
+完整包同时提供确定性路由建议、Python 仓库检查、案件范围与证据审查，以及可选的
+本地 SQLite 索引检索。用法见[本地工作流命令](docs/local-workflows.md)。
+
 规范入口是仓库根目录的 [`SKILL.md`](SKILL.md)，技能名称为
 `reverse-skill-evolver`。整个目录作为一个 skill 安装，保留路由模块、共享脚本、
 CTF 资源和 Python 源码之间的相对路径。

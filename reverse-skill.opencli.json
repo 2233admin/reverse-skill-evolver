@@ -224,7 +224,455 @@
           { "name": "--max-reflections", "description": "Separate reflection budget; maximum logical calls = evaluations x fixtures + reflections. Provider retries may add requests.", "arguments": [{ "name": "COUNT", "required": true }] },
           { "name": "--model-timeout", "arguments": [{ "name": "SECONDS", "required": true }] }
         ]
-      }
+      },
+        {
+          "name": "route",
+          "description": "Suggest a skill for TASK; does not execute or authorize it.",
+          "arguments": [
+            {
+              "name": "TASK",
+              "required": true
+            }
+          ],
+          "options": [
+            {
+              "name": "--target-kind",
+              "arguments": [
+                {
+                  "name": "TARGET_KIND",
+                  "required": true
+                }
+              ]
+            },
+            {
+              "name": "--input-path",
+              "arguments": [
+                {
+                  "name": "INPUT_PATH",
+                  "required": true
+                }
+              ]
+            },
+            {
+              "name": "--route-id",
+              "arguments": [
+                {
+                  "name": "ROUTE_ID",
+                  "required": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "gates",
+          "description": "Check repository contracts or explicitly scan selected files.",
+          "commands": [
+            {
+              "name": "all",
+              "description": "Run command, version, data and routing checks."
+            },
+            {
+              "name": "doc-facts",
+              "description": "Check CLI descriptions and packaged routing data."
+            },
+            {
+              "name": "version",
+              "description": "Check package, OpenCLI and changelog versions."
+            },
+            {
+              "name": "routing-coherence",
+              "description": "Check route IDs and bundled workflow paths."
+            },
+            {
+              "name": "leak-scan",
+              "description": "Scan PATH for possible leaks; values are redacted.",
+              "arguments": [
+                {
+                  "name": "PATH",
+                  "required": true
+                }
+              ],
+              "options": [
+                {
+                  "name": "--report-only"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "case",
+          "description": "Initialize and review local case scope and evidence records.",
+          "commands": [
+            {
+              "name": "init",
+              "description": "Create a new work/<name>/ case without executing the selected workflow.",
+              "options": [
+                {
+                  "name": "--hint",
+                  "required": true,
+                  "arguments": [
+                    {
+                      "name": "HINT",
+                      "required": true
+                    }
+                  ]
+                },
+                {
+                  "name": "--case-name",
+                  "arguments": [
+                    {
+                      "name": "CASE_NAME",
+                      "required": true
+                    }
+                  ]
+                },
+                {
+                  "name": "--preset",
+                  "arguments": [
+                    {
+                      "name": "PRESET",
+                      "required": true
+                    }
+                  ]
+                },
+                {
+                  "name": "--network-profile",
+                  "arguments": [
+                    {
+                      "name": "NETWORK_PROFILE",
+                      "required": true
+                    }
+                  ]
+                },
+                {
+                  "name": "--auth-status",
+                  "arguments": [
+                    {
+                      "name": "AUTH_STATUS",
+                      "required": true
+                    }
+                  ]
+                },
+                {
+                  "name": "--auth-basis",
+                  "arguments": [
+                    {
+                      "name": "AUTH_BASIS",
+                      "required": true
+                    }
+                  ]
+                },
+                {
+                  "name": "--evidence-of-auth",
+                  "arguments": [
+                    {
+                      "name": "EVIDENCE_OF_AUTH",
+                      "required": true
+                    }
+                  ]
+                },
+                {
+                  "name": "--target-url",
+                  "arguments": [
+                    {
+                      "name": "TARGET_URL",
+                      "required": true
+                    }
+                  ]
+                },
+                {
+                  "name": "--sample",
+                  "arguments": [
+                    {
+                      "name": "SAMPLE",
+                      "required": true
+                    }
+                  ]
+                },
+                {
+                  "name": "--in-scope-asset",
+                  "repeatable": true,
+                  "arguments": [
+                    {
+                      "name": "IN_SCOPE_ASSETS",
+                      "required": true
+                    }
+                  ]
+                },
+                {
+                  "name": "--package-root",
+                  "arguments": [
+                    {
+                      "name": "PACKAGE_ROOT",
+                      "required": true
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "review",
+              "description": "Review traceability and optionally verify artifact hashes, without writes.",
+              "arguments": [
+                {
+                  "name": "CASE_ROOT",
+                  "required": true
+                }
+              ],
+              "options": [
+                {
+                  "name": "--format",
+                  "arguments": [
+                    {
+                      "name": "OUTPUT_FORMAT",
+                      "required": true,
+                      "acceptedValues": [
+                        "json",
+                        "markdown"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "--strict"
+                },
+                {
+                  "name": "--verify-hashes"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "index",
+          "description": "Build and maintain the deterministic SQLite document index (PageIndex-style).",
+          "commands": [
+            {
+              "name": "build",
+              "description": "Plan or apply a full deterministic index build.",
+              "arguments": [
+                {
+                  "name": "PATH",
+                  "required": true
+                }
+              ],
+              "options": [
+                {
+                  "name": "--apply",
+                  "description": "Create or replace the index (default: read-only plan)."
+                },
+                {
+                  "name": "--index-path",
+                  "arguments": [
+                    {
+                      "name": "INDEX_PATH",
+                      "required": true
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "update",
+              "description": "Plan or apply an incremental index update.",
+              "arguments": [
+                {
+                  "name": "PATH",
+                  "required": true
+                }
+              ],
+              "options": [
+                {
+                  "name": "--apply",
+                  "description": "Apply the incremental delta (default: read-only plan)."
+                },
+                {
+                  "name": "--index-path",
+                  "arguments": [
+                    {
+                      "name": "INDEX_PATH",
+                      "required": true
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "import-ida",
+              "description": "Plan or explicitly import one IDA JSON export into the shared index.",
+              "arguments": [
+                {
+                  "name": "PATH",
+                  "required": true
+                }
+              ],
+              "options": [
+                {
+                  "name": "--export",
+                  "description": "Explicit versioned IDA JSON export; no IDA process is started.",
+                  "required": true,
+                  "arguments": [
+                    {
+                      "name": "EXPORT_PATH",
+                      "required": true
+                    }
+                  ]
+                },
+                {
+                  "name": "--apply",
+                  "description": "Replace the module's IDA layer transactionally."
+                },
+                {
+                  "name": "--index-path",
+                  "arguments": [
+                    {
+                      "name": "INDEX_PATH",
+                      "required": true
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "xrefs",
+              "description": "Read incoming and/or outgoing IDA xrefs for one stable node.",
+              "arguments": [
+                {
+                  "name": "PATH",
+                  "required": true
+                },
+                {
+                  "name": "NODE_ID",
+                  "required": true
+                }
+              ],
+              "options": [
+                {
+                  "name": "--direction",
+                  "arguments": [
+                    {
+                      "name": "DIRECTION",
+                      "required": true,
+                      "acceptedValues": [
+                        "incoming",
+                        "outgoing",
+                        "both"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "--index-path",
+                  "arguments": [
+                    {
+                      "name": "INDEX_PATH",
+                      "required": true
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "status",
+              "description": "Report index existence, revision, root hash, and counts (read-only).",
+              "arguments": [
+                {
+                  "name": "PATH",
+                  "required": true
+                }
+              ],
+              "options": [
+                {
+                  "name": "--index-path",
+                  "arguments": [
+                    {
+                      "name": "INDEX_PATH",
+                      "required": true
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "inspect",
+              "description": "Inspect one node plus its ancestors and bounded subtree (read-only).",
+              "arguments": [
+                {
+                  "name": "PATH",
+                  "required": true
+                },
+                {
+                  "name": "NODE_ID",
+                  "required": true
+                }
+              ],
+              "options": [
+                {
+                  "name": "--index-path",
+                  "arguments": [
+                    {
+                      "name": "INDEX_PATH",
+                      "required": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "retrieve",
+          "description": "Ranked read-only retrieval from the deterministic index.",
+          "arguments": [
+            {
+              "name": "PATH",
+              "required": true
+            },
+            {
+              "name": "QUERY",
+              "required": true
+            }
+          ],
+          "options": [
+            {
+              "name": "--mode",
+              "description": "bm25 ranks; tree navigates titles; hybrid expands BM25 shortlist by structure.",
+              "required": true,
+              "arguments": [
+                {
+                  "name": "MODE",
+                  "required": true,
+                  "acceptedValues": [
+                    "bm25",
+                    "tree",
+                    "hybrid"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "--top-k",
+              "description": "Default 20, max 200.",
+              "arguments": [
+                {
+                  "name": "TOP_K",
+                  "required": true
+                }
+              ]
+            },
+            {
+              "name": "--index-path",
+              "arguments": [
+                {
+                  "name": "INDEX_PATH",
+                  "required": true
+                }
+              ]
+            }
+          ]
+        }
     ]
   }
 }

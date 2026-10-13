@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add deterministic route suggestions with 163 fixed regression cases and Python checks for CLI descriptions, versions and workflow paths.
+- Add local case initialization and evidence review, preserving the output-v1 error contract.
+- Add opt-in SQLite indexing, structural retrieval and supplied IDA export import with read-only planning defaults.
+
 - Support Windows virtual-environment launcher chains with different Python images; bind each Python command to its own or its immediate redirector parent's image and preserve unrelated listeners, bounded ancestry inspection, and final port-owner rechecks.
 - Decode Codex output on the caller thread so malformed UTF-8 reports the original error on Windows and leaves the MCP probe unexecuted, instead of losing the error in a background pipe reader.
 - Reject unrelated Python listeners even when their image is explicitly selected as the server; verify configured Codex timeouts against real slow subprocesses.

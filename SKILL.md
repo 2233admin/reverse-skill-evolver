@@ -29,6 +29,10 @@ the skill installer; using this skill does not require global rule injection.
 2. Read `skills/routing.json` and `skills/routing.md`, then the selected module's
    `SKILL.md`. An explicit Forefy ASR request enters
    `skills/asr-registry/SKILL.md`.
+   For a deterministic suggestion, run
+   `python "<PACK_ROOT>/scripts/run.py" --json route "<task>"`.
+   `selected` reports a route recommendation; tool availability and the current
+   task's authorization still need verification before executing the workflow.
 3. Consult `skills/ROUTER.md` for shared tool discovery, bootstrap, reporting,
    and journal conventions when those parts of the workflow apply. Tool
    availability and external service configuration are separate from installing
@@ -56,3 +60,20 @@ operation runs and reports the actual error.
 For PowerShell, shell, and module-local helpers, use their bundled paths as
 documented by the selected module. Native tools and MCP services are prepared
 only when the requested workflow needs them.
+
+## Case records and optional project index
+
+Create an explicit case record with `case init --hint "<task>" --case-name NAME
+--package-root "<workspace>"`. It records declared scope and network mode and
+creates `work/NAME/`; it does not execute an analysis or grant authorization.
+Use `skills/case-review/SKILL.md` for scope, evidence links, timeline and artifact
+hash review. JSON failures retain output-v1's `data=null`; their error message
+includes the diagnostic report.
+
+For a large workspace, `index build "<workspace>"` returns a plan. Only
+`--apply` creates `.reverse-skill/index/v1.sqlite3`; `index update` follows the
+same rule. `retrieve "<workspace>" "<query>" --mode bm25|tree|hybrid` reads the
+existing local index. Indexing is optional and does not change skill selection.
+Use `gates all` to check repository versions, CLI descriptions and routing
+paths; `gates leak-scan "<path>"` explicitly scans selected files with redacted
+findings. All commands use the bundled launcher above.

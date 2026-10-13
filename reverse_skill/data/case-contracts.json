@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "frozen": "2026-08-11",
+  "description": "Frozen canonical contracts for reverse-skill case packages (init + review). Single machine-readable source; skills/ops/*.md are the human-readable mirrors. Do not create parallel enums.",
+  "case_package": {
+    "root_files": ["scope.md", "timeline.md", "workitems.md"],
+    "directories": ["evidence", "notes", "report"],
+    "gitignore_hint": "work/"
+  },
+  "id_patterns": {
+    "evidence": "^E-[A-Za-z0-9][A-Za-z0-9_-]*$",
+    "workitem": "^WI-[A-Za-z0-9][A-Za-z0-9_-]*$",
+    "finding": "^F-[A-Za-z0-9][A-Za-z0-9_-]*$",
+    "path": "^P-[A-Za-z0-9][A-Za-z0-9_-]*$"
+  },
+  "enums": {
+    "network_modes": ["offline", "lab_only", "authorized_target_only", "unrestricted_lab"],
+    "network_mode_aliases": {
+      "lab": "lab_only",
+      "authorized": "authorized_target_only",
+      "auth": "authorized_target_only",
+      "offline_only": "offline"
+    },
+    "auth_statuses": ["pending", "granted", "denied", "unknown"],
+    "auth_basis": ["written_contract", "bug_bounty_scope", "ctf_public", "own_system", "lab_only"],
+    "severities": ["critical", "high", "medium", "low", "info", "n/a", "n/a_re"],
+    "evidence_statuses": ["observed", "candidate", "validated", "false_positive", "accepted_risk"],
+    "workitem_statuses": ["pending", "in_progress", "blocked", "done", "completed", "cancelled"],
+    "finding_statuses": ["candidate", "validated", "false_positive", "accepted_risk"],
+    "path_types": ["attack", "callflow", "solve"],
+    "preset_names": ["offline-sample", "ctf-public", "own-system"]
+  },
+  "presets": {
+    "offline-sample": {
+      "aliases": ["own-sample", "local-sample"],
+      "auth_status": "granted",
+      "auth_basis": "own_system",
+      "network_mode": "offline",
+      "evidence_of_auth": "preset:offline-sample (owner-operated local file)"
+    },
+    "ctf-public": {
+      "aliases": ["ctf"],
+      "auth_status": "granted",
+      "auth_basis": "ctf_public",
+      "network_mode": "authorized_target_only",
+      "evidence_of_auth": "preset:ctf-public"
+    },
+    "own-system": {
+      "aliases": ["lab-only"],
+      "auth_status": "granted",
+      "auth_basis": "own_system",
+      "network_mode": "lab_only",
+      "evidence_of_auth": "preset:own-system/lab"
+    }
+  },
+  "hash": {
+    "algorithm": "sha256",
+    "digest_pattern": "^[0-9a-f]{64}$",
+    "prefix": "sha256:",
+    "n_a_token": "n/a"
+  },
+  "scope_sections": {
+    "meta": ["case_id", "created", "operator", "primary_skill", "primary_id", "lead_role", "specialist_roles", "hint", "preset"],
+    "auth": ["status", "basis", "evidence_of_auth"],
+    "in_scope": ["assets", "surfaces", "activities"],
+    "out_of_scope": ["assets", "activities"],
+    "network_profile": ["mode", "notes"],
+    "deliverables": ["report", "field_journal", "diagrams", "timeline"],
+    "constraints": ["timebox", "stealth", "data_handling"],
+    "signoff": ["ready_for_act", "checklist"]
+  },
+  "timeline_entry_fields": ["action", "command_or_ref", "result_summary", "artifacts", "evidence_ids", "next"],
+  "evidence_fields": ["title", "observed_at", "source_type", "source_ref", "content_hash", "artifact_path", "repro_command", "raw_excerpt", "linked_workitem", "supersedes", "severity", "status", "notes"],
+  "finding_fields": ["title", "severity", "category", "status", "evidence_ids", "location", "impact", "confidence", "repro_steps", "remediation", "optional_attack"],
+  "path_fields": ["title", "path_type", "start", "goal", "steps", "residual_risks"],
+  "workitem_columns": ["ID", "title", "role", "targets", "surface", "status", "evidence", "notes"],
+  "review": {
+    "issue_levels": ["error", "warning"],
+    "statuses": ["PASS", "WARN", "FAIL"],
+    "strict_warning_is_fail": true
+  }
+}

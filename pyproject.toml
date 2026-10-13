@@ -31,5 +31,8 @@ reverse-skill-swarm = "reverse_skill.swarm_cli:main"
 [tool.setuptools.packages.find]
 include = ["reverse_skill*"]
 
+[tool.setuptools.package-data]
+reverse_skill = ["data/*.json"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
