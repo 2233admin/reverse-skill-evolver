@@ -86,6 +86,16 @@ def emit(state: State, command: str, data: Any) -> None:
         click.echo(_human(data, command))
 
 
+def _error_message(exc: Exception, command: str, json_output: bool) -> str:
+    diagnostics = getattr(exc, "diagnostics", None)
+    if diagnostics is None:
+        return str(exc)
+    if json_output:
+        return str(exc) + "\nDiagnostics: " + json.dumps(diagnostics, ensure_ascii=False)
+    click.echo(_human(diagnostics, command))
+    return str(exc)
+
+
 def structured_content(result: Mapping[str, Any]) -> Mapping[str, Any]:
     value = result.get("structuredContent")
     return value if isinstance(value, Mapping) else result
@@ -237,7 +247,7 @@ def _status_data(state: State) -> dict[str, Any]:
     try:
         registration = codex_registration(state.name, timeout=state.timeout)
     except (EnvironmentUnavailable, OSError, UnicodeError) as exc:
-        failures.append(exc if isinstance(exc, ReverseSkillError) else EnvironmentUnavailable(str(exc)))
+        failures.append(exc)
     transport = (registration or {}).get("transport") or {}
     data = {
         "ida": ida.public() if ida else None,
@@ -530,13 +540,7 @@ def main(argv: list[str] | None = None) -> int:
             exc.show(file=sys.stderr)
         return 2
     except ReverseSkillError as exc:
-        diagnostics = getattr(exc, "diagnostics", None)
-        message = str(exc)
-        if diagnostics is not None:
-            if json_output:
-                message += "\nDiagnostics: " + json.dumps(diagnostics, ensure_ascii=False)
-            else:
-                click.echo(_human(diagnostics, command))
+        message = _error_message(exc, command, json_output)
         if json_output:
             click.echo(
                 json.dumps(
@@ -548,10 +552,11 @@ def main(argv: list[str] | None = None) -> int:
             click.echo(f"Error: {exc}", err=True)
         return exc.exit_code
     except Exception as exc:
+        message = _error_message(exc, command, json_output)
         if json_output:
             click.echo(
                 json.dumps(
-                    _envelope(command, error={"code": "internal", "message": str(exc)}),
+                    _envelope(command, error={"code": "internal", "message": message}),
                     ensure_ascii=False,
                 )
             )

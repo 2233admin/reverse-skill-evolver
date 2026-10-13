@@ -249,6 +249,39 @@ def test_evolve_real_runner_keeps_progress_on_stderr_and_one_final_json(tmp_path
     assert report["status"] == ("incomplete" if fail else "complete")
 
 
+@pytest.mark.parametrize("command", ["status", "doctor"])
+@pytest.mark.parametrize("json_mode", [False, True])
+@pytest.mark.parametrize("failure", [OSError("cannot start Codex"), UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid")])
+def test_diagnostic_internal_failures_keep_original_exit_code(monkeypatch, capsys, command, json_mode, failure):
+    monkeypatch.setattr(cli_module, "find_latest_ida", lambda: None)
+    def fail(*args, **kwargs):
+        raise failure
+    monkeypatch.setattr(cli_module, "codex_registration", fail)
+    class Client:
+        era = "fixture"
+        protocol_version = "fixture"
+        server_info = {}
+        session_id = None
+        def __init__(self, *args, **kwargs):
+            pass
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            pass
+        def request(self, *args):
+            return {"tools": [{"name": "fixture"}]}
+    monkeypatch.setattr(cli_module, "McpClient", Client)
+    assert cli_module.main([*(["--json"] if json_mode else []), command]) == 1
+    output = capsys.readouterr()
+    if json_mode:
+        value = json.loads(output.out)
+        assert value["data"] is None and value["error"]["code"] == "internal"
+        assert "Diagnostics: " in value["error"]["message"] and output.err == ""
+    else:
+        assert all(stage in output.out for stage in ("IDA:", "Codex:", "MCP:"))
+        assert "Error:" in output.err
+
+
 @pytest.fixture
 def evolve_args(tmp_path: Path) -> list[str]:
     input_path = tmp_path / "input.json"

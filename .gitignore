@@ -54,3 +54,6 @@ burp-mcp-full/lib/
 *.jar
 !burp-mcp-full/build/libs/burp-mcp-full.jar
 BOOTSTRAP.md
+
+# Task-local verification runtimes, native caches and private agent state
+.verification/

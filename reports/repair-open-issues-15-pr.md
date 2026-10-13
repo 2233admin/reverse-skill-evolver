@@ -35,3 +35,7 @@ OMP 项复用原 Draft PR #26/#31 的原始 Git lineage（本分支本地 merge�
 #29：拒绝模块名 DEL 控制字符，输入/portable skill 检查 24 passed；真实 Frida 17.9.3 在自制 Python/DLL 进程通过 7 场景，覆盖 ASLR、命中/未命中、事件上限、伴随 listener 保留、错误模块/架构/位数/地址/执行区。plan 仍 planned_not_run，观察另存。首次受 C 盘空间限制，改 driver 进程临时目录到本 worktree 后成功，未清理或改宿主配置。没有第三方目标/模型调用。
 
 #30：校验前拒绝 Proxy/非标准数组，防止 fixture 自定义陷阱/迭代器执行。Node/Bun 各 9 passed；真实 OMP 18.8.9 的一轮 MiniMax 会话实际调用3个js eval cells并复用持久变量/模块。完整HMAC用例2/2，部分用例remaining=1不通过，独立Python oracle/工具frames核对；9.501秒、1次逻辑OMP调用，全批32/37，物理请求/费用unknown。输入为自制fixtures，不是第三方网络capture。缓存/临时目录限于本worktree进程环境，未清理宿主缓存/改配置。
+
+最终回归 **322 passed, 5 skipped**（37.45秒）；另有原#41在精确632cf1a快照上39 passed，独立交付Draft PR #44。最后自检修正doctor内部OSError/解码错误仍保留原退出码1，新CLI/合同检查74 passed。Git中冻结输入/候选和native DLL身份重新核对，报告无提供的API key。
+
+CI/审阅：Project Python/Java checks在5223544成功；纯field-journal自动合并工作流因本PR也改了代码而按原白名单拒绝，未绕过规则或请求自动合并。main未配置保护/required checks，不宣称全CI绿。CodeRabbit跳过Draft审查；RepoWise结构复杂度告警保留给独立审阅，不能当作功能漏洞或审查批准。PR保持Draft、未合并，Issue不提前关闭。

@@ -14,12 +14,12 @@
 | #37 | 已推送 4b42601，Draft PR #42 | [交付回执](https://github.com/2233admin/reverse-skill-evolver/issues/37#issuecomment-6144782032) |
 | #38 | 已推送 f762102，Draft PR #42 | [交付回执](https://github.com/2233admin/reverse-skill-evolver/issues/38#issuecomment-6144854900) |
 | #39 | 已推送 d59699c，Draft PR #42 | [交付回执](https://github.com/2233admin/reverse-skill-evolver/issues/39#issuecomment-6145103261) |
-| #32 | 总览，待逐项回收 | 不视为独立代码修复，不提前关闭 |
+| #32 | 八个UX子项交付已回写，待独立审阅 | [父级回执](https://github.com/2233admin/reverse-skill-evolver/issues/32#issuecomment-6145104135)；不提前关闭 |
 | #41 | 原 632cf1a 已复验，Draft PR #44 | [PR](https://github.com/2233admin/reverse-skill-evolver/pull/44)；新复验 39 passed，67.75 秒；未重写 |
 | #27 | 已推送 11d8e8e，Draft PR #42 | [回执](https://github.com/2233admin/reverse-skill-evolver/issues/27#issuecomment-6145599636)；真实 native + 22 项检查 |
 | #28 | 已推送 0b63096，Draft PR #42 | 实际两版 native 输入 + 39 项检查，源码复用 |
 | #29 | 已推送 9dd2079，Draft PR #42 | [回执](https://github.com/2233admin/reverse-skill-evolver/issues/29#issuecomment-6145923141)；7 个真实 Frida case + 24 检查 |
-| #30 | 已修复、Node/Bun与真实OMP持久eval通过，交付 PR #42 | 数组子类/Proxy 拒绝；真实3个eval调用，累计模型32/37 |
+| #30 | 已推送 5223544，Draft PR #42 | [回执](https://github.com/2233admin/reverse-skill-evolver/issues/30#issuecomment-6146374727)；真实3个eval调用，累计模型32/37 |
 | #21 | 真实 suite/反思/失败路径已验证，交付 PR #42 | 31/37 逻辑调用，单次 60 秒；候选不晋级，见真实记录 |
 
 ## #40 验证
@@ -131,3 +131,17 @@ comparator 复用未重写，新增 17 项回归；`python -m pytest tests/test_
 真实 OMP 18.8.9 已发现skill；一轮仅 eval 的 MiniMax 会话实际执行3个持久js cells，导入模块/定义状态/复用状态并跑全套及部分 compareSignatures。保存JSON由Python独立HMAC oracle和原工具frames核查：完整2/2，partial remaining=1且不通过。9.501秒，一次逻辑OMP调用，全批累计32/37，物理请求/账单unknown。输入为自制固定HMAC用例，不冒充第三方capture或服务器验收。C盘空间导致native缓存失败后，按正式PI_NATIVES_DIR/私有agentdir/进程TEMP在本worktree成功，未清理宿主缓存或改配置。原响应/metadata/完整报告/driver见scoped record，凭据扫描通过。
 
 本批15项均已有代码或既有代码复用、逐项验证和可审查交付；下一步做最终回归、远端head/CI回读及总结。PR未合并，不据此关闭Issue或宣称真实用户/任意目标验收。
+
+## 最终检查与交付状态
+
+最终自检补修 #34 的兼容回归：原进程启动 OSError/解码 UnicodeError 保持原 internal/退出码1，阶段诊断仍保留；不是一律转为 environment/退出码3。新负例覆盖 doctor/status、两种输出，共8项；CLI/合同检查 **74 passed**。
+
+最终全部 Python 检查：`TEMP/TMP` 指向本 worktree 私有目录运行 `python -m pytest -q --tb=short` → **322 passed, 5 skipped，37.45秒**；包含实际 Node bridge/replay suite。跳过项未计为通过。另有原 #41 commit 的独立快照 **39 passed**、Node/Bun replay各 **9 passed**、两个真实 native SDK输入、自制 Frida **7 cases PASS**、真实路由24调用及反思4调用、持久eval实际3个工具调用。不能用总测试数替代各Issue验收表。
+
+直接回读当前Git blob验证 #21 全部 frozen 输入/候选、#27 实际 DLL SHA，均与报告一致。真实eval的实际Windows文件SHA与Git blob SHA分别记录，并绑定源提交5223544；避免混淆checkout换行和仓库源码身份。所有报告扫描无本次提供的API key；稳定候选仍not_promoted。
+
+远端交付：Draft PR #42 承载本批UX/#21及复用的OMP #26/#31 lineage和后续修补验证；Draft PR #44的head精确为原632cf1a。main仍53010b3，原PR26/31分支head仍caa6013/920e0dd，均未改写/合并。新工作区的`.verification/`只含本轮私有运行环境/缓存，已忽略，不进入Git；没有清理旧工作区、C盘或共享缓存。
+
+CI/审查边界：在5223544，Python/Java Project checks和GitGuardian成功。field-journal自动合并门失败，原日志明确“PR修改了非field-journal文件”；该门只允许纯journal变更，本批有CLI/OMP等代码，未修改或绕过此策略，没有请求自动合并。main保护API回读为“Branch not protected”，required checks未配置；不能把未配置写成全CI绿。CodeRabbit对Draft跳过审查，无提交review/inline评论。RepoWise的4个critical是复杂条件/圈复杂度告警（generate_hook_plan、validateJson、_snapshot等），并非已确认功能/安全漏洞；报告明示无AI review/无测量test map，仍保留为独立审阅关注，不据通过测试宣称消除结构风险。最新head推送后重新回读CI。
+
+本轮交付已完成，阶段状态为**已提交推送、待独立审阅**；PR均保持Draft，Issue没有提前关闭。未验证：真实用户上手计时/该首页样本任务、真实Burp GUI/真实设备/远端同步、任意架构和生产签名capture。下一责任人：审阅者，按原Issue逐项验收并在明确授权后整合；本Session不持有长期协调或自动合并权。
