@@ -13,9 +13,9 @@
 | #36 | 已推送 8a0ca33，Draft PR #42 | [交付回执](https://github.com/2233admin/reverse-skill-evolver/issues/36#issuecomment-6144429268) |
 | #37 | 已推送 4b42601，Draft PR #42 | [交付回执](https://github.com/2233admin/reverse-skill-evolver/issues/37#issuecomment-6144782032) |
 | #38 | 已推送 f762102，Draft PR #42 | [交付回执](https://github.com/2233admin/reverse-skill-evolver/issues/38#issuecomment-6144854900) |
-| #39 | 已改写并验证，交付 Draft PR #42 | 首页完整 CLI 任务、接入/恢复边界；见下方 |
+| #39 | 已推送 d59699c，Draft PR #42 | [交付回执](https://github.com/2233admin/reverse-skill-evolver/issues/39#issuecomment-6145103261) |
 | #32 | 总览，待逐项回收 | 不视为独立代码修复，不提前关闭 |
-| #41 | 已有提交待形成 PR | 复用 `632cf1a`，不重写 |
+| #41 | 原 632cf1a 已复验，准备专属 Draft PR | 新复验 39 passed，67.75 秒；不重写 |
 | #27–#30 | 已有 Draft PR #31，待功能验证 | 依赖 Draft PR #26；复用实现 |
 | #21 | 真实 suite/反思/失败路径已验证，交付 PR #42 | 31/37 逻辑调用，单次 60 秒；候选不晋级，见真实记录 |
 
@@ -92,3 +92,9 @@
 实际运行：两种首页 console blocks 逐字相同，新增相对链接全部存在；7 条公开 CLI 命令用隔离 client/start recorder 和自建空样本执行，参数解析/流程/成功 JSON 均通过（start 为人工模式，其余 6 个单 JSON envelope）。`python -m pytest tests/test_cli.py tests/test_contract.py -q --tb=short` → **66 passed**；`git diff --check` 通过。`git diff --quiet 53010b3 -- skills/routing.md skills/routing.json skills/evolution/fixtures/route-selection.json` → 0，稳定路由/fixture 无变化；本机 `codex mcp remove --help` 核对恢复命令。
 
 未运行：本首页 recipe 的真实 IDA 样本分析、上游交互安装、写入/撤回宿主配置、计时真实用户上手测试；未把本次文档检查宣称流失率改善。#21 的真实模型检查保持单独证据。下一责任人：Draft PR #42 审阅者；本 Session 继续 #41 交付及 OMP #27–#30 功能验证。
+
+## #41 接续验证
+
+远端分支 head 保持 `632cf1a`，main 仍为 53010b3，无已有对应 PR 或该 branch 的活动终端。未改其旧 worktree、实现或提交。在本 worktree 内临时目录解压精确 commit 的 git archive，仅运行相关既有检查：`python -m pytest tests/test_powershell_scripts.py tests/test_bootstrap_contract.py tests/test_routing_contract.py -q --tb=short` → **39 passed，67.75 秒**，退出码 0。原始输出见 [回读检查](issue41-resume-verification-2026-10-13.txt)。
+
+原提交全套 256 passed/5 skipped 与性能测量仍属于旧证据，本次不冒充重测。真实安装、设备、Frida 注入、远端同步未测。接续创建原 head 的 Draft PR，待审阅/明确合并授权。
