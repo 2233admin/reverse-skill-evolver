@@ -656,3 +656,10 @@ def test_markdown_longer_fence_closes_block(char, length):
     nodes = parse_markdown("fences.md", ["# Root", char * 3, "# hidden", char * length, "## Visible"])
     headings = [(n.title, n.start) for n in nodes if n.kind == "heading"]
     assert headings == [("Root", 1), ("Visible", 5)]
+
+
+@pytest.mark.parametrize("indent", ["    ", "\t", "  \t"])
+def test_markdown_indented_code_is_not_a_heading(indent):
+    nodes = parse_markdown("indent.md", ["# Root", indent + "# comment", "", "## Visible"])
+    headings = [(n.title, n.start) for n in nodes if n.kind == "heading"]
+    assert headings == [("Root", 1), ("Visible", 4)]

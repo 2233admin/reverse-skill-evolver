@@ -469,8 +469,9 @@ def parse_markdown(relpath: str, lines: List[str]) -> List[NodeSpec]:
     fence_char = ""
     fence_len = 0
     for idx, line in enumerate(lines):
-        stripped = line.lstrip()
-        indent = len(line) - len(stripped)
+        expanded = line.expandtabs(4)
+        stripped = expanded.lstrip(" ")
+        indent = len(expanded) - len(stripped)
         if in_fence:
             if indent <= 3 and stripped.startswith(fence_char * fence_len):
                 if re.fullmatch(re.escape(fence_char) + "{" + str(fence_len) + ",}[ \t]*", stripped):
@@ -481,6 +482,8 @@ def parse_markdown(relpath: str, lines: List[str]) -> List[NodeSpec]:
             in_fence = True
             fence_char = opener.group(1)[0]
             fence_len = len(opener.group(1))
+            continue
+        if indent > 3:
             continue
         match = _ATX_HEADING_RE.match(stripped)
         if not match:
