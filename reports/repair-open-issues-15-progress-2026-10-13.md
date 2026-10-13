@@ -12,8 +12,8 @@
 | #35 | 已推送 f410993，Draft PR #42 | [交付回执](https://github.com/2233admin/reverse-skill-evolver/issues/35#issuecomment-6144302542) |
 | #36 | 已推送 8a0ca33，Draft PR #42 | [交付回执](https://github.com/2233admin/reverse-skill-evolver/issues/36#issuecomment-6144429268) |
 | #37 | 已推送 4b42601，Draft PR #42 | [交付回执](https://github.com/2233admin/reverse-skill-evolver/issues/37#issuecomment-6144782032) |
-| #38 | 已恢复并核对，交付 Draft PR #42 | 27 引用身份、26 实际目标、17 种子保留；1 文件名示例不当作日志 |
-| #39 | 待实施 | 首次上手文档，依赖前述行为 |
+| #38 | 已推送 f762102，Draft PR #42 | [交付回执](https://github.com/2233admin/reverse-skill-evolver/issues/38#issuecomment-6144854900) |
+| #39 | 已改写并验证，交付 Draft PR #42 | 首页完整 CLI 任务、接入/恢复边界；见下方 |
 | #32 | 总览，待逐项回收 | 不视为独立代码修复，不提前关闭 |
 | #41 | 已有提交待形成 PR | 复用 `632cf1a`，不重写 |
 | #27–#30 | 已有 Draft PR #31，待功能验证 | 依赖 Draft PR #26；复用实现 |
@@ -84,3 +84,11 @@
 实际核对：Python 严格 UTF-8 读取和 PowerShell `Get-Content -Encoding utf8` 均显示可读标题/正文；前后 27 个 `.md` 引用身份无丢失，26 个实际引用目标全部存在，剩余 1 个是明确的文件命名示例；17 条 `[种子]` 标记保留；`git diff --check` 通过。未增加依赖或形式化测试。
 
 不能恢复：后续新增的先例加载顺序/授权措辞段落未找到可靠可读原文；索引明确标为未恢复，保留三个原先例链接，具体操作仍以当前任务授权为准。未对 seed/项目日志作新事实或验证等级判断。下一责任人：审阅者；本 Session 接续 #39。
+
+## #39 验证
+
+改动：中英文首页用同一段 CLI 任务作为入口：必要 Python/IDA/idalib/输入、native-binary → ida-reverse、启动/doctor/open/sessions/tools/survey/close、reports/first-task 证据路径、真实会话 ID 替换和逐条成功信号/失败恢复。无需用户先阅读内部维护文档。一次性安装、可选原生 MCP 注册、项目路由入口与可选全局范围分开说明，列出修改对象、备份/恢复命名块/卸载新条目和日常复用；RULES 与原 13/14/16 节同步，不因纯阅读触发配置写入。稳定 route/promotion 合同未改变。
+
+实际运行：两种首页 console blocks 逐字相同，新增相对链接全部存在；7 条公开 CLI 命令用隔离 client/start recorder 和自建空样本执行，参数解析/流程/成功 JSON 均通过（start 为人工模式，其余 6 个单 JSON envelope）。`python -m pytest tests/test_cli.py tests/test_contract.py -q --tb=short` → **66 passed**；`git diff --check` 通过。`git diff --quiet 53010b3 -- skills/routing.md skills/routing.json skills/evolution/fixtures/route-selection.json` → 0，稳定路由/fixture 无变化；本机 `codex mcp remove --help` 核对恢复命令。
+
+未运行：本首页 recipe 的真实 IDA 样本分析、上游交互安装、写入/撤回宿主配置、计时真实用户上手测试；未把本次文档检查宣称流失率改善。#21 的真实模型检查保持单独证据。下一责任人：Draft PR #42 审阅者；本 Session 继续 #41 交付及 OMP #27–#30 功能验证。
