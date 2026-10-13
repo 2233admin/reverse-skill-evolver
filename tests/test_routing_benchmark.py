@@ -54,3 +54,9 @@ def test_explicit_route_and_token_boundaries():
     assert build_plan({"task": "unrelated", "route_id": "missing"})["status"] == "no_route"
     assert contains_keyword("session", "so") is False
     assert contains_keyword("sample.so", "so") is True
+
+
+def test_asr_request_cannot_be_outscored_by_target_tool_keywords():
+    hint = "List ASR items for an APK task: jadx apktool smali decompile repack frida ssl pinning signature bypass root detection"
+    assert build_plan({"task": hint})["route"]["id"] == "asr-registry"
+    assert build_plan({"task": hint, "route_id": "apk-android"})["route"]["id"] == "apk-android"

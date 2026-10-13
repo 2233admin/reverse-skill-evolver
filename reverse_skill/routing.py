@@ -83,7 +83,7 @@ def build_plan(task: dict[str, Any]) -> dict[str, Any]:
                 score += 10
                 signals.append("keyword:" + keyword)
         scored.append((score, route, signals))
-    scored.sort(key=lambda item: item[0], reverse=True)
+    scored.sort(key=lambda item: (target == "asr-registry" and item[1]["id"] == "asr-registry", item[0]), reverse=True)
     if not scored or scored[0][0] <= 0:
         return {"schema_version": 1, "status": "no_route", "target_kind": target,
                 "reason": "no_target_or_intent_match", "executed": False}
