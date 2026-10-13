@@ -34,6 +34,7 @@ from the current environment and prompts when selection is needed. To select a t
 | Codex | `--agent codex` |
 | Cursor | `--agent cursor` |
 | OpenCode | `--agent opencode` |
+| OMP (shared project skills) | `--agent universal` |
 
 You can select several targets in one command:
 
@@ -41,11 +42,37 @@ You can select several targets in one command:
 npx skills add 2233admin/reverse-skill-evolver --skill reverse-skill-evolver --agent claude-code codex cursor opencode
 ```
 
-Append `--global` for user-wide installation; the default scope is the current
-project. Client-specific MCP registration is separate from installing this skill.
+The default scope is the current project. For Claude Code, Codex, Cursor, and
+OpenCode, append `--global` to use their user-wide directories; OMP's native user directory is
+described below. Client-specific MCP registration is separate from installing this skill.
 For other targets, see the [installer's supported agents](https://github.com/vercel-labs/skills#supported-agents).
 To test a local checkout before publishing, run the installer from a consumer
 workspace and replace the repository identifier with the checkout's absolute path.
+
+For **OMP (Oh My Pi)**, install into the shared project directory it discovers:
+
+```console
+npx skills add 2233admin/reverse-skill-evolver --skill reverse-skill-evolver --agent universal
+omp read skill://reverse-skill-evolver
+```
+
+This installs the complete package at `.agents/skills/reverse-skill-evolver/`.
+Start OMP in that project and invoke `/skill:reverse-skill-evolver <task>`.
+OMP's [skill discovery](https://github.com/can1357/oh-my-pi/blob/main/docs/skills.md)
+loads project `.agents/skills/` as well as its native `.omp/skills/`.
+To use the native project directory instead, clone the whole repository there:
+
+```console
+git clone https://github.com/2233admin/reverse-skill-evolver.git .omp/skills/reverse-skill-evolver
+```
+
+For native user-wide installation, place the same complete directory under the
+active OMP agent directory's `skills/` (default
+`~/.omp/agent/skills/reverse-skill-evolver/`; profiles and environment settings
+can relocate it). The native `omp skill install` command installs a named,
+versioned Skillshare registry package; use the commands above for this GitHub
+distribution. The bundled IDA and JS modules remain accessible through the root
+router and their relative paths.
 
 The Codex `skill-installer` helper can install the same complete package:
 
@@ -110,7 +137,7 @@ Routing instructions can be revised based on task experience. `reverse-skill evo
 
 The [OMP workflow cases](reports/omp-workflow-verification-2026-10-13/README.md) retain evidence from self-authored x64 PE/native-worker fixtures, generated Frida observation scripts, and supplied signer comparisons against fixed fixtures. The [beta validation record](https://github.com/2233admin/reverse-skill-evolver/blob/v1.2.0-beta.1/BETA-VALIDATION.md) covers builds, installed entry points, and controlled swarm execution.
 
-Each record has a defined sample and scope. Real-model swarm quality, automatic OMP skill discovery, Burp GUI loading, and first-user onboarding still need testing. Route-selection scores on fixed fixtures do not establish downstream reverse-engineering correctness.
+Each record has a defined sample and scope. OMP 18.8.9 discovered the complete package in project `.agents/skills/` and `.omp/skills/`; `omp read skill://reverse-skill-evolver` and reads of the bundled router, ASR, IDA, and JS modules passed in both layouts. Real-model swarm quality, model-driven automatic skill selection, Burp GUI loading, and first-user onboarding still need testing. Route-selection scores on fixed fixtures do not establish downstream reverse-engineering correctness.
 
 ## Before you start
 
@@ -120,7 +147,7 @@ Prepare the tools for your task. Swarm analysis needs OMP CLI and existing evide
 
 ### Does installing the Python package register OMP skills?
 
-The Python package installs the `reverse-skill` and `reverse-skill-swarm` CLIs. Complete skills are distributed in the source ZIP; copy the complete directories as described below for OMP use. Installing the Python package does not register those skills.
+The Python package installs the `reverse-skill` and `reverse-skill-swarm` CLIs. Use the complete-skill installer above for OMP routing; standalone native workflow directories can also be copied as described below. Installing the Python package does not register those skills.
 
 ### How does the swarm get observations from IDA or Frida?
 
