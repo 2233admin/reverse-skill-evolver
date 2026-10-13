@@ -69,6 +69,39 @@ def test_missing_native_environment_is_actionable(method):
         method({}, "owned-native")
 
 
+@pytest.mark.parametrize("operation,helper,invalid", [
+    ("snapshot", "callees", "missing"), ("snapshot", "callees", "not_callable"),
+    ("snapshot", "ida_bytes", "missing"), ("snapshot", "ida_bytes", "not_callable"),
+    ("pseudocode", "pseudocode", "missing"), ("pseudocode", "pseudocode", "not_callable"),
+    ("triage", "xrefs_to", "missing"), ("triage", "xrefs_to", "not_callable"),
+])
+def test_operation_helpers_are_checked_before_enumeration(namespace, operation, helper, invalid):
+    scans = []
+    original = namespace["functions"]
+    def functions():
+        scans.append("functions")
+        return original()
+    namespace["functions"] = functions
+    if invalid == "missing":
+        namespace.pop(helper)
+    else:
+        namespace[helper] = SimpleNamespace(get_bytes=None) if helper == "ida_bytes" else None
+    method = analysis.triage if operation == "triage" else analysis.collect_snapshot
+    options = {"collect_pseudocode": True} if operation == "pseudocode" else {}
+    with pytest.raises(RuntimeError, match=rf"{helper}.*open an owned native database"):
+        method(namespace, "owned-native", **options)
+    assert scans == []
+
+
+def test_operations_do_not_require_unused_helpers(namespace):
+    snapshot_namespace = {key: value for key, value in namespace.items() if key not in ("xrefs_to", "pseudocode", "ida_bytes")}
+    snapshot = analysis.collect_snapshot(snapshot_namespace, "owned-native", max_bytes_per_function=0)
+    assert len(snapshot["functions"]) == 2
+    assert all(row["bytes_hashed"] == 0 for row in snapshot["functions"])
+    triage_namespace = {key: value for key, value in namespace.items() if key not in ("callees", "ida_bytes", "pseudocode")}
+    assert analysis.triage(triage_namespace, "owned-native")["candidates"]
+
+
 @pytest.mark.parametrize("field,value", [("sha256", "unknown"), ("bitness", True), ("base_address", -1), ("module", None), ("architecture", "")])
 def test_invalid_source_cannot_be_exported_as_traceable(namespace, field, value):
     setattr(namespace["db"], field, value)

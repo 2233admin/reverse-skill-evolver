@@ -11,7 +11,7 @@ def _limit(value, name, maximum, minimum=0):
     return value
 
 
-def _source(namespace, database_id):
+def _source(namespace, database_id, helpers=()):
     required = ("db", "functions", "strings", "imports", "func")
     if not isinstance(namespace, Mapping) or any(name not in namespace for name in required):
         raise RuntimeError(
@@ -20,6 +20,16 @@ def _source(namespace, database_id):
         )
     if not all(callable(namespace[name]) for name in required[1:]):
         raise RuntimeError("OMP native IDA enumeration and function helpers must be callable")
+    for name in helpers:
+        key, separator, attribute = name.partition(".")
+        helper = namespace.get(key)
+        if separator:
+            helper = getattr(helper, attribute, None)
+        if not callable(helper):
+            raise RuntimeError(
+                f"OMP native IDA helper {name} required; "
+                "open an owned native database and pass its exec globals"
+            )
     if not isinstance(database_id, str) or not database_id.strip():
         raise ValueError("database_id must be the explicit native database ID")
     db = namespace["db"]
@@ -70,7 +80,12 @@ def collect_snapshot(
     }
     if not isinstance(collect_pseudocode, bool):
         raise ValueError("collect_pseudocode must be a boolean")
-    source = _source(namespace, database_id)
+    helpers = ["callees"]
+    if max_bytes_per_function:
+        helpers.append("ida_bytes.get_bytes")
+    if collect_pseudocode and max_pseudocode_functions:
+        helpers.append("pseudocode")
+    source = _source(namespace, database_id, helpers)
     all_functions = namespace["functions"]()
     all_strings = namespace["strings"]()
     all_imports = namespace["imports"]()
@@ -174,7 +189,7 @@ def triage(
         if not isinstance(pattern, str) or not 1 <= len(pattern) <= limits["max_pattern_chars"]:
             raise ValueError("each regex must contain between 1 and 256 characters")
         patterns.append(re.compile(pattern, re.IGNORECASE))
-    source = _source(namespace, database_id)
+    source = _source(namespace, database_id, ("xrefs_to",))
     functions, function_scan = _matches(namespace["functions"](), patterns[0], lambda row: row[1], max_matches_per_source, max_scan_per_source, max_subject_chars)
     strings, string_scan = _matches(namespace["strings"](), patterns[1], lambda row: row[1], max_matches_per_source, max_scan_per_source, max_subject_chars)
     imports, import_scan = _matches(namespace["imports"](), patterns[2], lambda row: f"{row[1] or ''}!{row[2]}", max_matches_per_source, max_scan_per_source, max_subject_chars)
