@@ -16,3 +16,17 @@
 | PID 复用竞态 | 核查 handle、CIM 创建时间、父子先后、二次身份及端口重读的拒绝分支 | 源码核查；未制造操作系统精确 PID 复用，不能写成实测覆盖 |
 
 测试产生的进程由各自 stdin EOF 结束；异常回收只使用本测试持有的 listener handle 和 Popen handle。没有重启、附加或杀共享服务，也没有模型调用。
+
+## R2：整轮 readiness 截止
+
+缺陷成立：原 probe 将剩余时间分别给 discovery 和 tools/list 的 HTTP 请求，串行请求可超过整轮截止后仍报告 ready。新增负例在旧实现上 **4 failed、1 passed，2.64 秒**：现代与 legacy probe 都晚到仍返回工具数；启动流程的真实两请求后端及故意晚到的 probe 都没有拒绝成功。
+
+修正：probe 建立单调时钟的绝对 deadline，McpClient 的 discovery、fallback/legacy 握手、通知、tools/list 及 DELETE 清理均使用该轮剩余时间；每次响应返回后核查截止，到期不再发送后续请求。启动调用不再设置超过剩余时间的 0.1 秒下限，并在成功 probe 返回后重核启动 deadline，过时成功进入原 PID/日志/退出码超时诊断。超时不停止启动子进程，保持原检查与恢复边界。
+
+| 结论 | 验证方式 | 结果与局限 |
+| --- | --- | --- |
+| 两请求和 legacy 多请求共享 budget | `test_real_multirequest_probe_shares_deadline[False/True]`，真实自有 loopback MCP，现代每请求 0.3 秒 / legacy 每请求 0.15 秒 | 0.4 秒预算返回 -1，总耗时小于 0.6 秒，到期不追加 DELETE，HTTP client 已关闭；仅本地受控响应，不保证任意外部 I/O 被强制取消 |
+| 过时成功不得报告 ready，及时成功可用 | `test_start_real_multirequest_probe_checks_deadline[False/True]` 与 `test_start_does_not_accept_probe_success_after_deadline` | 两个真实现代 MCP 请求晚到时进入带 PID 的超时错误；快速请求仍返回工具数；故意忽略预算的晚到 probe 也不能成功。Popen/IDA 发现用替身，没有操作真实服务 |
+| 受影响调用合同与原诊断保留 | `python -m pytest tests/test_ida.py tests/test_mcp.py tests/test_cli.py tests/test_contract.py -q --tb=short` | **114 passed，51.99 秒，退出码 0**；包含 R1 两种真实 launcher、负例、原健康复用及日志检查 |
+
+新注释只说明 handle 的生命周期、distlib/venv 进程关系与整轮 budget；已对照真实入口和调用方检查，不改 field-journal 校验或引入结构重构。

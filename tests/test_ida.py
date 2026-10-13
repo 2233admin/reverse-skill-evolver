@@ -10,7 +10,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from reverse_skill import ida
+from reverse_skill import ida, mcp
 from reverse_skill.errors import EnvironmentUnavailable, McpTransportError
 from reverse_skill.ida import find_latest_ida, format_version, parse_version
 
@@ -260,3 +260,118 @@ def test_replace_distlib_listener_rejects_unrelated_identity(tmp_path, mismatch)
         assert process.poll() is None
         with socket.create_connection(('127.0.0.1', info['port']), timeout=1):
             pass
+
+
+@contextmanager
+def _delayed_mcp_server(delay, *, legacy=False):
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    from threading import Thread
+
+    methods = []
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_POST(self):
+            message = json.loads(self.rfile.read(int(self.headers['Content-Length'])))
+            method = message['method']
+            methods.append(method)
+            time.sleep(delay)
+            response = {'jsonrpc': '2.0', 'id': message.get('id')}
+            if method == 'server/discover':
+                if legacy:
+                    response['error'] = {'code': -32601, 'message': 'legacy only'}
+                else:
+                    response['result'] = {'resultType': 'complete', 'supportedVersions': [mcp.MODERN_VERSION],
+                                          'capabilities': {}}
+            elif method == 'initialize':
+                response['result'] = {'protocolVersion': '2025-11-25', 'capabilities': {}}
+            elif method == 'tools/list':
+                response['result'] = {'tools': [{'name': 'owned-tool', 'inputSchema': {'type': 'object'}}]}
+            else:
+                response['result'] = {}
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            if method == 'initialize':
+                self.send_header('Mcp-Session-Id', 'owned-session')
+            self.end_headers()
+            try:
+                self.wfile.write(json.dumps(response).encode())
+            except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+                pass
+
+        def do_DELETE(self):
+            methods.append('DELETE')
+            time.sleep(delay)
+            self.send_response(204)
+            self.end_headers()
+
+        def log_message(self, *_):
+            pass
+
+    server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+    thread = Thread(target=lambda: server.serve_forever(poll_interval=0.02), daemon=True)
+    thread.start()
+    try:
+        yield server.server_port, methods
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
+@pytest.mark.parametrize('legacy', [False, True])
+def test_real_multirequest_probe_shares_deadline(monkeypatch, legacy):
+    # Prepare the real HTTP client before timing to isolate the serial request budget.
+    http = mcp.httpx.Client(timeout=0.4, trust_env=False)
+    monkeypatch.setattr(mcp.httpx, 'Client', lambda **_: http)
+    with _delayed_mcp_server(0.15 if legacy else 0.3, legacy=legacy) as (port, methods):
+        started = time.monotonic()
+        assert mcp.probe_tool_count(port, 0.4) == -1
+        assert time.monotonic() - started < 0.6
+        assert methods[:2] == ['server/discover', 'initialize' if legacy else 'tools/list']
+        assert 'DELETE' not in methods
+    assert http.is_closed
+
+
+@pytest.mark.parametrize('expires', [False, True])
+def test_start_real_multirequest_probe_checks_deadline(tmp_path, monkeypatch, expires):
+    options = _start_options(tmp_path, monkeypatch)
+    process = SimpleNamespace(pid=123, poll=lambda: None)
+    monkeypatch.setattr(ida.subprocess, 'Popen', lambda *a, **kw: process)
+    http = mcp.httpx.Client(timeout=0.4, trust_env=False)
+    monkeypatch.setattr(mcp.httpx, 'Client', lambda **_: http)
+    calls = 0
+
+    def probe(port, timeout):
+        nonlocal calls
+        calls += 1
+        return 0 if calls == 1 else mcp.probe_tool_count(port, timeout)
+
+    with _delayed_mcp_server(0.3 if expires else 0.025) as (port, methods):
+        options['port'] = port
+        started = time.monotonic()
+        if expires:
+            with pytest.raises(McpTransportError, match='did not become ready within 0.4 seconds.*PID=123'):
+                ida.start_server(probe=probe, wait_seconds=0.4, **options)
+            assert time.monotonic() - started < 0.6
+        else:
+            result = ida.start_server(probe=probe, wait_seconds=0.4, **options)
+            assert result['server']['toolCount'] == 1 and result['server']['pid'] == 123
+        assert methods == ['server/discover', 'tools/list']
+    assert http.is_closed
+
+
+def test_start_does_not_accept_probe_success_after_deadline(tmp_path, monkeypatch):
+    options = _start_options(tmp_path, monkeypatch)
+    monkeypatch.setattr(ida.subprocess, 'Popen', lambda *a, **kw: SimpleNamespace(pid=123, poll=lambda: None))
+    calls = 0
+
+    def late_probe(*_):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return 0
+        time.sleep(0.2)
+        return 1
+
+    with pytest.raises(McpTransportError, match='did not become ready within 0.1 seconds'):
+        ida.start_server(probe=late_probe, wait_seconds=0.1, **options)

@@ -402,10 +402,15 @@ def start_server(
     while time.monotonic() < deadline:
         if process.poll() is not None:
             raise _startup_failure(process, log_path, "idalib-mcp exited before becoming ready")
-        tool_count = probe(port, min(3.0, max(0.1, deadline - time.monotonic())))
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        tool_count = probe(port, min(3.0, remaining))
         if tool_count > 0:
             if process.poll() is not None:
                 raise _startup_failure(process, log_path, "idalib-mcp exited during startup")
+            if time.monotonic() >= deadline:
+                break
             return {
                 "ida": installation.public(),
                 "server": {
