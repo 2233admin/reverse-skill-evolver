@@ -503,6 +503,17 @@ function Test-ReverseTcpPort {
     }
 }
 
+function Get-ReverseCapabilityName {
+    [CmdletBinding()]
+    param([Parameter(Mandatory = $true)][string]$Name)
+
+    switch ($Name) {
+        { $_ -in @('frida-ps', 'frida-ls-devices') } { return 'frida' }
+        { $_ -in @('rabin2', 'rasm2', 'radiff2', 'rahash2', 'rax2') } { return 'r2' }
+        default { return $Name }
+    }
+}
+
 function Get-ReverseCapabilityState {
     [CmdletBinding()]
     param(
@@ -510,7 +521,8 @@ function Get-ReverseCapabilityState {
         [string]$Name
     )
 
-    $definition = Get-ReverseBootstrapDefinition -Name $Name
+    $capability = Get-ReverseCapabilityName -Name $Name
+    $definition = Get-ReverseBootstrapDefinition -Name $capability
     if ($null -eq $definition) {
         return $null
     }
@@ -535,7 +547,7 @@ function Get-ReverseCapabilityState {
     }
 
     return [pscustomobject]@{
-        Name = $definition.name
+        Name = $Name
         BootstrapKind = $definition.bootstrapKind
         CanAutoInstall = [bool]$definition.canAutoInstall
         DocsUrl = [string]$definition.docsUrl
@@ -676,11 +688,7 @@ function Get-RequiredReverseToolSpec {
     $spec = Resolve-ReverseToolSpec -Name $Name
     if ($spec.Available) { return $spec }
 
-    $capability = switch ($Name) {
-        { $_ -in @('frida-ps', 'frida-ls-devices') } { 'frida' }
-        { $_ -in @('rabin2', 'rasm2', 'radiff2', 'rahash2', 'rax2') } { 'r2' }
-        default { $Name }
-    }
+    $capability = Get-ReverseCapabilityName -Name $Name
     $definition = Get-ReverseBootstrapDefinition -Name $capability
     if ($definition -and $definition.canAutoInstall) {
         Write-Host "INFO: $Name not found, attempting auto-bootstrap..." -ForegroundColor Yellow

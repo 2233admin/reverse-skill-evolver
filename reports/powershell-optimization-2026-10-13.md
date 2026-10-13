@@ -36,3 +36,14 @@ Frida 的默认恢复与 `--pause` 行为核对了[官方 CLI 实现](https://gi
 ## 未验证范围
 
 没有执行真实工具下载或安装，没有连接 Android 设备或远端机器，没有启动 Frida 注入会话。现有报告与其他工作区改动保留。
+
+## PR #44：辅助 CLI 能力元数据
+
+[Codex P2 审查意见](https://github.com/2233admin/reverse-skill-evolver/pull/44#discussion_r4260361401) 已核实：工具报告按辅助 CLI 原名查 manifest，缺少该名称的定义时，错误输出不可自动安装及空安装元数据。`Get-ReverseCapabilityName` 统一安装入口和能力状态中的所属包解析；报告继续保留各 CLI 自己的名称、路径和可用性，不借用所属包的安装状态。
+
+| 结论 | 验证方式 | 结果与局限 |
+|---|---|---|
+| 新回归能检出缺失 alias 状态 | 改前执行 `python -m pytest tests/test_powershell_scripts.py -q -p no:cacheprovider -k 'tool_alias_reports' --tb=short` | 退出码 1，2 failed、30 deselected，4.60 秒；两个引擎均在预期的 alias 状态断言失败。 |
+| 所属包元数据、CLI 身份及索引输出符合预期 | 改后执行同文件测试，筛选 `tool_alias_reports or refresh_entry or required_tool_bootstraps` | 退出码 0，6 passed、26 deselected，21.61 秒；PowerShell 5.1 和 7 均运行。使用自有临时 manifest、已有 MCP 配置和 CLI 替身；检查所有辅助 CLI、非 alias、未知名称、注册/服务状态、原配置字节不变及实际索引入口输出。 |
+
+原始输出位于本次修复会话的工具记录。未进行实际安装、设备操作或 SSH/SCP 同步。

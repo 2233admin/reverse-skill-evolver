@@ -238,6 +238,68 @@ def test_bootstrap_unknown_capability_exits_nonzero(engine: str, tmp_path: Path)
     assert json.loads(output)["status"] == "missing-definition"
 
 
+def test_tool_alias_reports_inherit_owner_state_without_changing_tool_identity(
+    engine: str, tmp_path: Path,
+) -> None:
+    manifest = tmp_path / "bootstrap-manifest.json"
+    manifest.write_text(json.dumps({"capabilities": [
+        {"name": "frida", "bootstrapKind": "uv-tool", "canAutoInstall": True,
+         "docsUrl": "https://example.invalid/frida"},
+        {"name": "r2", "bootstrapKind": "github-release-zip", "canAutoInstall": True,
+         "docsUrl": "https://example.invalid/r2", "mcpNames": ["fixture-r2"], "servicePort": 17401},
+        {"name": "java", "bootstrapKind": "manual", "canAutoInstall": False,
+         "docsUrl": "https://example.invalid/java"},
+    ]}), encoding="utf-8")
+    config = tmp_path / ".claude/mcp.json"
+    config.parent.mkdir()
+    config.write_text(json.dumps({"mcpServers": {
+        "fixture-r2": {"command": "fixture-only"},
+        "unrelated": {"args": ["keep", "these"]},
+    }}), encoding="utf-8")
+    original_config = config.read_bytes()
+    tool_dir = tmp_path / "fixture-tools"
+    tool_dir.mkdir()
+    for name in ("frida-ls-devices", "r2"):
+        (tool_dir / f"{name}.exe").touch()
+    owners = {
+        "frida": "frida", "frida-ps": "frida", "frida-ls-devices": "frida",
+        "r2": "r2", "rabin2": "r2", "rasm2": "r2", "radiff2": "r2",
+        "rahash2": "r2", "rax2": "r2", "java": "java",
+    }
+    output = run_ps(engine, tmp_path, f"""
+. {quote(LIBRARY)}
+function Get-ReverseBootstrapManifestPath {{ return {quote(manifest)} }}
+function Test-ReverseTcpPort {{ param([int]$Port) return ($Port -eq 17401) }}
+function Get-ReverseToolVersion {{ param($Spec) return '' }}
+foreach ($tool in Get-ReverseToolCatalog) {{
+    $tool.Fallbacks = @([pscustomobject]@{{ Type = 'path'; Value = (Join-Path {quote(tool_dir)} ($tool.Name + '.exe')) }})
+}}
+$names = @({', '.join(quote(name) for name in owners)})
+@{{ reports = @(Get-ReverseToolReport -Names $names);
+    states = @($names | ForEach-Object {{ Get-ReverseCapabilityState -Name $_ }});
+    unknown = Get-ReverseCapabilityState -Name fixture-unknown }} | ConvertTo-Json -Depth 6 -Compress
+""")
+    result = json.loads(output)
+    assert config.read_bytes() == original_config
+    assert result["unknown"] is None
+    assert all(row is not None for row in result["states"]), "Every tool alias needs its owner's state"
+    reports = {row["Name"]: row for row in result["reports"]}
+    states = {row["Name"]: row for row in result["states"]}
+    assert reports.keys() == states.keys() == owners.keys()
+    kinds = {"frida": "uv-tool", "r2": "github-release-zip", "java": "manual"}
+    for name, owner in owners.items():
+        report, state = reports[name], states[name]
+        assert report["BootstrapKind"] == state["BootstrapKind"] == kinds[owner]
+        assert report["CanAutoInstall"] is state["CanAutoInstall"] is (owner != "java")
+        assert report["DocsUrl"] == state["DocsUrl"] == f"https://example.invalid/{owner}"
+        assert report["McpRegistered"] is state["Registered"] is (owner == "r2")
+        assert report["ServiceOnline"] is state["ServiceOnline"] is (owner == "r2")
+        installed = name in {"frida-ls-devices", "r2"}
+        assert report["Available"] is installed
+        assert report["ResolvedPath"] == (str(tool_dir / f"{name}.exe") if installed else "")
+        assert report["Source"] == ("FallbackPath" if installed else "Missing")
+
+
 def test_refresh_entry_writes_consistent_indexes(engine: str, tmp_path: Path) -> None:
     markdown = tmp_path / "tools.md"
     index = tmp_path / "tools.json"
@@ -253,4 +315,12 @@ def test_refresh_entry_writes_consistent_indexes(engine: str, tmp_path: Path) ->
         if capability["name"] in tools:
             assert capability["tool_available"] == tools[capability["name"]]["available"]
     assert {node["id"] for node in nodes if node["kind"] == "tool"} == tools.keys()
+    tool_nodes = {node["id"]: node for node in nodes if node["kind"] == "tool"}
+    for name in ("frida-ps", "frida-ls-devices", "rabin2", "rasm2", "radiff2", "rahash2", "rax2"):
+        owner = "frida" if name.startswith("frida-") else "r2"
+        node = tool_nodes[name]
+        assert node["can_auto_install"] is True
+        assert node["bootstrap_kind"] == tool_nodes[owner]["bootstrap_kind"]
+        assert node["available"] == tools[name]["available"]
+        assert node["resolved_path"] == tools[name]["resolved_path"]
     assert "## 能力状态视图" in markdown.read_text(encoding="utf-8-sig")
