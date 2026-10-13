@@ -8,8 +8,8 @@
 | --- | --- | --- |
 | #40 | 已推送 b0d78e9，Draft PR #42 | [交付回执](https://github.com/2233admin/reverse-skill-evolver/issues/40#issuecomment-6144184603)，未合并 |
 | #33 | 已推送 af900b4，Draft PR #42 | [交付回执](https://github.com/2233admin/reverse-skill-evolver/issues/33#issuecomment-6144196773) |
-| #34 | 修复并验证，交付同一 Draft PR #42 | 离线 doctor 诊断，见下方；接续 #35 |
-| #35 | 待实施 | Burp bridge 和工具失败 |
+| #34 | 已推送 dc09539，Draft PR #42 | [交付回执](https://github.com/2233admin/reverse-skill-evolver/issues/34#issuecomment-6144253174) |
+| #35 | 修复并验证，交付同一 Draft PR #42 | Burp bridge 恢复与错误标记；接续 #36 |
 | #36 | 待实施 | evolve 预算、进度、中断 |
 | #37 | 待实施 | start 端口与根 URL |
 | #38 | 待实施 | 经验索引编码与引用 |
@@ -46,3 +46,11 @@
 实际运行：`python -m pytest tests/test_cli.py tests/test_contract.py -q` → **64 passed**；涵盖缺少安装/注册、健康、注册超时、连接超时、协议错误，人工与 JSON 双模式，schema v1 验证和现有调用方兼容检查。`python -m reverse_skill --timeout 0.5 --url http://127.0.0.1:1/mcp doctor` 实际显示本机 IDA 9.4 和已取得的注册地址，MCP 失败有检查 endpoint、服务 PID/log 和重跑 doctor 的动作；stderr 保留错误，命令退出码 4（单独复核）。
 
 未运行：对真实 IDA 服务的启动/分析；未写宿主注册配置。下一责任人：PR 审阅者；本 Session 接续 #35。
+
+## #35 验证
+
+修复：工具未加载时 tools/list 重新获取一次，并发 list 共用一次请求；成功后保留缓存。HTTP 发现有总 3 秒截止；调用有总 125 秒截止，不重试操作。校验工具数组、工具响应对象、HTTP 状态和 JSON；顶层非空 error（包括 HTTP 500 的明确操作错误）设置 isError:true 并保留文本。普通业务状态、嵌套 error 和部分结果 errors 计数不误标；连接/解析失败保留原 JSON-RPC ID，以协议错误返回。
+
+实际运行：`node --check burp-mcp-full/mcp-bridge.js` 通过；`node --test burp-mcp-full/tests/mcp-bridge.test.js` → **6 passed, 0 failed**。真实 Node stdio + 隔离 loopback 后端覆盖后启动恢复/缓存、持续无效内容、挂起后端 3 秒截止、正常工具列表、200/500 操作错误、普通业务数据、无效调用响应、连接重置。该检查也由 Python 常规测试入口执行（缺少 Node 时明确 skip）。`git diff --check` 通过。
+
+未运行：真实 Burp GUI/扩展/代理流量；Java 调度与攻击语义无改动。下一责任人：PR 审阅者；本 Session 接续 #36。

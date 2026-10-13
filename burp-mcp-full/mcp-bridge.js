@@ -23,36 +23,56 @@ const BURP_PORT = parseInt(process.env.BURP_MCP_PORT || '9876', 10);
 
 // Tool definitions for MCP
 let TOOLS = null;
+let toolsRequest = null;
 
-async function fetchTools() {
+function requestBackend(path, body, timeout) {
   return new Promise((resolve, reject) => {
-    http.get(`http://${BURP_HOST}:${BURP_PORT}/tools`, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try { resolve(JSON.parse(data)); } catch (e) { reject(e); }
-      });
-    }).on('error', reject);
-  });
-}
-
-async function callTool(toolName, params) {
-  return new Promise((resolve, reject) => {
-    const body = JSON.stringify({ tool: toolName, params: params || {} });
     const req = http.request({
-      hostname: BURP_HOST, port: BURP_PORT, path: '/', method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+      hostname: BURP_HOST, port: BURP_PORT, path, method: body ? 'POST' : 'GET',
+      headers: body ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) } : {}
     }, (res) => {
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
-        try { resolve(JSON.parse(data)); } catch (e) { resolve({ error: data }); }
+        clearTimeout(timer);
+        try {
+          const result = JSON.parse(data);
+          const operationError = body && result && typeof result === 'object' && Boolean(result.error);
+          if (res.statusCode < 200 || res.statusCode >= 300) {
+            if (!operationError) throw new Error(`Burp HTTP ${res.statusCode}: ${data}`);
+          }
+          resolve(result);
+        } catch (e) { reject(new Error(`Invalid Burp response: ${e.message}`)); }
       });
+      res.on('aborted', () => { clearTimeout(timer); reject(new Error('Burp response aborted')); });
+      res.on('error', err => { clearTimeout(timer); reject(err); });
     });
-    req.on('error', reject);
-    req.write(body);
-    req.end();
+    const timer = setTimeout(() => req.destroy(new Error(`Burp request timed out after ${timeout}ms`)), timeout);
+    req.on('error', err => { clearTimeout(timer); reject(err); });
+    req.end(body);
   });
+}
+
+async function fetchTools() {
+  if (TOOLS) return TOOLS;
+  if (!toolsRequest) {
+    toolsRequest = requestBackend('/tools', null, 3000).then(result => {
+      if (!Array.isArray(result) || !result.every(name => typeof name === 'string' && name.length)) {
+        throw new Error('Burp /tools must return an array of tool names');
+      }
+      TOOLS = result;
+      return TOOLS;
+    }).finally(() => { toolsRequest = null; });
+  }
+  return toolsRequest;
+}
+
+async function callTool(toolName, params) {
+  const result = await requestBackend('/', JSON.stringify({ tool: toolName, params: params || {} }), 125000);
+  if (!result || typeof result !== 'object' || Array.isArray(result)) {
+    throw new Error('Burp tool response must be a JSON object');
+  }
+  return result;
 }
 
 function buildToolDefinitions(toolNames) {
@@ -193,7 +213,7 @@ function getToolParams(name) {
 }
 
 // MCP JSON-RPC handler
-function handleRequest(msg) {
+async function handleRequest(msg) {
   const { method, id, params } = msg;
 
   switch (method) {
@@ -207,15 +227,27 @@ function handleRequest(msg) {
     case 'notifications/initialized':
       return null; // No response needed
 
-    case 'tools/list':
-      if (!TOOLS) return { jsonrpc: '2.0', id, error: { code: -1, message: 'Tools not loaded. Is Burp running?' } };
-      return { jsonrpc: '2.0', id, result: { tools: buildToolDefinitions(TOOLS) } };
+    case 'tools/list': {
+      try {
+        const tools = await fetchTools();
+        return { jsonrpc: '2.0', id, result: { tools: buildToolDefinitions(tools) } };
+      } catch (err) {
+        return { jsonrpc: '2.0', id, error: { code: -1, message:
+          `Tools unavailable at ${BURP_HOST}:${BURP_PORT}: ${err.message}. Start Burp and load the MCP extension, check /tools, then retry tools/list or reconnect the MCP client.` } };
+      }
+    }
 
     case 'tools/call': {
+      if (!params || typeof params.name !== 'string') {
+        return { jsonrpc: '2.0', id, error: { code: -32602, message: 'tools/call requires a tool name' } };
+      }
       const toolName = params.name.replace(/^burp_/, '');
       const toolArgs = params.arguments || {};
       return callTool(toolName, toolArgs).then(result => ({
-        jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] }
+        jsonrpc: '2.0', id, result: {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          ...(result.error ? { isError: true } : {})
+        }
       })).catch(err => ({
         jsonrpc: '2.0', id, error: { code: -1, message: err.message || 'Tool call failed' }
       }));
@@ -233,7 +265,7 @@ async function main() {
     TOOLS = await fetchTools();
     process.stderr.write(`[burp-mcp-bridge] Connected to Burp. ${TOOLS.length} tools available.\n`);
   } catch (e) {
-    process.stderr.write(`[burp-mcp-bridge] WARNING: Cannot connect to Burp at ${BURP_HOST}:${BURP_PORT}. Start Burp first.\n`);
+    process.stderr.write(`[burp-mcp-bridge] WARNING: Cannot load tools at ${BURP_HOST}:${BURP_PORT}: ${e.message}. Start Burp and load the extension, then retry tools/list or reconnect the client.\n`);
     TOOLS = null;
   }
 
