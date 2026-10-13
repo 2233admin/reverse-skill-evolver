@@ -123,10 +123,12 @@ never a warning.
 Use strict mode before a final report or specialist handoff:
 
 ```bash
-python "<PACK_ROOT>/scripts/run.py" case review work/<case> --strict --format markdown > work/<case>/report/case-review.md
+python "<PACK_ROOT>/scripts/run.py" case review work/<case> --strict --format markdown
 ```
 
-The review is not legal advice and does not replace organizational evidence handling procedures.
+Save the passing output after the review finishes, ensuring the destination directory exists.
+Keep review output outside the case during the check so saving it does not change the records
+being reviewed. Review checks declared records; authorization comes from the current task.
 
 ## 建议下一步（选一个编号）
 

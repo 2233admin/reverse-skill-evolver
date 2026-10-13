@@ -26,7 +26,7 @@
 **MUST**：Finding 引用的 Evidence 至少 1 条；`repro_command` 第三方可跑或标明离线限制
 （notes 含 `offline` / `离线` / `not applicable` 时才允许 `n/a` / `n/a_re`）。
 
-**SHA-256 校验**（`reverse-skill case review --verify-hashes`）：
+**SHA-256 校验**（`reverse-skill case review work/<case> --verify-hashes`）：
 
 - `content_hash` 接受 `sha256:<64 hex>` 或裸 `64 hex`；`n/a` 表示无文件 artifact。
 - `artifact_path` 必须解析到 case root 内；**逃逸 case root 是 error**（路径逃逸防护，
