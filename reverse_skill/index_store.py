@@ -66,6 +66,10 @@ class IndexSchemaIncompatible(IndexError):
     code = "index_schema_incompatible"
 
 
+class IndexRebuildBlocked(IndexError):
+    code = "index_rebuild_blocked"
+
+
 class IndexCapabilityUnavailable(IndexError):
     code = "index_capability_unavailable"
 

@@ -403,3 +403,10 @@ def test_routing_does_not_create_index(tmp_path: Path) -> None:
     assert value["data"]["route"]["id"] == "apk-android"
     assert value["data"]["executed"] is False
     assert not (tmp_path / ".reverse-skill").exists()
+
+
+def test_top_k_above_contract_limit_is_usage_error(tmp_path):
+    result = run_cli("retrieve", str(tmp_path), "word", "--mode", "bm25", "--top-k", "201")
+    assert result.returncode == 2
+    assert json.loads(result.stdout)["error"]["code"] == "usage"
+    assert not (tmp_path / ".reverse-skill").exists()

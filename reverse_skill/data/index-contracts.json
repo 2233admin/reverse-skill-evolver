@@ -13,8 +13,18 @@
     "environment_unavailable": 3,
     "blocked": 5
   },
-  "status_values": ["observed", "planned", "applied", "absent", "blocked"],
-  "retrieval_modes": ["bm25", "tree", "hybrid"],
+  "status_values": [
+    "observed",
+    "planned",
+    "applied",
+    "absent",
+    "blocked"
+  ],
+  "retrieval_modes": [
+    "bm25",
+    "tree",
+    "hybrid"
+  ],
   "limits": {
     "default_top_k": 20,
     "max_top_k": 200,
@@ -35,26 +45,84 @@
   },
   "default_exclusions": {
     "directory_names": [
-      ".git", ".hg", ".svn", ".reverse-skill", "node_modules", "__pycache__",
-      ".pytest_cache", ".mypy_cache", ".ruff_cache", ".tox", ".nox",
-      ".venv", "venv", "dist", "build", ".eggs", ".cache", "site-packages"
+      ".git",
+      ".hg",
+      ".svn",
+      ".reverse-skill",
+      "node_modules",
+      "__pycache__",
+      ".pytest_cache",
+      ".mypy_cache",
+      ".ruff_cache",
+      ".tox",
+      ".nox",
+      ".venv",
+      "venv",
+      "dist",
+      "build",
+      ".eggs",
+      ".cache",
+      "site-packages"
     ],
-    "virtualenv_names": ["venv", ".venv", "env"],
+    "virtualenv_names": [
+      "venv",
+      ".venv",
+      "env"
+    ],
     "credential_file_patterns": [
-      ".env", ".env.*", "*.pem", "*.key", "*.p12", "*.pfx", "*.jks",
-      "id_rsa", "id_dsa", "id_ecdsa", "id_ed25519",
-      ".netrc", ".npmrc", "credentials", "credentials.json", "service-account.json"
+      ".env",
+      ".env.*",
+      "*.pem",
+      "*.key",
+      "*.p12",
+      "*.pfx",
+      "*.jks",
+      "id_rsa",
+      "id_dsa",
+      "id_ecdsa",
+      "id_ed25519",
+      ".netrc",
+      ".npmrc",
+      "credentials",
+      "credentials.json",
+      "service-account.json"
     ],
     "credential_patterns_case_insensitive": true,
     "max_file_bytes": 4194304
   },
   "skip_reasons": [
-    "directory_excluded", "virtualenv", "symlink", "binary", "credential_file",
-    "too_large", "read_error"
+    "directory_excluded",
+    "virtualenv",
+    "symlink",
+    "binary",
+    "credential_file",
+    "too_large",
+    "read_error"
   ],
-  "document_kinds": ["markdown", "python", "syntax", "text", "ida"],
-  "node_kinds": ["file", "heading", "preamble", "module", "class", "function", "async_function", "symbol"],
-  "source_kinds": ["markdown", "python", "syntax", "text", "ida"],
+  "document_kinds": [
+    "markdown",
+    "python",
+    "syntax",
+    "text",
+    "ida"
+  ],
+  "node_kinds": [
+    "file",
+    "heading",
+    "preamble",
+    "module",
+    "class",
+    "function",
+    "async_function",
+    "symbol"
+  ],
+  "source_kinds": [
+    "markdown",
+    "python",
+    "syntax",
+    "text",
+    "ida"
+  ],
   "syntax_profiles": {
     "reverse-core": {
       "extensions": {
@@ -85,11 +153,24 @@
       }
     }
   },
-  "edge_kinds": ["parent", "link", "xref"],
+  "edge_kinds": [
+    "parent",
+    "link",
+    "xref"
+  ],
   "evidence_fields": [
-    "schema_version", "index_revision", "root_hash", "mode", "stages",
-    "relative_path", "lines", "tree_path", "node_id", "content_sha256",
-    "score", "score_components"
+    "schema_version",
+    "index_revision",
+    "root_hash",
+    "mode",
+    "stages",
+    "relative_path",
+    "lines",
+    "tree_path",
+    "node_id",
+    "content_sha256",
+    "score",
+    "score_components"
   ],
   "error_codes": {
     "index_path_not_found": "target workspace path does not exist or is not a directory",
@@ -101,7 +182,8 @@
     "index_blocked": "requested operation was blocked by a safety boundary",
     "node_not_found": "node_id does not exist in the index",
     "invalid_node_id": "node_id does not match the frozen node_id regex",
-    "ida_export_invalid": "the explicit IDA export is absent, malformed, unsafe, or has unresolved xrefs"
+    "ida_export_invalid": "the explicit IDA export is absent, malformed, unsafe, or has unresolved xrefs",
+    "index_rebuild_blocked": "existing index cannot be preserved; back up or move it before rebuilding"
   },
   "score_model": {
     "bm25_rank_score": "1/(1+rank) where rank is the 0-based position after (bm25 rank, node_id) ordering",

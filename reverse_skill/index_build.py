@@ -33,6 +33,9 @@ from .index_store import (
     META_SCHEMA_VERSION,
     SCHEMA_VERSION,
     IndexError,
+    IndexCorrupt,
+    IndexSchemaIncompatible,
+    IndexRebuildBlocked,
     IndexNotFound,
     IndexPathNotFound,
     ParserUnavailable,
@@ -954,7 +957,13 @@ def _preserve_ida_layer(
     """Carry explicit IDA documents across a full source-index replacement."""
     if not source_path.is_file():
         return {"documents": 0, "nodes": 0, "edges": 0}
-    source = open_read_only(source_path)
+    try:
+        source = open_read_only(source_path)
+    except (IndexCorrupt, IndexSchemaIncompatible) as exc:
+        raise IndexRebuildBlocked(
+            f"Existing index {source_path} cannot be preserved ({exc.code}); back up or move this file "
+            "before running index build --apply. Replacing it can lose its imported IDA layer."
+        ) from exc
     copied_documents = copied_nodes = copied_edges = 0
     try:
         documents = source.execute(

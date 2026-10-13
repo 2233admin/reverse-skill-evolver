@@ -113,7 +113,7 @@ def index_inspect_command(state: State, path: Path, node_id: str, index_path: Pa
 @click.argument('path', type=_workspace_path_argument())
 @click.argument('query')
 @click.option('--mode', type=click.Choice(['bm25', 'tree', 'hybrid']), required=True, help='bm25 ranks; tree navigates titles; hybrid expands BM25 shortlist by structure.')
-@click.option('--top-k', type=click.IntRange(min=1), default=None, help='Default 20, max 200.')
+@click.option('--top-k', type=click.IntRange(min=1, max=200), default=None, help='Default 20, max 200.')
 @click.option('--index-path', type=_index_path_option())
 @click.pass_obj
 def retrieve_command(state: State, path: Path, query: str, mode: str, top_k: int | None, index_path: Path | None) -> int:

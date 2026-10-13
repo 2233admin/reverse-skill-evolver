@@ -51,7 +51,7 @@ def _bm25_shortlist(
     query: str,
     limit: int,
 ) -> List[Tuple[str, float]]:
-    """Ranked shortlist from one FTS5 table: (node_id, raw bm25 rank)."""
+    """Ranked shortlist from one FTS5 table: (node_id, position within this stage)."""
     phrase = _fts_phrase(query)
     try:
         rows = connection.execute(
@@ -62,7 +62,7 @@ def _bm25_shortlist(
         ).fetchall()
     except sqlite3.OperationalError as exc:
         raise IndexCorrupt(f"FTS query failed for {table}: {exc}") from exc
-    return [(row["node_id"], float(row["rank"])) for row in rows]
+    return [(row["node_id"], float(position)) for position, row in enumerate(rows)]
 
 
 def _hit_payload(connection: sqlite3.Connection, node: Dict[str, Any], contracts: Dict[str, Any]) -> Dict[str, Any]:

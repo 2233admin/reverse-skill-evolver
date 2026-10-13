@@ -689,3 +689,30 @@ def test_evidence_line_numbers_use_physical_newlines(name, data, kind, start):
     node = next(n for n in parsed.nodes if n.kind == kind)
     assert node.start == start
     assert parsed.line_count == (3 if name.endswith("py") else 2)
+
+
+@pytest.mark.parametrize("broken", ["bytes", "schema"])
+def test_unreadable_rebuild_preserves_original_and_gives_recovery_steps(tmp_path, broken):
+    (tmp_path / "a.md").write_text("# Example\n")
+    index = tmp_path / ".reverse-skill/index/v1.sqlite3"
+    if broken == "schema":
+        index_build.build_apply(tmp_path)
+        with sqlite3.connect(index) as c:
+            c.execute("UPDATE index_meta SET value='99' WHERE key='schema_version'")
+    else:
+        index.parent.mkdir(parents=True)
+        index.write_bytes(b"not a sqlite file")
+    original = index.read_bytes()
+    with pytest.raises(IndexStoreError) as error:
+        index_build.build_apply(tmp_path)
+    assert error.value.code == "index_rebuild_blocked"
+    assert "back up or move" in str(error.value) and str(index) in str(error.value)
+    assert index.read_bytes() == original
+
+
+@pytest.mark.parametrize("scores", [[-1000.0, -100.0], [-0.001, -0.0001]])
+def test_fts_stage_ranks_are_comparable_across_score_scales(scores):
+    from reverse_skill.retrieval import _bm25_shortlist
+    rows = [{"node_id": "a", "rank": scores[0]}, {"node_id": "b", "rank": scores[1]}]
+    connection = SimpleNamespace(execute=lambda *args: SimpleNamespace(fetchall=lambda: rows))
+    assert _bm25_shortlist(connection, "fts_terms", "word", 2) == [("a", 0.0), ("b", 1.0)]
