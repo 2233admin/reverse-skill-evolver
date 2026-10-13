@@ -1,0 +1,202 @@
+{
+  "schema_version": 1,
+  "sources": {
+    "before": {
+      "sha256": "cf84f4610adeb1a915ad74262c1d0865e23ef23d66e3aa39e1f72586298fff35",
+      "module": "toy-v1.dll",
+      "format": "Portable executable for AMD64 (PE)",
+      "architecture": "metapc",
+      "bitness": 64,
+      "image_base": "0x180000000",
+      "database_id": "owned-native-v1-cf84f4610ade"
+    },
+    "after": {
+      "sha256": "2634d5d1e513b3b734af170d81ddbb0bf86428e7b41b26759d648da3a2c8f9c5",
+      "module": "toy-v2.dll",
+      "format": "Portable executable for AMD64 (PE)",
+      "architecture": "metapc",
+      "bitness": 64,
+      "image_base": "0x180000000",
+      "database_id": "owned-native-v2-2634d5d1e513"
+    }
+  },
+  "coverage": {
+    "before": {
+      "native_enumeration": "full_helper_scan",
+      "functions_total": 2,
+      "functions_truncated": false,
+      "strings_total": 7,
+      "strings_truncated": false,
+      "imports_total": 1,
+      "imports_truncated": false,
+      "callees_truncated": false,
+      "bytes_truncated": false,
+      "strings_text_truncated": false,
+      "pseudocode_requested": false,
+      "pseudocode_functions_collected": 0,
+      "pseudocode_functions_truncated": false,
+      "pseudocode_text_truncated": false,
+      "limits": {
+        "max_functions": 20,
+        "max_strings": 20,
+        "max_imports": 20,
+        "max_callees": 25,
+        "max_bytes_per_function": 256,
+        "max_pseudocode_functions": 10,
+        "max_pseudocode_chars": 8000,
+        "max_text_chars": 4096
+      }
+    },
+    "after": {
+      "native_enumeration": "full_helper_scan",
+      "functions_total": 3,
+      "functions_truncated": false,
+      "strings_total": 8,
+      "strings_truncated": false,
+      "imports_total": 1,
+      "imports_truncated": false,
+      "callees_truncated": false,
+      "bytes_truncated": false,
+      "strings_text_truncated": false,
+      "pseudocode_requested": false,
+      "pseudocode_functions_collected": 0,
+      "pseudocode_functions_truncated": false,
+      "pseudocode_text_truncated": false,
+      "limits": {
+        "max_functions": 20,
+        "max_strings": 20,
+        "max_imports": 20,
+        "max_callees": 25,
+        "max_bytes_per_function": 256,
+        "max_pseudocode_functions": 10,
+        "max_pseudocode_chars": 8000,
+        "max_text_chars": 4096
+      }
+    }
+  },
+  "coverage_truncated": false,
+  "matches": [
+    {
+      "mapping_basis": "user_mapping",
+      "before": {
+        "ea": "0x180001000",
+        "rva": "0x1000",
+        "name": "verify_license",
+        "size": 49,
+        "callees": [
+          "GetCurrentProcessId"
+        ],
+        "callees_truncated": false,
+        "bytes": {
+          "sha256": "30025713234a4025cb95283dea033c89f5883575aefbaa27e95c06b59fd586e3",
+          "hashed": 49,
+          "truncated": false,
+          "complete_range": true
+        },
+        "pseudocode": {
+          "kind": "not_collected",
+          "available": false,
+          "truncated": false,
+          "text_sha256": null
+        }
+      },
+      "after": {
+        "ea": "0x180001050",
+        "rva": "0x1050",
+        "name": "check_license",
+        "size": 52,
+        "callees": [
+          "GetCurrentProcessId"
+        ],
+        "callees_truncated": false,
+        "bytes": {
+          "sha256": "ebec6a2a86354a7731bed6c9b84c8f35a9f46c5f8dd7a0cef790f3d061f0fa89",
+          "hashed": 52,
+          "truncated": false,
+          "complete_range": true
+        },
+        "pseudocode": {
+          "kind": "not_collected",
+          "available": false,
+          "truncated": false,
+          "text_sha256": null
+        }
+      },
+      "changed_fields": [
+        "rva",
+        "name",
+        "size",
+        "bytes"
+      ],
+      "byte_comparison": "complete_range_hash_different"
+    },
+    {
+      "mapping_basis": "unique_symbol_name",
+      "before": {
+        "ea": "0x180001040",
+        "rva": "0x1040",
+        "name": "decode_payload",
+        "size": 25,
+        "callees": [
+          "verify_license"
+        ],
+        "callees_truncated": false,
+        "bytes": {
+          "sha256": "1f585cbe29ecdaecda6c71b8b7f32be10b811dd33ff7091676dbe2b65fed0141",
+          "hashed": 25,
+          "truncated": false,
+          "complete_range": true
+        },
+        "pseudocode": {
+          "kind": "not_collected",
+          "available": false,
+          "truncated": false,
+          "text_sha256": null
+        }
+      },
+      "after": {
+        "ea": "0x180001090",
+        "rva": "0x1090",
+        "name": "decode_payload",
+        "size": 25,
+        "callees": [
+          "check_license"
+        ],
+        "callees_truncated": false,
+        "bytes": {
+          "sha256": "dab2a47c9181ee319a68adcaae26cf8537988ded90c8eb5437ee8faf89c6e410",
+          "hashed": 25,
+          "truncated": false,
+          "complete_range": true
+        },
+        "pseudocode": {
+          "kind": "not_collected",
+          "available": false,
+          "truncated": false,
+          "text_sha256": null
+        }
+      },
+      "changed_fields": [
+        "rva",
+        "callees",
+        "bytes"
+      ],
+      "byte_comparison": "complete_range_hash_different"
+    }
+  ],
+  "unmatched_before": [],
+  "unmatched_after": [
+    {
+      "ea": "0x180001000",
+      "rva": "0x1000",
+      "name": "padding_function",
+      "size": 72
+    }
+  ],
+  "limitations": [
+    "Mappings are explicit selections or unique-name correspondences, not proof of function identity.",
+    "Unmatched observations do not establish added or removed functions; truncated coverage is incomplete.",
+    "Byte hashes cover the recorded contiguous range; partial hashes never establish whole-function equality.",
+    "Pseudocode and callee differences describe captured output, not semantic changes."
+  ]
+}

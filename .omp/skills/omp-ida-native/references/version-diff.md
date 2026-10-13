@@ -2,6 +2,8 @@
 
 Use this workflow for two native IDA snapshots when the task needs a reproducible comparison of function observations. The comparator uses Python 3.10+ and the standard library. It reads JSON files and produces a report; IDA database handles remain with the native collector.
 
+Runtime checks consumed two real native-worker snapshots of self-authored x64 PE fixtures: renamed/layout mappings, unique-name correspondence and explicit unmatched observations. Focused checks cover duplicate names, truncated bytes, fallback kinds, invalid sources, conflicting mappings and exclusive CLI output. See [scoped evidence](https://github.com/2233admin/reverse-skill-evolver/blob/2233admin/repair-open-issues-15/reports/omp-workflow-verification-2026-10-13/README.md). This does not establish semantic equivalence or automatic symbol migration.
+
 ## Steps
 
 1. Collect both inputs with the native snapshot collector. Keep each snapshot's source SHA-256, native database ID, image base, and coverage records. Use the same format, architecture, and bitness on both sides.

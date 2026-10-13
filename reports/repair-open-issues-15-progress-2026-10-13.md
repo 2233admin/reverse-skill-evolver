@@ -16,8 +16,8 @@
 | #39 | 已推送 d59699c，Draft PR #42 | [交付回执](https://github.com/2233admin/reverse-skill-evolver/issues/39#issuecomment-6145103261) |
 | #32 | 总览，待逐项回收 | 不视为独立代码修复，不提前关闭 |
 | #41 | 原 632cf1a 已复验，Draft PR #44 | [PR](https://github.com/2233admin/reverse-skill-evolver/pull/44)；新复验 39 passed，67.75 秒；未重写 |
-| #27 | 修复并通过真实 native fixture 与 22 项检查 | 复用 PR #26/#31 lineage，交付 PR #42；见 scoped report |
-| #28 | 待功能验证 | 消费两个真实 native 快照，复用既有 comparator |
+| #27 | 已推送 11d8e8e，Draft PR #42 | [回执](https://github.com/2233admin/reverse-skill-evolver/issues/27#issuecomment-6145599636)；真实 native + 22 项检查 |
+| #28 | 实际 comparator/CLI 与回归已验证，交付 PR #42 | 复用既有源码，新增证据和 17 项检查；连同 collector 31 passed |
 | #29 | 待功能验证 | 用自制目标核对 Frida 计划/脚本 |
 | #30 | 待功能验证 | 执行 signer fixtures / eval 入口 |
 | #21 | 真实 suite/反思/失败路径已验证，交付 PR #42 | 31/37 逻辑调用，单次 60 秒；候选不晋级，见真实记录 |
@@ -111,3 +111,9 @@ Draft PR #44 已创建，head 精确为原 632cf1a，base main；既有实现/�
 真实自制 x64 PE DLL 的 pinned 生产 worker open/exec 已验证字符串、导入、函数、无匹配、截断预算及非函数 xref；最新 collector 源码后重跑，输入 SHA 与保存 DLL 一致。补充回归 **22 passed**；修复 missing namespace 的明确诊断、拒绝空/错误 metadata。例子真实保存完整 JSON，避免 helper warning 混进打印输出；portable skill 的证据链接使用 HTTPS，复制技能目录仍可用。全部细节见 [scoped record](omp-workflow-verification-2026-10-13/README.md)。
 
 没有改他人数据库/服务或宿主配置；worker 的 database_id 为调用方绑定的本地测试标识，不冒充 OMP host registry 验证。OMP 模型调用 0，#21 的 31 次保持独立。下一责任人：PR 审阅者；本 Session 继续 #28。
+
+## #28 功能验证
+
+真实 snapshot-v1/v2 经 CLI 对照，显式 mapping 将变名/变 RVA 的 verify_license → check_license 对应；唯一 decode_payload 符号名自动对应，padding_function 仅保留 unmatched observation。输出 comparison-v1-v2.json、mapping-v1-v2.json 可复核来源/布局/字段变化。
+
+comparator 复用未重写，新增 17 项回归；`python -m pytest tests/test_omp_binary_diff.py tests/test_omp_analysis.py -q --tb=short` → **31 passed**。覆盖重命名、重复名字、相同 RVA 不自动对应、截断/partial bytes、错误来源/架构/位数/格式、映射冲突、fallback 与未采集、新建输出及拒绝覆盖/输入 alias/重复 JSON/NaN。`git diff --check` 通过。无模型、无 IDB 写入；不宣称结构匹配、语义等价或符号迁移。下一责任人：审阅者；本 Session 继续 #29。

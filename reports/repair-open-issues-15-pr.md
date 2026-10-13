@@ -1,4 +1,4 @@
-关联 #40、#33、#34、#35、#36、#37、#38、#39、#21、#27；总览关联 #32。
+关联 #40、#33、#34、#35、#36、#37、#38、#39、#21、#27、#28；总览关联 #32。
 
 Windows 上 `start --replace-stale` 原先按进程名清理所有 IDA MCP 服务，会打断其他端口。现在仅检查所选端口的监听者，持有进程 handle 后核实 executable 再停止；未知归属保留并返回检查命令，健康服务继续复用。
 
@@ -29,3 +29,5 @@ evolve 明确完整用例集评估/反思预算及实际 fixture 数对应的逻
 OMP 项复用原 Draft PR #26/#31 的原始 Git lineage（本分支本地 merge），不改其原分支或 main；入口冲突保留本轮 UX/配置边界。原 #26 的后端导航元数据也包含在该 lineage 内，不是 #21 模型候选晋级。合并后完整回归 266 passed, 5 skipped。
 
 #27：两个自制 x64 PE DLL 通过 pinned 生产 OMP worker 的真实 IDA open/exec，快照/初筛验证已知字符串、导入、函数、无匹配、预算截断和非函数引用。补缺 native 环境的明确错误与来源字段校验；相关检查 22 passed。保存完整 JSON 的样例实际运行；[scoped report](reports/omp-workflow-verification-2026-10-13/README.md) 保留输入 DLL/源码、实际 frames、完整 snapshot/triage 与限制。模型调用 0；其他架构/任意输入/host registry 集成未验证。
+
+#28：实际 CLI 消费真实两版 native 快照，验证变名/布局显式对应、唯一符号名与未匹配观察。复用 comparator，新增 17 项回归，连同 collector 31 passed；覆盖重复名字、截断、错误来源/架构、映射冲突和 CLI 拒绝覆盖等。没有 IDB/符号迁移或模型调用，不以匹配结果证明语义等价。

@@ -17,3 +17,11 @@
 ## 接续
 
 #28 将消费这两个完整快照作实际对照；#29 用自制目标进程验证生成脚本；#30 执行本地 signer 样本和持久 eval 能力验证。各项单独补实际结果、提交推送及 Issue 回执，PR 保持 Draft。
+
+## #28 跨版本对照
+
+实际通过 CLI 消费 snapshot-v1/snapshot-v2。v1 的 verify_license 与 v2 的 check_license 名字和 RVA 均变化，使用显式一对一 mapping-v1-v2.json；decode_payload 使用两边唯一符号名对应。comparison-v1-v2.json 实际产生 2 个对应，记录 user_mapping/unique_symbol_name、字段变化及未匹配 padding_function。相同 RVA 不自动映射；未匹配观察不宣称新增/删除。没有符号迁移或 IDB 写操作。
+
+复用 comparator 源码，未发现需要重写的运行缺陷。新增 17 项有意义回归，连同 collector **31 passed**：重命名/布局、重复名字、自动名称、相同 RVA、部分字节 hash/截断 coverage、assembly fallback 与未采集、架构/位数/格式/来源/RVA 错误、映射冲突、重复 JSON 字段/NaN、CLI 新建输出/拒绝覆盖/拒绝输入 alias。输入对象/文件内容保持不变。`git diff --check` 通过。
+
+边界：真实 native 输入来自上述自制 x64 PE；人工构造错误 snapshot 属隔离负例，不冒充真实损坏数据库。函数对应/哈希差异是观察，非语义等价/漏洞证明。模型调用 0。下一项为 #29。
