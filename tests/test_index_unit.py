@@ -678,3 +678,14 @@ def test_tree_title_query_fills_limit_after_exact_hit_deduplication(limit):
         connection.executemany("INSERT INTO nodes VALUES (?, ?, ?)", rows)
         hits = _tree_title_stage(connection, "item", limit)
     assert [node_id for node_id, _ in hits] == [row[0] for row in rows[:limit]]
+
+
+@pytest.mark.parametrize("name,data,kind,start", [
+    ("page.py", b"x = 1\n\x0cdef work():\n    return 2\n", "function", 2),
+    ("page.md", "first\u2028second\n# Heading\n".encode(), "heading", 2),
+])
+def test_evidence_line_numbers_use_physical_newlines(name, data, kind, start):
+    parsed = index_build._parse_file(name, data, len(data))
+    node = next(n for n in parsed.nodes if n.kind == kind)
+    assert node.start == start
+    assert parsed.line_count == (3 if name.endswith("py") else 2)

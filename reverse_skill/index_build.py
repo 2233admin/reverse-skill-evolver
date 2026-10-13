@@ -428,7 +428,9 @@ def _parse_file(
 ) -> ParsedDocument:
     sha256_hex = hashlib.sha256(data).hexdigest()
     text = _decode_text(data)
-    lines = text.splitlines()
+    lines = re.split(r"\r\n|\r|\n", text)
+    if lines and not lines[-1]:
+        lines.pop()
     line_count = len(lines)
     suffix = Path(relpath).suffix.lower()
     if suffix in {".md", ".markdown"}:
