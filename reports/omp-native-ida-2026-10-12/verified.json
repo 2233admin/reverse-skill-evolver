@@ -1,0 +1,169 @@
+{
+  "date": "2026-10-12",
+  "omp_version": "18.8.9",
+  "omp_executable_sha256": "545fd5195da9c61667f600de2f9845f51c2416465c17289176c2caa90f576d3a",
+  "upstream_contract_commit": "fa5ff4a3a977a28b93d025f4cf50f046e019f18c",
+  "base_commit": "53010b3d5591f78333062fe8056782ed769f4a7d",
+  "ida_installation": "IDA Professional 9.4",
+  "python_version": "3.13.15",
+  "isolated_packages": {
+    "ida-domain": "0.5.1",
+    "idapro": "0.0.11",
+    "packaging": "26.3",
+    "typing-extensions": "4.16.0"
+  },
+  "models_called": 0,
+  "host_configuration_changed": false,
+  "ida_database_edits_tested": false,
+  "performance_benchmark": false,
+  "skill_discovery": {
+    "command": [
+      "<omp>",
+      "read",
+      "skill://omp-ida-native/SKILL.md"
+    ],
+    "exit_code": 0,
+    "stdout": "[Skill file: <repo>\\.omp\\skills\\omp-ida-native\\SKILL.md]\n---\nname: omp-ida-native\ndescription: Analyze executables and IDA databases in OMP using its built-in ida actions, binary read views, and persistent Python helpers. Use for OMP-native decompilation, xrefs, function maps, database edits, or bounded batch analysis when the native IDA interface is available.\n---\n\n# OMP native IDA analysis\n\n## ACTION REQUIRED\n\n1. `NOW`: Identify the input, requested result, permitted database edits, and a check that proves the result.\n2. `NOW`: Inspect the available IDA interface. The native schema has `action` values `list`, `open`, `save`, `close`, `exec`, `rename`, `comment`, `set_type`, `make_function`, with `db` and `code` parameters. If OMP exposes it through `xd://ida`, read that interface before invoking it.\n3. `NEXT`: Call native `ida` with `{\"action\":\"list\"}`. Reuse the matching database or open the input; retain its returned native database ID.\n4. `ACT`: Read the overview, select relevant functions, then perform the smallest query or batch that answers the task.\n\nIf the native interface is absent or a dependency probe fails, read [setup](references/setup.md). An installed `omp` executable or IDA directory alone does not prove this interface works. When an official Hex-Rays extension exposes `ida_*` MCP tools, use that extension's live schema and guidance; this native workflow does not apply.\n\n## Workflow\n\n### Open and inspect\n\nCall `ida` with `{\"action\":\"open\",\"db\":\"sample.exe\"}` or read `sample.exe` for an overview. Executables use a managed database; existing `.i64`/`.idb` files open in place and may be saved there.\n\nUse `read` views for observations: `sample.exe:main:1-80` for pseudocode, `sample.exe:main:asm` for assembly, `sample.exe:strings`, or `sample.exe:xrefs:main`. Read [native interface examples](references/native-ida.md) when selecting a view, batch helper, or edit operation.\n\nAlways pass the returned native `db` ID to subsequent `ida` calls, including when only one database is open. Each database has its own Python namespace, shared with other agents in this project. Coordinate edits and use task-specific variable names.\n\n### Query in bounded batches\n\nPrefer a relevant regex and a small result slice. Combine related queries in one `exec` call when they address the same task. The helpers return Python values; print compact JSON when collecting machine-readable evidence. Record what was filtered or truncated.\n\nPersistent variables are a convenience during analysis. Save durable evidence in the task report: input identity, native database ID, addresses, actual outputs, and remaining unknowns. Reopening a closed database resets the namespace.\n\n### Edit and save\n\nUse native `rename`, `comment`, `set_type`, or `make_function` for permitted database edits. Generated `read` views are immutable text; edit the database through `ida`.\n\nAfter edits, explicitly `save`, re-read the affected view, and compare it with the requested change. Automatic saving is a recovery aid. Close a database only when this task owns its lifecycle and other users have finished with it; `close` saves by default.\n\n### Handle resource and failure limits\n\nOMP shares database daemons across project agents. Defaults are four open databases, automatic saving after about ten idle seconds when dirty, and saving/closing after fifteen idle minutes. Opening beyond the limit evicts an idle database; all-busy requests fail. Live settings and tool descriptions take precedence over these versioned defaults.\n\nKeep `exec` finite; its default timeout is 120 seconds and applies to the queue wait as well. A queued timeout does not cancel another caller's running request. Report failures and retry only after diagnosing them. Worker termination can lose edits since the last save; verify saved state before continuing.\n\n## 任务完成自检\n\nBefore claiming completion, MUST confirm:\n\n- The result comes from the requested input and its actual native database ID.\n- Function/address evidence satisfies the task's check; fallback assembly is identified as assembly.\n- Permitted edits were saved and checked; no other task's database was closed or discarded.\n- The report names omitted results, failures, unresolved questions, and checks not run.\n\nThis skill uses OMP's existing IDA implementation. Backend contracts and setup are in the linked references; it does not install or register a separate MCP service.\n",
+    "stderr": "",
+    "model_prompt_submitted": false
+  },
+  "skill_references_and_portability": [
+    {
+      "command": [
+        "<omp>",
+        "read",
+        "skill://omp-ida-native/references/native-ida.md"
+      ],
+      "exit_code": 0,
+      "stdout": "[Skill file: <repo>\\.omp\\skills\\omp-ida-native\\references\\native-ida.md]\n# Native IDA interface examples\n\nContract checked against OMP 18.8.9, commit `fa5ff4a3a977a28b93d025f4cf50f046e019f18c`. Consult the current tool schema before calls. These are native tool arguments, not shell commands or MCP argument envelopes.\n\n## Read views\n\n| `read` path | Result |\n| --- | --- |\n| `sample.exe` | Overview and function list; opens or creates the database |\n| `sample.exe:main:1-80` | Paged pseudocode; substitute a real symbol or `0x` address |\n| `sample.exe:main:asm:1-80` | Paged assembly |\n| `sample.exe:imports` / `sample.exe:exports` | Import/export views |\n| `sample.exe:strings:1-80` | Paged strings |\n| `sample.exe:xrefs:main` | References to/from the target |\n| `sample.macho:@arm64:main` | Explicit universal Mach-O slice |\n\n`read` accepts executable or `.i64`/`.idb` paths. A failed decompilation may return marked assembly; it is not pseudocode. Views are generated immutable text, so they do not supply anchors for editing the binary with the text `edit` tool.\n\n## Database lifecycle and edits\n\n```json\n{\"action\":\"list\"}\n{\"action\":\"open\",\"db\":\"sample.exe\"}\n{\"action\":\"rename\",\"db\":\"<native-db-id>\",\"target\":\"sub_140001000\",\"name\":\"parse_header\"}\n{\"action\":\"comment\",\"db\":\"<native-db-id>\",\"target\":\"parse_header\",\"text\":\"Parses the captured packet header\"}\n{\"action\":\"set_type\",\"db\":\"<native-db-id>\",\"target\":\"parse_header\",\"decl\":\"int parse_header(const unsigned char *data, unsigned int size)\"}\n{\"action\":\"make_function\",\"db\":\"<native-db-id>\",\"target\":\"0x140002000\"}\n{\"action\":\"save\",\"db\":\"<native-db-id>\"}\n{\"action\":\"close\",\"db\":\"<native-db-id>\",\"save\":true}\n```\n\nEach line is a separate example, not a required sequence. Substitute the returned native ID and verified targets; create functions and apply types only when supported by evidence and permitted by the task. `close` is a shared lifecycle action, not a per-agent disconnect.\n\n## Batch Python\n\nCall `ida` with `action=\"exec\"`, the explicit native `db`, a finite `timeout`, and the following text as `code`:\n\n```python\nimport json\ntask_functions = functions(\"parse|decode|decrypt\")[:8]\ntask_summary = [\n    {\"ea\": hex(ea), \"name\": name, \"callees\": callees(ea)[:8]}\n    for ea, name in task_functions\n]\nprint(json.dumps(task_summary))\n```\n\nThis limits emitted functions and callees, not the underlying scan. Narrow the regex and record the bounds. Expand the batch only when the task needs more results.\n\nThe persistent namespace includes `db` (an `ida_domain.Database`), IDA modules, `idautils`, and helpers:\n\n- `resolve`, `func`, `name_of`, `pseudocode`, `asm`\n- `xrefs_to`, `xrefs_from`, `callers`, `callees`\n- `functions`, `strings`, `imports` (optional case-insensitive regex)\n- `hexdump`, `read_bytes`, `rename`, `comment`, `set_type`, `make_function`\n\n`help_ida()` lists the current helpers. Captured stdout/stderr and the last expression's representation form the result; check errors instead of treating partial output as a complete answer.\n\n## Sources\n\n- [OMP IDA tool contract](https://github.com/can1357/oh-my-pi/blob/fa5ff4a3a977a28b93d025f4cf50f046e019f18c/docs/tools/ida.md)\n- [Binary read views](https://github.com/can1357/oh-my-pi/blob/fa5ff4a3a977a28b93d025f4cf50f046e019f18c/packages/coding-agent/src/tools/read-binary.ts)\n- [Native worker helpers](https://github.com/can1357/oh-my-pi/blob/fa5ff4a3a977a28b93d025f4cf50f046e019f18c/packages/coding-agent/src/ida/worker.py)\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "<omp>",
+        "read",
+        "skill://omp-ida-native/references/setup.md"
+      ],
+      "exit_code": 0,
+      "stdout": "[Skill file: <repo>\\.omp\\skills\\omp-ida-native\\references\\setup.md]\n# OMP native IDA setup\n\n## Discover the skill\n\nFrom a source checkout, start `omp` in the repository and invoke `/skill:omp-ida-native`. OMP discovers `.omp/skills/omp-ida-native/SKILL.md` and reads its references on demand through `skill://omp-ida-native/`.\n\nFor another project, copy the complete `omp-ida-native` directory into that project's `.omp/skills/`. Keep `SKILL.md` and `references/` together. The Python `pip` package does not install this skill. No npm package, empty extension, or model configuration is required.\n\n## Select the actual backend\n\n| Available interface | Workflow |\n| --- | --- |\n| OMP native `ida` actions with `db`/`code`, plus binary `read` views | This skill |\n| Existing `idapro` MCP tools with `database` | The project's `skills/ida-reverse/SKILL.md` MCP workflow |\n| Official Hex-Rays extension's `ida_*` MCP tools | That extension's guidance and current schema |\n\nChoose the interface by its schema and a successful operation. Native `db`, mrexodia `database`, and official plugin instance handles are different contracts. The official extension attempts to disable the OMP built-in IDA tool and binary views at runtime; do not combine its examples with this skill's native arguments.\n\n## Dependencies and configuration\n\nOMP requires an IDA installation containing idalib and a Python interpreter that can find `ida_domain` and `idapro`. Validate the actual worker opening the input; merely having these packages listed is insufficient.\n\nUse an existing suitable Python environment. If it lacks dependencies, install `ida-domain` into that environment and satisfy its declared `idapro` requirement. An IDA-supplied wheel must also satisfy that requirement; avoid forcing an incompatible older loader. Pin the interpreter through `ida.python`; let IDA select its licensed installation or set `ida.installDir` explicitly when necessary. IDA installation and licensing use the vendor's supported flow.\n\nA project-local `.omp/config.yml` can contain an installation-specific selection:\n\n```yaml\nida:\n  enabled: true\n  python: /absolute/path/to/ida-python\n  installDir: /absolute/path/to/ida-install\n```\n\nThese are placeholders to replace locally, not repository defaults. Keep credentials and machine paths out of shared configuration. Preserve existing configuration; a portable skill does not need to rewrite it.\n\nNative defaults checked at 18.8.9 are `ida.maxOpen=4` and `ida.idleCloseSec=900`. Increase the limit only for an observed need. `ida.idleCloseSec=0` disables idle closing, so it retains resources until another lifecycle action closes them.\n\n## Diagnose failures\n\n- Missing native interface: check `ida.enabled`, the installation, allowed tools, and whether the official extension replaced it. If tools are discoverable, inspect `xd://ida` rather than assuming absence.\n- No compatible Python: set `ida.python` to the environment containing both packages; check the actual open result.\n- IDB in use: coordinate with its owner or close it in the owning IDA application. Do not delete its lock to bypass ownership.\n- All databases busy: wait for their requests, or close an owned idle database. A queue timeout is a failure, not a completed analysis.\n- Lost worker: reopen and check saved changes. A reopened namespace does not contain previous Python variables.\n\n## Sources\n\n- [OMP skill discovery](https://github.com/can1357/oh-my-pi/blob/fa5ff4a3a977a28b93d025f4cf50f046e019f18c/docs/skills.md)\n- [Native IDA settings](https://github.com/can1357/oh-my-pi/blob/fa5ff4a3a977a28b93d025f4cf50f046e019f18c/packages/coding-agent/src/ida/settings.ts)\n- [Python runtime probe](https://github.com/can1357/oh-my-pi/blob/fa5ff4a3a977a28b93d025f4cf50f046e019f18c/packages/coding-agent/src/ida/runtime.ts)\n- [IDA Domain installation](https://github.com/HexRaysSA/ida-domain#-installation)\n- [Official Hex-Rays OMP extension](https://github.com/HexRaysSA/ida-mcp/blob/df6de7985b534a964c125d5a86e41b26b17b14f6/ida-mcp.ts)\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "<omp>",
+        "read",
+        "skill://omp-ida-native/SKILL.md"
+      ],
+      "cwd": "<repo>-artifacts\\portable-project",
+      "exit_code": 0,
+      "stdout": "[Skill file: <repo>-artifacts\\portable-project\\.omp\\skills\\omp-ida-native\\SKILL.md]\n---\nname: omp-ida-native\ndescription: Analyze executables and IDA databases in OMP using its built-in ida actions, binary read views, and persistent Python helpers. Use for OMP-native decompilation, xrefs, function maps, database edits, or bounded batch analysis when the native IDA interface is available.\n---\n\n# OMP native IDA analysis\n\n## ACTION REQUIRED\n\n1. `NOW`: Identify the input, requested result, permitted database edits, and a check that proves the result.\n2. `NOW`: Inspect the available IDA interface. The native schema has `action` values `list`, `open`, `save`, `close`, `exec`, `rename`, `comment`, `set_type`, `make_function`, with `db` and `code` parameters. If OMP exposes it through `xd://ida`, read that interface before invoking it.\n3. `NEXT`: Call native `ida` with `{\"action\":\"list\"}`. Reuse the matching database or open the input; retain its returned native database ID.\n4. `ACT`: Read the overview, select relevant functions, then perform the smallest query or batch that answers the task.\n\nIf the native interface is absent or a dependency probe fails, read [setup](references/setup.md). An installed `omp` executable or IDA directory alone does not prove this interface works. When an official Hex-Rays extension exposes `ida_*` MCP tools, use that extension's live schema and guidance; this native workflow does not apply.\n\n## Workflow\n\n### Open and inspect\n\nCall `ida` with `{\"action\":\"open\",\"db\":\"sample.exe\"}` or read `sample.exe` for an overview. Executables use a managed database; existing `.i64`/`.idb` files open in place and may be saved there.\n\nUse `read` views for observations: `sample.exe:main:1-80` for pseudocode, `sample.exe:main:asm` for assembly, `sample.exe:strings`, or `sample.exe:xrefs:main`. Read [native interface examples](references/native-ida.md) when selecting a view, batch helper, or edit operation.\n\nAlways pass the returned native `db` ID to subsequent `ida` calls, including when only one database is open. Each database has its own Python namespace, shared with other agents in this project. Coordinate edits and use task-specific variable names.\n\n### Query in bounded batches\n\nPrefer a relevant regex and a small result slice. Combine related queries in one `exec` call when they address the same task. The helpers return Python values; print compact JSON when collecting machine-readable evidence. Record what was filtered or truncated.\n\nPersistent variables are a convenience during analysis. Save durable evidence in the task report: input identity, native database ID, addresses, actual outputs, and remaining unknowns. Reopening a closed database resets the namespace.\n\n### Edit and save\n\nUse native `rename`, `comment`, `set_type`, or `make_function` for permitted database edits. Generated `read` views are immutable text; edit the database through `ida`.\n\nAfter edits, explicitly `save`, re-read the affected view, and compare it with the requested change. Automatic saving is a recovery aid. Close a database only when this task owns its lifecycle and other users have finished with it; `close` saves by default.\n\n### Handle resource and failure limits\n\nOMP shares database daemons across project agents. Defaults are four open databases, automatic saving after about ten idle seconds when dirty, and saving/closing after fifteen idle minutes. Opening beyond the limit evicts an idle database; all-busy requests fail. Live settings and tool descriptions take precedence over these versioned defaults.\n\nKeep `exec` finite; its default timeout is 120 seconds and applies to the queue wait as well. A queued timeout does not cancel another caller's running request. Report failures and retry only after diagnosing them. Worker termination can lose edits since the last save; verify saved state before continuing.\n\n## 任务完成自检\n\nBefore claiming completion, MUST confirm:\n\n- The result comes from the requested input and its actual native database ID.\n- Function/address evidence satisfies the task's check; fallback assembly is identified as assembly.\n- Permitted edits were saved and checked; no other task's database was closed or discarded.\n- The report names omitted results, failures, unresolved questions, and checks not run.\n\nThis skill uses OMP's existing IDA implementation. Backend contracts and setup are in the linked references; it does not install or register a separate MCP service.\n",
+      "stderr": ""
+    }
+  ],
+  "native_reads": {
+    "input_sha256": "6c5a1b1e6988365bd05c7334d9b8c3b1154eb95c12a52621911b3e7951895cfa",
+    "records": [
+      {
+        "command": [
+          "<omp>",
+          "read",
+          "toy.exe"
+        ],
+        "cwd": "<repo>-artifacts\\native-project",
+        "exit_code": 0,
+        "elapsed_seconds": 3.634,
+        "stdout": "[6c5a1b1e6988365b-toy.exe; views: toy.exe:<func|0xaddr> pseudocode, toy.exe:<func>:asm, :imports, :exports, :strings, :xrefs:<func|0xaddr>]\ntoy.exe — Portable executable for AMD64 (PE), x86 64-bit\nbase 0x140000000 entry 0x140001070 range 0x140001000-0x140005000\nmd5 d033de1dcfba243030b265deb6d87e70 sha256 6c5a1b1e6988365bd05c7334d9b8c3b1154eb95c12a52621911b3e7951895cfa\nsegments (4):\n  .text 0x140001000-0x140002000 r-x CODE\n  .rdata 0x140002000-0x140003000 r-- DATA\n  .data 0x140003000-0x140004000 rw- DATA\n  .pdata 0x140004000-0x140005000 r-- DATA\nentry points (1):\n  0x140001070 start\ncounts: 2 functions, 0 imports, 1 exports, 3 strings\nfunctions (2):\n  0x140001000      99  sub_140001000\n  0x140001070      43  start\n",
+        "stderr": "",
+        "model_prompt_submitted": false
+      },
+      {
+        "command": [
+          "<omp>",
+          "read",
+          "toy.exe:0x140001000:asm:1-40"
+        ],
+        "cwd": "<repo>-artifacts\\native-project",
+        "exit_code": 0,
+        "elapsed_seconds": 0.173,
+        "stdout": "0x140001000  sub     rsp, 18h\n0x140001004  mov     [rsp+18h+var_10], rcx\n0x140001009  mov     [rsp+18h+var_14], 0\n0x140001011  mov     eax, [rsp+18h+var_14]\n0x140001015  cmp     rax, 21h ; '!'\n0x140001019  jnb     short loc_140001052\n0x14000101b  mov     rax, [rsp+18h+var_10]\n0x140001020  mov     ecx, [rsp+18h+var_14]\n0x140001024  movzx   eax, byte ptr [rax+rcx]\n0x140001028  lea     rdx, aRseIdaLiveUniq; \"RSE_IDA_LIVE_UNIQUE_20261012_C133\"\n0x14000102f  mov     cl, [rcx+rdx]\n0x140001032  movzx   ecx, cl\n0x140001035  cmp     eax, ecx\n0x140001037  jz      short loc_140001043\n0x140001039  mov     [rsp+18h+var_4], 0\n0x140001041  jmp     short loc_14000105A\n0x140001043  jmp     short $+2\n0x140001045  mov     eax, [rsp+18h+var_14]\n0x140001049  add     eax, 1\n0x14000104c  mov     [rsp+18h+var_14], eax\n0x140001050  jmp     short loc_140001011\n0x140001052  mov     [rsp+18h+var_4], 1\n0x14000105a  mov     eax, [rsp+18h+var_4]\n0x14000105e  add     rsp, 18h\n0x140001062  retn\n",
+        "stderr": "",
+        "model_prompt_submitted": false
+      },
+      {
+        "command": [
+          "<omp>",
+          "read",
+          "toy.exe:strings:1-40"
+        ],
+        "cwd": "<repo>-artifacts\\native-project",
+        "exit_code": 0,
+        "elapsed_seconds": 0.18,
+        "stdout": "0x140003000  \"RSE_IDA_LIVE_UNIQUE_20261012_C133\"\n0x140003031  \"SE_IDA_AMBIGUOUS_20261012\"\n0x140003051  \"SE_IDA_AMBIGUOUS_20261012\"\n",
+        "stderr": "",
+        "model_prompt_submitted": false
+      },
+      {
+        "command": [
+          "<omp>",
+          "read",
+          "toy.exe:0x140001000:1-40"
+        ],
+        "cwd": "<repo>-artifacts\\native-project",
+        "exit_code": 0,
+        "elapsed_seconds": 1.156,
+        "stdout": "// sub_140001000 @ 0x140001000-0x140001063\n__int64 __fastcall sub_140001000(__int64 a1)\n{\n  unsigned int i; // [rsp+4h] [rbp-14h]\n\n  for ( i = 0; i < 0x21uLL; ++i )\n  {\n    if ( *(unsigned __int8 *)(a1 + i) != (unsigned __int8)aRseIdaLiveUniq[i] )\n      return 0;\n  }\n  return 1;\n}\n",
+        "stderr": "",
+        "model_prompt_submitted": false
+      },
+      {
+        "command": [
+          "<omp>",
+          "read",
+          "toy.exe:xrefs:0x140001000"
+        ],
+        "cwd": "<repo>-artifacts\\native-project",
+        "exit_code": 0,
+        "elapsed_seconds": 0.218,
+        "stdout": "xrefs to sub_140001000 (0x140001000): 2\n0x14000107b  CALL_NEAR  in start\n0x140004000  OFFSET  in -\n",
+        "stderr": "",
+        "model_prompt_submitted": false
+      },
+      {
+        "command": [
+          "<omp>",
+          "read",
+          "toy.exe:imports"
+        ],
+        "cwd": "<repo>-artifacts\\native-project",
+        "exit_code": 0,
+        "elapsed_seconds": 0.218,
+        "stdout": "Line 1 is beyond end of binary imports (0 lines total). The binary imports is empty.\n",
+        "stderr": "",
+        "model_prompt_submitted": false
+      }
+    ]
+  },
+  "missing_python": {
+    "command": [
+      "<omp>",
+      "read",
+      "toy-bad-runtime.exe"
+    ],
+    "cwd": "<repo>-artifacts\\bad-runtime-project",
+    "exit_code": 1,
+    "elapsed_seconds": 0.331,
+    "stdout": "",
+    "stderr": "IDA unavailable: no Python interpreter can import ida_domain and idapro (tried: <repo>-artifacts\\bad-runtime-project\\missing-python.exe). Install ida-domain into the Python targeted by IDA's idapyswitch, or set ida.python.\n",
+    "model_prompt_submitted": false
+  },
+  "active_native_daemons_after_reading": 0,
+  "daemon_exit_codes_observed": [
+    1
+  ],
+  "project_checks": {
+    "command": "python -m pytest -q",
+    "passed": 234,
+    "skipped": 5
+  },
+  "owned_processes_remaining": 0
+}

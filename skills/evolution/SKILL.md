@@ -14,7 +14,7 @@ It does not replace `apk-reverse`, `ida-reverse`, `js-reverse`, `pentest-tools`,
 ## ACTION REQUIRED
 
 1. `NOW`: Create or update a task-local GOAL using `goal.template.yaml` before choosing a route.
-2. `NOW`: Read `../capability-graph.json` if present; otherwise run `../scripts/refresh-tool-index.ps1` and use the generated graph.
+2. `NOW`: For OMP native IDA, record the current native tool schema and actual operation result through `../ida-reverse/SKILL.md`. For external tools, read `../capability-graph.json` if present; otherwise run `../scripts/refresh-tool-index.ps1` and use the generated graph.
 3. `NEXT`: Use `../routing.json` for machine routing and `../routing.md` for human-readable fallback context.
 4. `ACT`: Route to the selected child skill and record each material decision in a TraceCard.
 5. `EVOLVE`: When changing a skill or route, use the candidate search loop below; do not optimize by editing stable files directly.
@@ -37,6 +37,8 @@ Use `goal.template.yaml` as the minimum shape. A route that cannot name its orac
 ## Capability Graph
 
 The capability graph is a session fact cache, not a wish list.
+
+OMP's native `ida` is a session-provided interface. Record its live schema, selected native database, and operation evidence instead of requiring the external CLI index to contain `idapro`. Graph lookup and bootstrap below apply to external tools; a native worker failure follows `omp-ida-native` setup guidance.
 
 Required fields per tool or service:
 
@@ -183,7 +185,7 @@ Use `promotion-record.template.yaml`. If evidence is incomplete, keep the entry 
 ## Completion Check
 
 - [ ] GOAL exists and names at least one success oracle.
-- [ ] Capability graph was read or refreshed.
+- [ ] OMP native IDA schema and operation evidence were recorded, or the external capability graph was read/refreshed.
 - [ ] Macro route and any micro-route switches are recorded.
 - [ ] TraceCard records reproducible actions, evidence references, coverage, limitations, and unresolved questions.
 - [ ] Field-journal tier is selected.

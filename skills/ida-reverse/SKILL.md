@@ -5,12 +5,25 @@ description: |
 
   Ensure to use this skill when the user wants to analyze any binary file, regardless of whether they explicitly mention "IDA" or "reverse engineering". This includes requests like "看看这个exe", "分析这个dll", "帮我破解", "找一下密码", "这个软件怎么注册", etc.
 
-  Prefer native idapro MCP tools for agent calls and the Python reverse-skill CLI for installation, registration, diagnostics, and manual use. IDA analysis uses Python and HTTP; Windows --replace-stale uses PowerShell to verify listener ownership.
+  In OMP, select the native ida workflow by its live tool schema. Prefer native idapro MCP tools for agent calls and the Python reverse-skill CLI for installation, registration, diagnostics, and manual use. IDA analysis uses Python and HTTP; Windows --replace-stale uses PowerShell to verify listener ownership.
 ---
 
 # IDA Pro 逆向分析技能
 
-## 当前调用边界（必读）
+## 先选择当前执行入口（必读）
+
+1. **OMP 内置 IDA**：检查当前会话 `ida` 工具的实时 schema；若通过 `xd://ida` 暴露，先读取该接口。只有 `action` 支持 `list`、`open`、`save`、`close`、`exec`、`rename`、`comment`、`set_type`、`make_function`，且参数包含 `db`、`code` 时，才判定 `omp_ida_native` 可用。读取 [OMP 原生 IDA skill](../../.omp/skills/omp-ida-native/SKILL.md)，按它的工作流继续；下面的 HTTP MCP/CLI 安装和调用流程仅属于 `idapro` 分支。工具名、IDA 文件或 CLI 存在本身不代表原生能力可用。
+2. **Hex-Rays 官方 OMP extension**：原生 schema 不匹配、当前会话暴露的是 `ida_*` 工具时，读取该插件自带指导与实时工具 schema。它的数据库句柄与 OMP 内置 `db`、`idapro` MCP 的 `database` 不互通；本包未实现该官方 extension 的适配器。
+3. **`idapro` MCP**：当前宿主已暴露 `idapro` MCP 工具时，使用下文的 MCP 工作流。
+4. **无可用 IDA 后端**：按 `routing.json` 的 `all_supported_ida_backends_unavailable` 进入原有 r2/Ghidra 备选路径。
+
+`omp_ida_native` 是当前 OMP 会话的实时能力，只用于本次路由，不写入宿主 capability graph。OMP 原生入口不要求注册 Codex MCP 或安装额外的 `idalib-mcp` 服务。
+
+OMP 分支的快照、候选函数初筛、跨版本对照和动态观察计划入口见上述原生 skill 的工作流表；这批扩展处于开发已交付、运行未验收状态。
+
+## idapro HTTP MCP 调用边界
+
+以下安装、协议、工具参数与示例只适用于 `idapro` MCP 分支。
 
 ### 踩过的坑
 

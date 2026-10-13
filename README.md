@@ -8,6 +8,14 @@
 
 > This package can be placed in any directory. The AI will automatically detect its actual path. In the following text, `<SKILL_ROOT>` refers to your real installation path.
 
+## OMP native workflows
+
+Start OMP in this source project to discover `.omp/skills/omp-ida-native/`; invoke `/skill:omp-ida-native` explicitly when needed. To use it in another project, copy the **complete directory**, including `references/`, into that project's `.omp/skills/`. For user-wide use, copy it into the actual agent directory's `skills/` (default `~/.omp/agent/skills/`; profiles and environment settings can relocate it). Read [setup](.omp/skills/omp-ida-native/references/setup.md) for native IDA prerequisites and configuration. Skills are distributed as source files; pip/npm installation does not register this OMP entry. This package does not write model settings or API keys.
+
+New development, not functionally tested: the IDA skill now includes [snapshot/triage](.omp/skills/omp-ida-native/references/triage.md), [version comparison](.omp/skills/omp-ida-native/references/version-diff.md), and [Frida observation-plan generation](.omp/skills/omp-ida-native/references/dynamic-validation.md). `/skill:omp-js-replay` uses OMP's existing JavaScript eval to compare a supplied signer with captured fixtures; copy its complete `.omp/skills/omp-js-replay/` directory for portable use. See [replay instructions](.omp/skills/omp-js-replay/references/replay.md). Runtime acceptance is tracked in issues [#27](https://github.com/2233admin/reverse-skill-evolver/issues/27), [#28](https://github.com/2233admin/reverse-skill-evolver/issues/28), [#29](https://github.com/2233admin/reverse-skill-evolver/issues/29), and [#30](https://github.com/2233admin/reverse-skill-evolver/issues/30).
+
+For OMP IDA tasks, enter this skill before the general configuration process below. The shared [IDA skill](skills/ida-reverse/SKILL.md) selects the backend by the live schema: OMP native `ida` or `idapro` MCP. OMP's native branch uses discovered skills and its own database handles; it does not require global prompt injection, Codex MCP registration, or an additional MCP server. An official Hex-Rays OMP extension exposing `ida_*` tools follows its own guidance and schemas; this package does not implement that adapter.
+
 ---
 
 ## 0. Start with one local IDA task
@@ -290,7 +298,7 @@ After success, check:
 
 ## 6.2 Python CLI Workflows
 
-The Python command `reverse-skill` is the common entry point for both workflows. Install it from the repository with `python -m pip install -e .`; a source checkout can run the same interface as `python -m reverse_skill`. The IDA Pro workflow targets the same Streamable HTTP service as native Codex MCP registration:
+The Python command `reverse-skill` is the common entry point for both CLI workflows. Install it from the repository with `python -m pip install -e .`; a source checkout can run the same interface as `python -m reverse_skill`. Its `idapro` MCP workflow targets the same Streamable HTTP service as native Codex MCP registration:
 
 The CLI has two distinct journeys: IDA Pro MCP operations (service lifecycle, discovery, and tool calls) and bounded routing-evolution search (`evolve`). The latter only evaluates route selection against local fixtures; it does not execute child skills or promote candidates.
 
@@ -298,10 +306,11 @@ The CLI has two distinct journeys: IDA Pro MCP operations (service lifecycle, di
 
 | Execution entry | Intended use | Boundary |
 |---|---|---|
+| OMP native `ida` | Agent tool calls in OMP | Use `omp-ida-native`; native schema and `db` handles |
 | Native MCP | Agent tool calls | Register `idapro` at the HTTP endpoint; the MCP host owns invocation UX |
 | `reverse-skill` Python CLI | Human use, diagnostics, automation | Stable command surface for installation, registration, service lifecycle, discovery, and calls |
 
-The skill files are the routing/control plane, not another execution transport. The IDA path has no PowerShell adapter: `reverse-skill -> HTTP MCP -> idalib-mcp.exe -> IDA`.
+The skill files are the routing/control plane. The `idapro` MCP branch has no PowerShell adapter: `reverse-skill -> HTTP MCP -> idalib-mcp.exe -> IDA`. OMP native `ida` follows its separate native workflow.
 
 ```console
 reverse-skill register
