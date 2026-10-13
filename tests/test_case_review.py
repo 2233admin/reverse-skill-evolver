@@ -54,6 +54,7 @@ def write_complete_case(root: Path, *, corrupt_hash: bool = False, escape_artifa
 ## auth
 - status: granted
 - basis: lab_only
+- evidence_of_auth: self-authored local test fixture
 
 ## in_scope
 - assets:

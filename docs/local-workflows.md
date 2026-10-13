@@ -38,7 +38,9 @@ or scope declaration, authorization remains pending and network mode is offline.
 
 Review reads the existing case and checks evidence/work-item/report references,
 scope readiness and optional SHA-256 hashes. An artifact outside the case is an
-error. `--strict` also treats warnings as blockers. Exit 5 indicates a failed
+error. Granted scopes require a recognized authorization basis and a non-placeholder
+evidence reference; review checks the recorded declaration, not external approval.
+`--strict` also treats warnings as blockers. Exit 5 indicates a failed
 review; the existing output-v1 contract keeps `data=null` and includes the full
 report after `Diagnostics: ` in `error.message`. Human output includes the report;
 passing reviews can use `--format markdown`.

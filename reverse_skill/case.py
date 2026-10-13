@@ -192,6 +192,12 @@ def relative_path(root: Path, path: Path) -> str:
 # --- Scope ----------------------------------------------------------------
 
 
+def _has_auth_evidence(value: str) -> bool:
+    return bool(value.strip()) and value.strip().casefold() not in {
+        "unknown", "n/a", "none", "pending", "[]",
+    } and re.search(r"\b(?:fill[_ -]?me|todo|tbd)\b", value, re.I) is None
+
+
 def parse_scope(root: Path, issues: List[Dict[str, Any]], strict: bool) -> Dict[str, Any]:
     path = root / "scope.md"
     result = {"auth_status": "", "network_mode": "", "ready_for_act": "", "assets": []}
@@ -205,6 +211,8 @@ def parse_scope(root: Path, issues: List[Dict[str, Any]], strict: bool) -> Dict[
     network = section_text(text, "network_profile")
     signoff = section_text(text, "signoff")
     result["auth_status"] = field_value(auth, "status").lower()
+    result["auth_basis"] = field_value(auth, "basis").lower()
+    result["evidence_of_auth"] = field_value(auth, "evidence_of_auth")
     result["network_mode"] = field_value(network, "mode").lower()
     result["ready_for_act"] = field_value(signoff, "ready_for_act").lower()
 
@@ -227,6 +235,11 @@ def parse_scope(root: Path, issues: List[Dict[str, Any]], strict: bool) -> Dict[
         issue(issues, "error", "scope.auth_missing", "auth.status is missing", "scope.md")
     elif result["auth_status"] not in auth_statuses:
         issue(issues, "error", "scope.auth_invalid", "unsupported auth.status: " + result["auth_status"], "scope.md")
+    if result["auth_status"] == "granted":
+        if result["auth_basis"] not in enum_values("auth_basis"):
+            issue(issues, "error", "scope.auth_basis_invalid", "granted scope requires a recognized auth.basis", "scope.md")
+        if not _has_auth_evidence(result["evidence_of_auth"]):
+            issue(issues, "error", "scope.auth_evidence_missing", "granted scope requires non-placeholder evidence_of_auth", "scope.md")
 
     if not result["network_mode"]:
         issue(issues, "error", "scope.network_missing", "network_profile.mode is missing", "scope.md")
@@ -695,6 +708,10 @@ def init_case(
         resolved_auth_basis = definition["auth_basis"]
         resolved_network = definition["network_mode"]
         resolved_evidence_auth = definition["evidence_of_auth"]
+    if resolved_auth_status == "granted" and (
+        resolved_auth_basis not in enum_values("auth_basis") or not _has_auth_evidence(resolved_evidence_auth)
+    ):
+        raise CaseContractError("granted scope requires a recognized auth basis and non-placeholder evidence of auth")
 
     assets: List[str] = []
     if target_url:

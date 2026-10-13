@@ -17,6 +17,7 @@ from reverse_skill.case import (
     sha256_file,
     slugify,
     validate_case_name,
+    parse_scope,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -126,6 +127,8 @@ def test_init_case_network_profile_normalization_aliases(tmp_path: Path) -> None
         "alias-case",
         network_profile="LAB",
         auth_status="granted",
+        auth_basis="lab_only",
+        evidence_of_auth="self-authored local lab",
         target_url="https://example.com",
         package_root=str(tmp_path),
     )
@@ -169,4 +172,26 @@ def test_case_names_are_portable(name):
 def test_case_fields_cannot_inject_markdown_sections(tmp_path, kwargs):
     with pytest.raises(CaseContractError):
         init_case(case_name="safe", package_root=str(tmp_path), **kwargs)
+    assert not (tmp_path / "work").exists()
+
+
+@pytest.mark.parametrize("basis,evidence,code", [
+    ("", "self-authored lab", "scope.auth_basis_invalid"),
+    ("unknown", "self-authored lab", "scope.auth_basis_invalid"),
+    ("lab_only", "", "scope.auth_evidence_missing"),
+    ("own_system", "FILL_ME", "scope.auth_evidence_missing"),
+])
+def test_granted_scope_requires_basis_and_evidence(tmp_path, basis, evidence, code):
+    (tmp_path / "scope.md").write_text(
+        f"## auth\n- status: granted\n- basis: {basis}\n- evidence_of_auth: {evidence}\n"
+        "## in_scope\n- assets:\n  - sample.bin\n## network_profile\n- mode: offline\n"
+        "## signoff\n- ready_for_act: true\n", encoding="utf-8")
+    issues = []
+    parse_scope(tmp_path, issues, strict=False)
+    assert any(issue["code"] == code and issue["level"] == "error" for issue in issues)
+
+
+def test_init_does_not_create_granted_case_without_authorization_record(tmp_path):
+    with pytest.raises(CaseContractError):
+        init_case("sample", "invalid", auth_status="granted", sample="sample.exe", package_root=str(tmp_path))
     assert not (tmp_path / "work").exists()
