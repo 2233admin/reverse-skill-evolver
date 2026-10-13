@@ -34,3 +34,15 @@
 ## R3：replay 参考页的旧开发状态
 
 末行“仅静态检查，未 functional/eval”确实与同页及既有真实报告矛盾。修订为实际 Node/Bun 合成测试与真实 OMP 持久 eval 已执行，同时明确该次显式模块导入使用 `--no-skills`，自动 skill 发现和第三方 capture 未验。仅改说明，不改变 skill 入口、模块或归档；严格 UTF-8 读取、既有 evidence 链接及 `git diff --check` 核对。
+
+## R4：收窄 OMP 发现能力声明
+
+原“已发现 skill”声明超出证据：`run-persistent-eval.py` 的真实命令含 `--no-skills`，prompt 指定模块绝对路径，原 frames 记录显式导入、初始化与同一 kernel 复用。因此工作流 README、进度记录、PR 正文和本人 #30 回执收窄为这三项已证实能力；自动 skill 发现标为未验，不用静态目录或模型复述替代加载证据。签名模块/原 frames/输入 DLL/冻结模型输入/调用预算及候选状态均未改，不追加模型调用。
+
+本人 [#30 回执](https://github.com/2233admin/reverse-skill-evolver/issues/30#issuecomment-6146374727) 已定点更正并逐字回读确认；原验证数字与全部边界保留，没有删除评论或写 #41 正文。
+
+## 最终受影响检查与冻结边界
+
+`python -m pytest -q --tb=short`，TEMP/TMP 仅指向本 worktree `.verification/final-test-temp`：**333 passed、5 skipped，61.19 秒，退出码 0**；原始输出见 [最终 Python 日志](pr42-review-python-2026-10-13.txt)。可选 YARA 和 Windows 不支持的引号/反斜线文件名仍未执行，跳过不计通过。完整 Python 包含本次十一项新增回归及原 Node suites；不把它当作新的模型/真实IDA/BurpGUI验收。
+
+相对6c6b3a6，`.github` 工作流、签名模块、真实模型归档和eval metadata保持相同Git内容；改动仅为#40定点源码/隔离回归及所列说明。无模型/SDK/设备/外部服务新调用，没有PID精确复用实测或自动skill发现证据。两个原OMP PR仍由本PR综合承接；#41正文只读，#43/#44不写，修复分支和#32子树所有权保留，待根会话按新固定SHA复验。

@@ -47,7 +47,7 @@
 
 `node --test tests/omp-signature-replay.test.mjs` 与 `bun test tests/omp-signature-replay.test.mjs` 各 **9 passed, 0 failed**。覆盖同步/异步 HMAC signer、固定输入指纹、匹配/不匹配、异常隐私/非字符串、调用方/输入变更隔离、部分/空覆盖、字符串只作数据、重复 ID/expected/callback/budgets、非有限 JSON/循环/稀疏/符号/隐藏/访问器，以及两项新修复。Python 常规入口也执行 Node suite，与 portable skill 合同检查合计 **9 passed**。
 
-真实 OMP **18.8.9** 已发现该 skill，并通过仅开放 eval 的一轮 MiniMax 会话执行 **3 个真实 js eval 调用**：导入/读取当前模块，定义 signer/fixtures/token，随后在同一持久 kernel 复用这些变量并调用 compareSignatures 两次。实际输出 `omp-persistent-replay.json`，完整固定 HMAC 用例 **2/2、passed=true**；maxCases=1 的部分报告 processed=1/remaining=1/complete=false/passed=false。预期 HMAC 由 driver 的 Python hmac 独立计算，实际签名由 JS signer 计算；原 tool_execution frames 显示模块调用/变量复用，没有靠模型叙述或替换预期构造通过。
+真实 OMP **18.8.9** 在仅开放 eval 的一轮 MiniMax 会话执行 **3 个真实 js eval 调用**：按提示中的显式绝对路径导入/读取当前模块，定义 signer/fixtures/token，随后在同一持久 kernel 复用这些变量并调用 compareSignatures 两次。该轮命令明确使用 `--no-skills`；原 frames 只证明显式模块导入、replay 和 kernel 复用，**skill 自动发现未验证**。实际输出 `omp-persistent-replay.json`，完整固定 HMAC 用例 **2/2、passed=true**；maxCases=1 的部分报告 processed=1/remaining=1/complete=false/passed=false。预期 HMAC 由 driver 的 Python hmac 独立计算，实际签名由 JS signer 计算；原 tool_execution frames 显示模块调用/变量复用，没有靠模型叙述或替换预期构造通过。
 
 这轮 OMP 会话耗时 **9.501 秒**，逻辑 OMP invocation **1**；加 #21 路由 31 次，全批累计 **32/37**。工具型一轮可能包含多个模型响应/重试，物理 provider 请求与账单仍未知，不把一次进程写成一次物理请求。输入是已标明的自制固定 HMAC fixtures，不是第三方真实捕获请求；没有新鲜服务器验收、业务认证/性能结论或模型候选晋级。
 
