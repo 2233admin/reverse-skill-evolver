@@ -1,18 +1,18 @@
-<p align="center">
-  <img src="assets/reverse-skill-evolver-cover.png" alt="Reverse Skill Evolver tactical cover" width="100%" />
-</p>
-
 # Reverse Skill Evolver
+
+**Reverse-engineering skills, MCP tool integration, and agent swarms with explicit call budgets.**
 
 English · [中文](README_zh.md) · [AI community](https://linux.do)
 
-Reverse Skill Evolver brings reverse-engineering skills, tool integrations, and working procedures into one package for AI coding agents such as Claude Code, Codex, and OMP. Given a target and a task, the agent selects the relevant skill, uses available local tools, and follows the workflow while keeping the results.
+[![Project checks](https://github.com/2233admin/reverse-skill-evolver/actions/workflows/project-checks.yml/badge.svg?branch=main)](https://github.com/2233admin/reverse-skill-evolver/actions/workflows/project-checks.yml) [![MIT license](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) [![Testing release](https://img.shields.io/badge/release-v1.2.0--beta.1-orange.svg)](https://github.com/2233admin/reverse-skill-evolver/releases/tag/v1.2.0-beta.1)
 
-For an APK, start with unpacking and decompilation, then use Frida to observe runtime behavior. For a PE/ELF binary, use IDA to collect an overview, decompile functions, and inspect cross-references. JavaScript signing tasks follow browser sampling, function tracing, and local replay. Each task has a separate [skill entry](skills/SKILL.md); connect the tools needed for the task.
+Reverse Skill Evolver provides reverse-engineering skills and tool integration for Claude Code, Codex, and OMP. The agent selects a workflow for the target and task, uses available local tools, and keeps records of the analysis and its results.
 
-Routing instructions can be revised based on task experience. `reverse-skill evolve` evaluates route selection against fixed fixtures, tries candidate changes within an explicit budget, and saves each round's results. Candidates require human review and independent verification before a decision to adopt them.
+[Start here](#start-here) · [Tasks and outputs](#what-you-can-analyze) · [Agent swarm](#agent-swarm) · [Verified examples](#verification-examples-and-limits) · [FAQ](#before-you-start) · [Client setup](#7-how-to-integrate-with-claude-code--codex-cli--other-ai-clients)
 
-The **agent swarm** analyzes evidence you have already collected. `reverse-skill-swarm` splits the work, runs analysts in parallel, and summarizes their findings, disagreements, and unknowns. Each run requires an explicit logical-call budget and saves the input snapshot, agent records, and `run.json` in a fresh directory. The current swarm analyzes supplied material; its output is marked `advisory` and needs checking against target observations or tests.
+<p align="center">
+  <img src="assets/reverse-skill-evolver-cover.png" alt="Reverse Skill Evolver reverse-engineering skill-routing cover" width="720" />
+</p>
 
 ## Start here
 
@@ -25,7 +25,45 @@ The testing release for this round is [v1.2.0-beta.1](https://github.com/2233adm
 | Connect skills to an existing client | [Client integration](#7-how-to-integrate-with-claude-code--codex-cli--other-ai-clients) | A working AI client and the tools needed for your task |
 | Browse skills and routes | [Skill entry](skills/SKILL.md) and [routing table](skills/routing.md) | A task selected for your target |
 
-Real-model swarm quality and automatic OMP skill discovery still need testing. See the [validation record](https://github.com/2233admin/reverse-skill-evolver/blob/v1.2.0-beta.1/BETA-VALIDATION.md) for completed checks and their limits.
+## What you can analyze
+
+| Task | Workflow and outputs | Entry and prerequisites |
+|---|---|---|
+| Android APK reverse engineering | Unpacking, decompilation, smali edits, and Frida runtime observations | [APK skill](skills/apk-reverse/SKILL.md); jadx, apktool, or Frida/adb as needed |
+| PE/ELF binary analysis | Binary overview, decompilation, cross-references, and JSON records | [IDA skill](skills/ida-reverse/SKILL.md); available OMP native IDA, or licensed IDA/idalib and an MCP service |
+| JavaScript / Web signing analysis | Browser sampling, function tracing, local replay, and per-fixture comparisons | [JS skill](skills/js-reverse/SKILL.md); browser tools or OMP JS eval as needed |
+| HTTP and Burp operations | Requests, responses, proxy history, and MCP operation results | [Burp guide](burp-mcp-full/README.md); Burp, Java 21+, and the bridge |
+| Multi-agent evidence analysis | Input snapshots, individual analyses, and a `run.json` summary | [Swarm testing guide](https://github.com/2233admin/reverse-skill-evolver/blob/v1.2.0-beta.1/BETA-TEST.md); OMP CLI with a configured model |
+
+## Agent swarm
+
+`reverse-skill-swarm` analyzes evidence you have already collected. It splits the work, runs analysts in parallel, and summarizes findings, disagreements, and unknowns. Each run requires an explicit logical-call budget and saves the input snapshot, agent records, and `run.json` in a fresh directory. Provider retries are outside the logical-call budget.
+
+The current swarm analyzes supplied material. Its output is marked `advisory` and needs checking against target observations or tests.
+
+## Routing evaluation
+
+Routing instructions can be revised based on task experience. `reverse-skill evolve` evaluates route selection against fixed fixtures, tries candidate changes within an explicit budget, and saves each round's results. Candidates require human review and independent verification before a decision to adopt them.
+
+## Verification examples and limits
+
+The [OMP workflow cases](reports/omp-workflow-verification-2026-10-13/README.md) retain evidence from self-authored x64 PE/native-worker fixtures, generated Frida observation scripts, and supplied signer comparisons against fixed fixtures. The [beta validation record](https://github.com/2233admin/reverse-skill-evolver/blob/v1.2.0-beta.1/BETA-VALIDATION.md) covers builds, installed entry points, and controlled swarm execution.
+
+Each record has a defined sample and scope. Real-model swarm quality, automatic OMP skill discovery, Burp GUI loading, and first-user onboarding still need testing. Route-selection scores on fixed fixtures do not establish downstream reverse-engineering correctness.
+
+## Before you start
+
+### Do I need every tool installed?
+
+Prepare the tools for your task. Swarm analysis needs OMP CLI and existing evidence; the local IDA CLI needs licensed IDA/idalib and `idalib-mcp`. APK, browser, and Burp workflows list their own requirements.
+
+### Does installing the Python package register OMP skills?
+
+The Python package installs the `reverse-skill` and `reverse-skill-swarm` CLIs. Complete skills are distributed in the source ZIP; copy the complete directories as described below for OMP use. Installing the Python package does not register those skills.
+
+### How does the swarm get observations from IDA or Frida?
+
+Collect observations through the relevant workflow, then supply evidence you permit the model to receive. The current swarm disables tools in its OMP calls and analyzes only the supplied material.
 
 > This package can be placed in any directory. The AI will automatically detect its actual path. In the following text, `<SKILL_ROOT>` refers to your real installation path.
 

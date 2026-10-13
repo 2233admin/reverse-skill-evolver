@@ -1,18 +1,18 @@
-<p align="center">
-  <img src="assets/reverse-skill-evolver-cover.png" alt="Reverse Skill Evolver tactical cover" width="100%" />
-</p>
-
 # Reverse Skill Evolver
+
+**逆向工程 skills、MCP 工具接入与有调用预算的 Agent 蜂群。**
 
 [English](README.md) · 中文 · [AI 社区](https://linux.do)
 
-Reverse Skill Evolver 把逆向分析中常用的技能、工具接入和操作流程放在一起，供 Claude Code、Codex、OMP 等 AI 编码代理使用。给出目标和任务后，代理先选择对应的 skill，再调用本机可用的工具，按流程分析并保留结果。
+[![Project checks](https://github.com/2233admin/reverse-skill-evolver/actions/workflows/project-checks.yml/badge.svg?branch=main)](https://github.com/2233admin/reverse-skill-evolver/actions/workflows/project-checks.yml) [![MIT license](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) [![Testing release](https://img.shields.io/badge/release-v1.2.0--beta.1-orange.svg)](https://github.com/2233admin/reverse-skill-evolver/releases/tag/v1.2.0-beta.1)
 
-分析 APK，可以从解包和反编译开始，再接 Frida 观察运行时行为。处理 PE/ELF，可以通过 IDA 取得二进制概览、反编译和交叉引用。遇到 JavaScript 签名，则沿着浏览器采样、函数定位和本地复现继续。这些任务各有独立的 [skill 入口](skills/SKILL.md)，工具按任务需要接入。
+Reverse Skill Evolver 为 Claude Code、Codex 和 OMP 提供逆向工程 skills 与工具接入。代理根据目标和任务选择工作流，使用本机可用的工具，并把分析过程和结果留成可复查的记录。
 
-项目的路由说明可以随任务经验改进。`reverse-skill evolve` 用固定用例评估路由选择，在指定预算内尝试候选改动，并保存每轮结果。候选经过人工审查和独立验证后，再决定是否采用。
+[开始试用](#从这里开始) · [任务与产物](#可分析的任务) · [蜂群](#agent-蜂群) · [验证案例](#验证案例与边界) · [常见问题](#开始前常见问题) · [客户端接入](#7-claude-code--codex-cli--其他-ai-客户端如何接入)
 
-**Agent 蜂群**用于分析已经收集的证据。`reverse-skill-swarm` 先拆分任务，让分析代理并行处理，再汇总结论、分歧和未知项。每次运行都要指定逻辑调用预算，输入快照、各代理记录和 `run.json` 会写入新目录。当前蜂群只分析提供的材料，输出标记为 `advisory`，结论还需用目标观察或测试核对。
+<p align="center">
+  <img src="assets/reverse-skill-evolver-cover.png" alt="Reverse Skill Evolver 的逆向技能路由示意封面" width="720" />
+</p>
 
 ## 从这里开始
 
@@ -25,7 +25,45 @@ Reverse Skill Evolver 把逆向分析中常用的技能、工具接入和操作�
 | 把技能接入现有客户端 | [客户端接入说明](#7-claude-code--codex-cli--其他-ai-客户端如何接入) | 可用的 AI 客户端，以及任务所需工具 |
 | 查看具体技能和路由 | [技能入口](skills/SKILL.md)与[路由表](skills/routing.md) | 按目标选定的任务 |
 
-测试版的真实模型协作质量和 OMP skill 自动发现仍待核对，已运行的检查及边界见 [验证记录](https://github.com/2233admin/reverse-skill-evolver/blob/v1.2.0-beta.1/BETA-VALIDATION.md)。
+## 可分析的任务
+
+| 任务 | 工作流与产物 | 入口与前提 |
+|---|---|---|
+| Android APK 逆向 | 解包、反编译、smali 修改、Frida 运行时观察 | [APK skill](skills/apk-reverse/SKILL.md)，按步骤准备 jadx、apktool 或 Frida/adb |
+| PE/ELF 二进制分析 | 二进制概览、反编译、交叉引用及 JSON 记录 | [IDA skill](skills/ida-reverse/SKILL.md)，可用的 OMP 原生 IDA 或已许可的 IDA/idalib 与 MCP 服务 |
+| JavaScript / Web 签名分析 | 浏览器采样、函数定位、本地复现及固定样本逐项对照 | [JS skill](skills/js-reverse/SKILL.md)，按任务使用浏览器工具或 OMP JS eval |
+| HTTP 与 Burp 操作 | 请求、响应、代理历史及 MCP 操作结果 | [Burp 接入说明](burp-mcp-full/README.md)，Burp、Java 21+ 与 bridge |
+| 多 Agent 证据分析 | 输入快照、各代理分析及 `run.json` 汇总 | [蜂群测试指南](https://github.com/2233admin/reverse-skill-evolver/blob/v1.2.0-beta.1/BETA-TEST.md)，已配置模型的 OMP CLI |
+
+## Agent 蜂群
+
+`reverse-skill-swarm` 用于分析已经收集的证据。它先拆分任务，让分析代理并行处理，再汇总结论、分歧和未知项。每次运行都要指定逻辑调用预算，输入快照、各代理记录和 `run.json` 会写入新目录。预算按逻辑调用计，provider 内部重试另计。
+
+当前蜂群只分析提供的材料，输出标记为 `advisory`，结论还需用目标观察或测试核对。
+
+## 路由评估
+
+项目的路由说明可以随任务经验改进。`reverse-skill evolve` 用固定用例评估路由选择，在指定预算内尝试候选改动，并保存每轮结果。候选经过人工审查和独立验证后，再决定是否采用。
+
+## 验证案例与边界
+
+[OMP 工作流案例](reports/omp-workflow-verification-2026-10-13/README.md)保留了自制 x64 PE/native worker、生成的 Frida 观察脚本，以及实际 signer 与固定样本对照的证据。测试版的构建、安装入口和受控蜂群运行见 [验证记录](https://github.com/2233admin/reverse-skill-evolver/blob/v1.2.0-beta.1/BETA-VALIDATION.md)。
+
+这些记录各有明确样本和验证范围。真实模型的蜂群协作质量、OMP skill 自动发现、Burp GUI 和首次用户上手仍待测试；固定用例的路由选择结果不代表下游逆向任务已验证。
+
+## 开始前常见问题
+
+### 必须安装全部工具吗
+
+按任务准备即可。蜂群分析需要 OMP CLI 和已有证据；本地 IDA CLI 需要已许可的 IDA/idalib 与 `idalib-mcp`。APK、浏览器和 Burp 工作流分别列出所需工具。
+
+### 安装 Python 包会自动注册 OMP skills 吗
+
+Python 包安装 `reverse-skill` 与 `reverse-skill-swarm` CLI。完整 skills 随源码 ZIP 分发，OMP 接入按下方说明复制完整目录；安装 Python 包不会注册这些 skills。
+
+### 蜂群如何取得 IDA 或 Frida 的观察结果
+
+先在对应工作流取得观察记录，再把允许发送给模型的证据交给蜂群。当前蜂群调用 OMP 时禁用工具，只分析提供的材料。
 
 > 本包放在哪个目录都行，AI 会自动检测实际路径。以下用 `<SKILL_ROOT>` 代指你的实际安装位置。
 
