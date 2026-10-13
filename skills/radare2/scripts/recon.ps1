@@ -1,4 +1,4 @@
-param(
+﻿param(
     [Parameter(Mandatory = $true)]
     [string]$TargetPath,
 
@@ -18,29 +18,6 @@ $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot '..\..\scripts\lib\ToolDiscovery.ps1')
 
-$bootstrapScript = Join-Path $PSScriptRoot '..\..\scripts\bootstrap-reverse.ps1'
-
-function Get-RequiredToolSpec {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Name
-    )
-
-    $spec = Resolve-ReverseToolSpec -Name $Name
-    if (-not $spec.Available) {
-        # Attempt auto-bootstrap
-        if (Test-Path -LiteralPath $bootstrapScript) {
-            Write-Output "INFO: $Name not found, attempting auto-bootstrap..."
-            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $bootstrapScript -Capability @($Name) -SkipRefresh
-            $spec = Resolve-ReverseToolSpec -Name $Name
-        }
-        if (-not $spec.Available) {
-            throw "缺少命令：$Name — 自动安装失败，请手动安装。参考: https://github.com/radareorg/radare2"
-        }
-    }
-    return $spec
-}
-
 function Write-Section {
     param(
         [Parameter(Mandatory = $true)]
@@ -52,10 +29,10 @@ function Write-Section {
     "=== $Title ==="
 }
 
-$rabin2 = Get-RequiredToolSpec -Name 'rabin2'
+$rabin2 = Get-RequiredReverseToolSpec -Name 'rabin2'
 $r2 = $null
 if ($RunAnalysis) {
-    $r2 = Get-RequiredToolSpec -Name 'r2'
+    $r2 = Get-RequiredReverseToolSpec -Name 'r2'
 }
 
 # 将输入路径规范化成绝对路径，避免 r2/rabin2 在相对路径下歧义解析。

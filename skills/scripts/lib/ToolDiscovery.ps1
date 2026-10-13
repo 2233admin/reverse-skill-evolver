@@ -5,7 +5,12 @@ function Get-ReverseToolCatalog {
     [CmdletBinding()]
     param()
 
-    return @(
+    if (Get-Variable -Name ReverseToolCatalog -Scope Script -ErrorAction SilentlyContinue) {
+        return $script:ReverseToolCatalog
+    }
+
+    # Cache definitions only; resolve paths again after tools are installed.
+    $script:ReverseToolCatalog = @(
         [pscustomobject]@{
             Name = 'jadx'
             Skill = 'apk-reverse'
@@ -47,12 +52,22 @@ function Get-ReverseToolCatalog {
             )
         }
         [pscustomobject]@{
+            Name = 'keytool'
+            Skill = 'apk-reverse'
+            Purpose = '生成 APK 签名密钥'
+            VersionArgs = @('-help')
+            Fallbacks = @(
+                [pscustomobject]@{ Type = 'command'; Value = 'keytool' }
+            )
+        }
+        [pscustomobject]@{
             Name = 'apksigner'
             Skill = 'apk-reverse'
             Purpose = 'APK 签名'
             VersionArgs = @('--version')
             Fallbacks = @(
-                [pscustomobject]@{ Type = 'command'; Value = 'apksigner' }
+                [pscustomobject]@{ Type = 'command'; Value = 'apksigner' },
+                [pscustomobject]@{ Type = 'android-build-tool'; Value = 'apksigner.bat' }
             )
         }
         [pscustomobject]@{
@@ -61,7 +76,8 @@ function Get-ReverseToolCatalog {
             Purpose = 'APK 对齐'
             VersionArgs = @('--version')
             Fallbacks = @(
-                [pscustomobject]@{ Type = 'command'; Value = 'zipalign' }
+                [pscustomobject]@{ Type = 'command'; Value = 'zipalign' },
+                [pscustomobject]@{ Type = 'android-build-tool'; Value = 'zipalign.exe' }
             )
         }
         [pscustomobject]@{
@@ -71,7 +87,7 @@ function Get-ReverseToolCatalog {
             VersionArgs = @('--version')
             Fallbacks = @(
                 [pscustomobject]@{ Type = 'command'; Value = 'frida' },
-                [pscustomobject]@{ Type = 'path'; Value = (Join-Path $env:APPDATA 'Python\Python3xx\Scripts\frida.exe') }
+                [pscustomobject]@{ Type = 'python-script'; Value = 'frida.exe' }
             )
         }
         [pscustomobject]@{
@@ -100,7 +116,17 @@ function Get-ReverseToolCatalog {
             VersionArgs = @('--version')
             Fallbacks = @(
                 [pscustomobject]@{ Type = 'command'; Value = 'frida-ps' },
-                [pscustomobject]@{ Type = 'path'; Value = (Join-Path $env:APPDATA 'Python\Python3xx\Scripts\frida-ps.exe') }
+                [pscustomobject]@{ Type = 'python-script'; Value = 'frida-ps.exe' }
+            )
+        }
+        [pscustomobject]@{
+            Name = 'frida-ls-devices'
+            Skill = 'apk-reverse'
+            Purpose = 'Frida 设备枚举'
+            VersionArgs = @('--version')
+            Fallbacks = @(
+                [pscustomobject]@{ Type = 'command'; Value = 'frida-ls-devices' },
+                [pscustomobject]@{ Type = 'python-script'; Value = 'frida-ls-devices.exe' }
             )
         }
         [pscustomobject]@{
@@ -274,6 +300,7 @@ function Get-ReverseToolCatalog {
             )
         }
     )
+    return $script:ReverseToolCatalog
 }
 
 function Get-ReverseSkillRoot {
@@ -455,20 +482,35 @@ function Test-ReverseTcpPort {
         [string]$TargetHost = '127.0.0.1'
     )
 
+    $client = New-Object System.Net.Sockets.TcpClient
+    $waitHandle = $null
     try {
-        $client = New-Object System.Net.Sockets.TcpClient
         $async = $client.BeginConnect($TargetHost, $Port, $null, $null)
-        $connected = $async.AsyncWaitHandle.WaitOne(1000, $false)
+        $waitHandle = $async.AsyncWaitHandle
+        $connected = $waitHandle.WaitOne(1000, $false)
         if (-not $connected) {
-            $client.Close()
             return $false
         }
         $client.EndConnect($async)
-        $client.Close()
         return $true
     }
     catch {
         return $false
+    }
+    finally {
+        $client.Close()
+        if ($null -ne $waitHandle) { $waitHandle.Close() }
+    }
+}
+
+function Get-ReverseCapabilityName {
+    [CmdletBinding()]
+    param([Parameter(Mandatory = $true)][string]$Name)
+
+    switch ($Name) {
+        { $_ -in @('frida-ps', 'frida-ls-devices') } { return 'frida' }
+        { $_ -in @('rabin2', 'rasm2', 'radiff2', 'rahash2', 'rax2') } { return 'r2' }
+        default { return $Name }
     }
 }
 
@@ -479,7 +521,8 @@ function Get-ReverseCapabilityState {
         [string]$Name
     )
 
-    $definition = Get-ReverseBootstrapDefinition -Name $Name
+    $capability = Get-ReverseCapabilityName -Name $Name
+    $definition = Get-ReverseBootstrapDefinition -Name $capability
     if ($null -eq $definition) {
         return $null
     }
@@ -504,7 +547,7 @@ function Get-ReverseCapabilityState {
     }
 
     return [pscustomobject]@{
-        Name = $definition.name
+        Name = $Name
         BootstrapKind = $definition.bootstrapKind
         CanAutoInstall = [bool]$definition.canAutoInstall
         DocsUrl = [string]$definition.docsUrl
@@ -537,6 +580,34 @@ function Get-ReverseToolDefinition {
     return $definition
 }
 
+function Get-ReverseFallbackPaths {
+    param([string]$Type, [string]$FileName)
+
+    if ($Type -eq 'python-script') {
+        $binDir = if ($env:UV_TOOL_BIN_DIR) { $env:UV_TOOL_BIN_DIR } else { Join-Path $env:USERPROFILE '.local\bin' }
+        Join-Path $binDir $FileName
+        foreach ($root in @((Join-Path $env:APPDATA 'Python'), (Join-Path $env:LOCALAPPDATA 'Programs\Python'))) {
+            if (Test-Path -LiteralPath $root -PathType Container) {
+                Get-ChildItem -LiteralPath $root -Directory | ForEach-Object {
+                    Join-Path $_.FullName "Scripts\$FileName"
+                }
+            }
+        }
+    }
+    elseif ($Type -eq 'android-build-tool') {
+        $roots = @($env:ANDROID_HOME, $env:ANDROID_SDK_ROOT, (Join-Path $env:LOCALAPPDATA 'Android\Sdk')) |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique
+        foreach ($root in $roots) {
+            $buildTools = Join-Path $root 'build-tools'
+            if (Test-Path -LiteralPath $buildTools -PathType Container) {
+                Get-ChildItem -LiteralPath $buildTools -Directory |
+                    Sort-Object -Property { try { [version]$_.Name } catch { [version]'0.0' } } -Descending |
+                    ForEach-Object { Join-Path $_.FullName $FileName }
+            }
+        }
+    }
+}
+
 function Resolve-ReverseToolSpec {
     [CmdletBinding()]
     param(
@@ -545,64 +616,7 @@ function Resolve-ReverseToolSpec {
     )
 
     $definition = Get-ReverseToolDefinition -Name $Name
-    $fixedVersion = if ($definition.PSObject.Properties['FixedVersion']) { [string]$definition.FixedVersion } else { '' }
-
-    foreach ($candidate in $definition.Fallbacks) {
-        switch ($candidate.Type) {
-            'command' {
-                $cmd = Get-Command -Name $candidate.Value -ErrorAction SilentlyContinue
-                if ($null -ne $cmd) {
-                    return [pscustomobject]@{
-                        Name = $definition.Name
-                        Skill = $definition.Skill
-                        Purpose = $definition.Purpose
-                        Available = $true
-                        Source = 'Get-Command'
-                        ResolvedPath = $cmd.Source
-                        Command = $cmd.Source
-                        PrefixArgs = @()
-                        VersionArgs = $definition.VersionArgs
-                        FixedVersion = $fixedVersion
-                    }
-                }
-            }
-            'path' {
-                if (Test-Path -LiteralPath $candidate.Value) {
-                    return [pscustomobject]@{
-                        Name = $definition.Name
-                        Skill = $definition.Skill
-                        Purpose = $definition.Purpose
-                        Available = $true
-                        Source = 'FallbackPath'
-                        ResolvedPath = $candidate.Value
-                        Command = $candidate.Value
-                        PrefixArgs = @()
-                        VersionArgs = $definition.VersionArgs
-                        FixedVersion = $fixedVersion
-                    }
-                }
-            }
-            'java-jar' {
-                if (Test-Path -LiteralPath $candidate.Value) {
-                    $java = Resolve-ReverseToolSpec -Name 'java'
-                    return [pscustomobject]@{
-                        Name = $definition.Name
-                        Skill = $definition.Skill
-                        Purpose = $definition.Purpose
-                        Available = $true
-                        Source = 'FallbackJavaJar'
-                        ResolvedPath = $candidate.Value
-                        Command = $java.Command
-                        PrefixArgs = @('-jar', $candidate.Value)
-                        VersionArgs = @('-jar', $candidate.Value, '--version')
-                        FixedVersion = $fixedVersion
-                    }
-                }
-            }
-        }
-    }
-
-    return [pscustomobject]@{
+    $spec = [pscustomobject]@{
         Name = $definition.Name
         Skill = $definition.Skill
         Purpose = $definition.Purpose
@@ -612,8 +626,82 @@ function Resolve-ReverseToolSpec {
         Command = ''
         PrefixArgs = @()
         VersionArgs = $definition.VersionArgs
-        FixedVersion = $fixedVersion
+        FixedVersion = if ($definition.PSObject.Properties['FixedVersion']) { [string]$definition.FixedVersion } else { '' }
     }
+
+    foreach ($candidate in $definition.Fallbacks) {
+        switch ($candidate.Type) {
+            'command' {
+                $cmd = Get-Command -Name $candidate.Value -ErrorAction SilentlyContinue
+                if ($null -ne $cmd) {
+                    $spec.Available = $true
+                    $spec.Source = 'Get-Command'
+                    $spec.ResolvedPath = $cmd.Source
+                    $spec.Command = $cmd.Source
+                    return $spec
+                }
+            }
+            'path' {
+                if (Test-Path -LiteralPath $candidate.Value -PathType Leaf) {
+                    $spec.Available = $true
+                    $spec.Source = 'FallbackPath'
+                    $spec.ResolvedPath = $candidate.Value
+                    $spec.Command = $candidate.Value
+                    return $spec
+                }
+            }
+            'java-jar' {
+                if (Test-Path -LiteralPath $candidate.Value -PathType Leaf) {
+                    $java = Resolve-ReverseToolSpec -Name 'java'
+                    if ($java.Available) {
+                        $spec.Available = $true
+                        $spec.Source = 'FallbackJavaJar'
+                        $spec.ResolvedPath = $candidate.Value
+                        $spec.Command = $java.Command
+                        $spec.PrefixArgs = @('-jar', $candidate.Value)
+                        $spec.VersionArgs = @('-jar', $candidate.Value) + $definition.VersionArgs
+                        return $spec
+                    }
+                }
+            }
+            { $_ -in @('python-script', 'android-build-tool') } {
+                foreach ($path in Get-ReverseFallbackPaths -Type $candidate.Type -FileName $candidate.Value) {
+                    if (Test-Path -LiteralPath $path -PathType Leaf) {
+                        $spec.Available = $true
+                        $spec.Source = 'FallbackPath'
+                        $spec.ResolvedPath = $path
+                        $spec.Command = $path
+                        return $spec
+                    }
+                }
+            }
+        }
+    }
+
+    return $spec
+}
+
+function Get-RequiredReverseToolSpec {
+    [CmdletBinding()]
+    param([Parameter(Mandatory = $true)][string]$Name)
+
+    $spec = Resolve-ReverseToolSpec -Name $Name
+    if ($spec.Available) { return $spec }
+
+    $capability = Get-ReverseCapabilityName -Name $Name
+    $definition = Get-ReverseBootstrapDefinition -Name $capability
+    if ($definition -and $definition.canAutoInstall) {
+        Write-Host "INFO: $Name not found, attempting auto-bootstrap..." -ForegroundColor Yellow
+        $bootstrap = Join-Path (Get-ReverseSkillRoot) 'scripts\bootstrap-reverse.ps1'
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $bootstrap -Capability $capability -SkipRefresh | Out-Host
+        if ($LASTEXITCODE -ne 0) { throw "Bootstrap failed for required CLI tool: $Name" }
+        $env:PATH = @($env:PATH, [Environment]::GetEnvironmentVariable('PATH', 'Machine'), [Environment]::GetEnvironmentVariable('PATH', 'User')) -join ';'
+        $spec = Resolve-ReverseToolSpec -Name $Name
+        if ($spec.Available) { return $spec }
+    }
+
+    $hint = if ($definition) { "See $($definition.docsUrl)" } else { "Install $Name manually (Android Build-Tools for apksigner/zipalign, JDK for keytool)." }
+    throw "Missing required CLI tool: $Name. $hint"
 }
 
 function Get-ReverseToolVersion {

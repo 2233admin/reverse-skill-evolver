@@ -1,0 +1,30 @@
+{
+  "engine": "7.6.6",
+  "method": "Same process, one warmup lookup, five samples of 200 java definition lookups; baseline from git HEAD",
+  "results": [
+    {
+      "version": "before",
+      "queries_per_sample": 200,
+      "samples_ms": [
+        224.8,
+        192.11,
+        233.85,
+        251.91,
+        257.78
+      ],
+      "median_ms": 233.85
+    },
+    {
+      "version": "after",
+      "queries_per_sample": 200,
+      "samples_ms": [
+        82.78,
+        76.11,
+        81.52,
+        87.68,
+        85.55
+      ],
+      "median_ms": 82.78
+    }
+  ]
+}

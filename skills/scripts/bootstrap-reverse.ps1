@@ -45,6 +45,7 @@ function Ensure-WingetPackage {
     if ($LASTEXITCODE -ne 0) {
         throw "winget install failed for $Label ($Id)."
     }
+    $env:PATH = @($env:PATH, [Environment]::GetEnvironmentVariable('PATH', 'Machine'), [Environment]::GetEnvironmentVariable('PATH', 'User')) -join ';'
 }
 
 function Ensure-NodeRuntime {
@@ -235,12 +236,12 @@ function Ensure-UvToolInstall {
 function Get-McpConfig {
     $path = Get-ClaudeMcpConfigPath
     if (-not (Test-Path -LiteralPath $path)) {
-        return @{ path = $path; json = @{ mcpServers = @{} } }
+        return @{ path = $path; json = [pscustomobject]@{ mcpServers = [pscustomobject]@{} } }
     }
 
-    $json = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable
-    if (-not $json.ContainsKey('mcpServers')) {
-        $json['mcpServers'] = @{}
+    $json = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json
+    if (-not $json.PSObject.Properties['mcpServers'] -or $null -eq $json.mcpServers) {
+        Add-Member -InputObject $json -NotePropertyName mcpServers -NotePropertyValue ([pscustomobject]@{}) -Force
     }
     return @{ path = $path; json = $json }
 }
@@ -263,7 +264,7 @@ function Ensure-McpServer {
     )
 
     $config = Get-McpConfig
-    $config.json.mcpServers[$ServerName] = $ServerDefinition
+    Add-Member -InputObject $config.json.mcpServers -NotePropertyName $ServerName -NotePropertyValue $ServerDefinition -Force
     Save-McpConfig -Config $config
 }
 
@@ -375,15 +376,14 @@ function Ensure-Capability {
         }
         'npm-mcp' {
             Ensure-NodeRuntime
+            $serverEnv = @{}
+            foreach ($property in $definition.mcpEnv.PSObject.Properties) {
+                $serverEnv[$property.Name] = $property.Value
+            }
             Ensure-McpServer -ServerName $definition.mcpNames[0] -ServerDefinition @{
                 command = $definition.mcpCommand
                 args = @($definition.mcpArgs)
-                env = @{}
-            }
-            foreach ($property in $definition.mcpEnv.PSObject.Properties) {
-                $config = Get-McpConfig
-                $config.json.mcpServers[$definition.mcpNames[0]].env[$property.Name] = $property.Value
-                Save-McpConfig -Config $config
+                env = $serverEnv
             }
             return $true
         }
@@ -527,3 +527,6 @@ if (-not $SkipRefresh) {
 }
 
 $results | ConvertTo-Json -Depth 5
+if (@($results | Where-Object { $_.status -in @('failed', 'missing-definition') }).Count -gt 0) {
+    exit 1
+}
