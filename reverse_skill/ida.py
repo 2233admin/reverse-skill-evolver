@@ -7,6 +7,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -212,16 +213,62 @@ def install_ida_mcp(*, upgrade: bool = False) -> dict[str, object]:
     return {"installed": True, "installer": ida_installer, "server": find_server_executable()}
 
 
-def _terminate_stale_servers() -> None:
+def _terminate_stale_server(port: int, executable: str) -> None:
     if os.name != "nt":
-        return
-    for image in ("idalib-mcp.exe", "ida-pro-mcp.exe"):
-        subprocess.run(
-            ["taskkill", "/F", "/T", "/IM", image],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=False,
+        raise EnvironmentUnavailable(
+            "--replace-stale requires Windows ownership inspection; inspect the target port manually"
         )
+    # Bind a process handle before checking ownership so a reused PID cannot select another process.
+    script = r"""
+$ErrorActionPreference = 'Stop'
+try {
+    $owners = @(Get-NetTCPConnection -State Listen | Where-Object {
+        $_.LocalPort -eq [int]$env:REVERSE_SKILL_PORT
+    } | Select-Object -ExpandProperty OwningProcess -Unique)
+    if ($owners.Count -gt 1) { throw 'multiple listener owners; no process was stopped' }
+    foreach ($owner in $owners) {
+        $process = Get-Process -Id $owner
+        $null = $process.Handle
+        $info = Get-CimInstance Win32_Process -Filter "ProcessId = $owner"
+        if (!$info.ExecutablePath -or $info.ExecutablePath -ne $env:REVERSE_SKILL_SERVER) {
+            throw "port owner PID $owner does not match the selected executable; no process was stopped"
+        }
+        if ($process.Path -ne $info.ExecutablePath -or $process.HasExited) {
+            throw 'port owner changed during inspection; no process was stopped'
+        }
+        $process.Kill()
+        if (!$process.WaitForExit(3000)) { throw "PID $owner did not stop within 3 seconds" }
+    }
+} catch { [Console]::Error.WriteLine($_.Exception.Message); exit 1 }
+"""
+    env = os.environ.copy()
+    env.update(REVERSE_SKILL_PORT=str(port), REVERSE_SKILL_SERVER=str(Path(executable).resolve()))
+    try:
+        completed = subprocess.run(
+            ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script],
+            capture_output=True, text=True, check=False, timeout=10, env=env,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise EnvironmentUnavailable(
+            f"cannot verify ownership of port {port}; processes preserved: {exc}"
+        ) from exc
+    if completed.returncode:
+        raise EnvironmentUnavailable(
+            f"cannot replace service on port {port}: {completed.stderr.strip()}; "
+            f"inspect `Get-NetTCPConnection -LocalPort {port}` and its OwningProcess before retrying"
+        )
+
+
+def _startup_failure(process, log_path: Path, reason: str) -> McpTransportError:
+    try:
+        with log_path.open("rb") as log:
+            log.seek(max(0, log_path.stat().st_size - 2000))
+            detail = log.read().decode("utf-8", errors="replace").strip()
+    except OSError:
+        detail = "log could not be read"
+    return McpTransportError(
+        f"{reason}; PID={process.pid}, exitCode={process.poll()}, log={log_path}; {detail}"
+    )
 
 
 def start_server(
@@ -231,7 +278,7 @@ def start_server(
     port: int = 13337,
     server_path: str | None = None,
     replace_stale: bool = False,
-    wait_seconds: int = 15,
+    wait_seconds: float = 15,
 ) -> dict[str, object]:
     installation = find_latest_ida([ida_dir] if ida_dir else (), only_candidates=bool(ida_dir))
     if installation is None:
@@ -248,30 +295,38 @@ def start_server(
     if not executable:
         raise EnvironmentUnavailable("idalib-mcp is not installed; run `reverse-skill install` first")
     if replace_stale:
-        _terminate_stale_servers()
-        time.sleep(1)
+        _terminate_stale_server(port, executable)
 
     env = os.environ.copy()
     env["IDADIR"] = installation.install_dir
     creationflags = 0
     if os.name == "nt":
         creationflags = subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP
-    subprocess.Popen(
-        [executable, "--host", "127.0.0.1", "--port", str(port)],
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        env=env,
-        close_fds=True,
-        creationflags=creationflags,
-    )
+    with tempfile.NamedTemporaryFile(prefix=f"reverse-skill-ida-{port}-", suffix=".log", delete=False) as log:
+        log_path = Path(log.name)
+        try:
+            process = subprocess.Popen(
+                [executable, "--host", "127.0.0.1", "--port", str(port)],
+                stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
+                env=env, close_fds=True, creationflags=creationflags,
+            )
+        except OSError as exc:
+            raise EnvironmentUnavailable(f"cannot start {executable}: {exc}; log={log_path}") from exc
 
-    for _ in range(wait_seconds):
-        time.sleep(1)
-        tool_count = probe(port, 3.0)
+    deadline = time.monotonic() + wait_seconds
+    while time.monotonic() < deadline:
+        if process.poll() is not None:
+            raise _startup_failure(process, log_path, "idalib-mcp exited before becoming ready")
+        tool_count = probe(port, min(3.0, max(0.1, deadline - time.monotonic())))
         if tool_count > 0:
+            if process.poll() is not None:
+                raise _startup_failure(process, log_path, "idalib-mcp exited during startup")
             return {
                 "ida": installation.public(),
-                "server": {"url": f"http://127.0.0.1:{port}/mcp", "toolCount": tool_count, "reused": False},
+                "server": {
+                    "url": f"http://127.0.0.1:{port}/mcp", "toolCount": tool_count,
+                    "reused": False, "pid": process.pid, "logPath": str(log_path),
+                },
             }
-    raise McpTransportError(f"idalib-mcp did not become ready within {wait_seconds} seconds")
+        time.sleep(min(0.2, max(0, deadline - time.monotonic())))
+    raise _startup_failure(process, log_path, f"idalib-mcp did not become ready within {wait_seconds} seconds")

@@ -10,6 +10,10 @@ reverse-skill -> HTTP MCP -> idalib-mcp.exe -> newest usable local IDA
 
 No shell runtime is part of this path. `install` may start the upstream interactive installer because login and user interaction are explicitly expected there.
 
+`start --replace-stale` uses Windows PowerShell only to inspect the selected port and stop its verified listener. Healthy services are always reused. An unknown owner is preserved; inspect `Get-NetTCPConnection -LocalPort PORT` and its `OwningProcess` before deciding how to recover. Other ports and process trees are not cleaned up. Non-Windows replacement requires manual ownership inspection.
+
+New starts return `server.pid` and `server.logPath`. Early exit and readiness timeout retain stdout/stderr in that log and include PID, exit code and the log tail in the existing error envelope. A readiness timeout leaves the launched process running for inspection; inspect that PID and log before retrying.
+
 ## Machine interface
 
 - Put root options before the command: `reverse-skill --json --timeout 30 status`.

@@ -42,7 +42,7 @@
           { "name": "--ida-dir", "arguments": [{ "name": "DIRECTORY", "required": true }] },
           { "name": "--port", "arguments": [{ "name": "PORT", "required": true }] },
           { "name": "--server-path", "arguments": [{ "name": "FILE", "required": true }] },
-          { "name": "--replace-stale", "description": "Terminate stale server processes before starting." }
+          { "name": "--replace-stale", "description": "Replace an unhealthy Windows listener only after verifying its executable and port." }
         ]
       },
       { "name": "status", "description": "Report IDA, MCP negotiation, and Codex registration." },

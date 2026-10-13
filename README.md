@@ -316,7 +316,7 @@ python -m reverse_skill evolve --candidate skills/routing.md --catalog skills/ro
 
 This uses the model already selected by the local OMP configuration; it does not pass a model override. The isolated OMP calls run without tools, skills, rules, extensions, or session persistence. The default budget evaluates the no-skill baseline and curated routing prompt, then allows one reflected proposal if failures remain. Results and Pareto-frontier candidates are written to a new output directory; existing output is refused. Nothing is automatically promoted. The bundled fixtures measure route selection only, not the correctness of downstream reverse-engineering work.
 
-`register` writes the Codex configuration through `codex mcp add ... --url ...`, so a new task can use the native `idapro` MCP tools directly. `start` selects the newest valid local IDA installation, preserves an existing healthy service, and only cleans up stale processes when the service is unavailable.
+`register` writes the Codex configuration through `codex mcp add ... --url ...`, so a new task can use the native `idapro` MCP tools directly. `start` selects the newest valid local IDA installation and reuses an existing healthy service. On Windows, `start --replace-stale` stops only the selected port's listener after checking that its executable matches the selected server. Unknown owners are preserved. New starts report PID and log path; failures retain stdout/stderr and report exit information. A readiness timeout leaves the child running for inspection before retrying.
 
 Common session operations:
 

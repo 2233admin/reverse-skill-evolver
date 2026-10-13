@@ -197,7 +197,7 @@ def register(state: State) -> None:
 @click.option("--ida-dir", type=click.Path(file_okay=False, path_type=Path))
 @click.option("--port", type=click.IntRange(1, 65535), default=13337, show_default=True)
 @click.option("--server-path", type=click.Path(dir_okay=False, path_type=Path))
-@click.option("--replace-stale", is_flag=True, help="Terminate stale idalib-mcp processes before starting.")
+@click.option("--replace-stale", is_flag=True, help="Replace an unhealthy Windows listener only after verifying its executable and port.")
 @click.pass_obj
 def start(state: State, ida_dir: Path | None, port: int, server_path: Path | None, replace_stale: bool) -> None:
     """Start or reuse the local IDA MCP service."""
