@@ -4,6 +4,8 @@
 
 本轮将精确 Git commit 的只读 archive 解到本专属 worktree 内临时目录，运行 `python -m pytest tests/test_powershell_scripts.py tests/test_bootstrap_contract.py tests/test_routing_contract.py -q --tb=short`：**39 passed，67.75 秒，退出码 0**，PowerShell 5.1/7 均执行。未改旧工作区或宿主配置，临时 snapshot 仅服务本次复验。
 
+本轮原始输出：[精确复验回执](https://github.com/2233admin/reverse-skill-evolver/blob/dcd7c46/reports/issue41-resume-verification-2026-10-13.txt)。
+
 原提交的报告包含完整 Python 检查 256 passed、5 skipped，以及元数据查询五轮性能数据；这些是原提交已有证据。本轮没有重跑全套或性能测量，不将它们表述为新实测。性能数据只代表工具定义查询。
 
 未验证：真实安装/下载、Android 设备操作、Frida 注入、远端同步。外部命令是隔离替身，不声称真实集成通过。此 PR 保持 Draft，下一责任人审阅者，合并需明确授权。

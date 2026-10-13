@@ -15,7 +15,7 @@
 | #38 | 已推送 f762102，Draft PR #42 | [交付回执](https://github.com/2233admin/reverse-skill-evolver/issues/38#issuecomment-6144854900) |
 | #39 | 已推送 d59699c，Draft PR #42 | [交付回执](https://github.com/2233admin/reverse-skill-evolver/issues/39#issuecomment-6145103261) |
 | #32 | 总览，待逐项回收 | 不视为独立代码修复，不提前关闭 |
-| #41 | 原 632cf1a 已复验，准备专属 Draft PR | 新复验 39 passed，67.75 秒；不重写 |
+| #41 | 原 632cf1a 已复验，Draft PR #44 | [PR](https://github.com/2233admin/reverse-skill-evolver/pull/44)；新复验 39 passed，67.75 秒；未重写 |
 | #27–#30 | 已有 Draft PR #31，待功能验证 | 依赖 Draft PR #26；复用实现 |
 | #21 | 真实 suite/反思/失败路径已验证，交付 PR #42 | 31/37 逻辑调用，单次 60 秒；候选不晋级，见真实记录 |
 
@@ -98,3 +98,5 @@
 远端分支 head 保持 `632cf1a`，main 仍为 53010b3，无已有对应 PR 或该 branch 的活动终端。未改其旧 worktree、实现或提交。在本 worktree 内临时目录解压精确 commit 的 git archive，仅运行相关既有检查：`python -m pytest tests/test_powershell_scripts.py tests/test_bootstrap_contract.py tests/test_routing_contract.py -q --tb=short` → **39 passed，67.75 秒**，退出码 0。原始输出见 [回读检查](issue41-resume-verification-2026-10-13.txt)。
 
 原提交全套 256 passed/5 skipped 与性能测量仍属于旧证据，本次不冒充重测。真实安装、设备、Frida 注入、远端同步未测。接续创建原 head 的 Draft PR，待审阅/明确合并授权。
+
+Draft PR #44 已创建，head 精确为原 632cf1a，base main；既有实现/提交未重写。下一责任人：审阅者。OMP #27–#30 将在当前专属分支复用 PR #26/#31 的 Git lineage，再串行修补和验证，不写其原分支、不合入 main。
