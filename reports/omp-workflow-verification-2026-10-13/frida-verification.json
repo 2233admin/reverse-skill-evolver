@@ -1,0 +1,162 @@
+{
+  "frida_version": "17.9.3",
+  "input_sha256": "cf84f4610adeb1a915ad74262c1d0865e23ef23d66e3aa39e1f72586298fff35",
+  "model_calls": 0,
+  "cases": [
+    {
+      "case": "aslr_event_limit",
+      "pid": 43436,
+      "source_fault_injected": false,
+      "plan_status": "planned_not_run",
+      "events": [
+        {
+          "type": "installed",
+          "module": "toy-v1.dll",
+          "path": "D:\\projects\\reverse-skill-evolver\\repair-open-issues-15\\reports\\omp-workflow-verification-2026-10-13\\toy-v1.dll",
+          "base": "0x7ffd10c00000",
+          "source_sha256": "cf84f4610adeb1a915ad74262c1d0865e23ef23d66e3aa39e1f72586298fff35",
+          "identity_verified": false,
+          "targets": 1
+        },
+        {
+          "type": "enter",
+          "call_id": 1,
+          "name": "verify_license",
+          "rva": "0x1000",
+          "address": "0x7ffd10c01000",
+          "thread": 58304,
+          "args": [
+            "0x7"
+          ]
+        },
+        {
+          "type": "leave",
+          "call_id": 1,
+          "name": "verify_license",
+          "rva": "0x1000",
+          "thread": 58304,
+          "retval": "0x77"
+        },
+        {
+          "type": "stopped",
+          "reason": "event_limit",
+          "events": 2
+        }
+      ],
+      "other_listener_events": 4
+    },
+    {
+      "case": "not_hit_time_limit",
+      "pid": 95548,
+      "source_fault_injected": false,
+      "plan_status": "planned_not_run",
+      "events": [
+        {
+          "type": "installed",
+          "module": "toy-v1.dll",
+          "path": "D:\\projects\\reverse-skill-evolver\\repair-open-issues-15\\reports\\omp-workflow-verification-2026-10-13\\toy-v1.dll",
+          "base": "0x7ffd10c00000",
+          "source_sha256": "cf84f4610adeb1a915ad74262c1d0865e23ef23d66e3aa39e1f72586298fff35",
+          "identity_verified": false,
+          "targets": 1
+        },
+        {
+          "type": "stopped",
+          "reason": "time_limit",
+          "events": 0
+        }
+      ],
+      "other_listener_events": 0
+    },
+    {
+      "case": "wrong_module",
+      "pid": 78712,
+      "source_fault_injected": true,
+      "plan_status": "planned_not_run",
+      "events": [
+        {
+          "type": "error",
+          "message": "Error: unable to find module 'missing-owned-module.dll'"
+        },
+        {
+          "type": "stopped",
+          "reason": "setup_failed",
+          "events": 0
+        }
+      ],
+      "other_listener_events": 0
+    },
+    {
+      "case": "wrong_bitness",
+      "pid": 65844,
+      "source_fault_injected": true,
+      "plan_status": "planned_not_run",
+      "events": [
+        {
+          "type": "error",
+          "message": "Error: Runtime architecture/bitness differs from the static artifact"
+        },
+        {
+          "type": "stopped",
+          "reason": "setup_failed",
+          "events": 0
+        }
+      ],
+      "other_listener_events": 0
+    },
+    {
+      "case": "wrong_architecture",
+      "pid": 48956,
+      "source_fault_injected": true,
+      "plan_status": "planned_not_run",
+      "events": [
+        {
+          "type": "error",
+          "message": "Error: Runtime architecture/bitness differs from the static artifact"
+        },
+        {
+          "type": "stopped",
+          "reason": "setup_failed",
+          "events": 0
+        }
+      ],
+      "other_listener_events": 0
+    },
+    {
+      "case": "rva_outside",
+      "pid": 86324,
+      "source_fault_injected": true,
+      "plan_status": "planned_not_run",
+      "events": [
+        {
+          "type": "error",
+          "message": "Error: RVA outside runtime module: 0x10000000"
+        },
+        {
+          "type": "stopped",
+          "reason": "setup_failed",
+          "events": 0
+        }
+      ],
+      "other_listener_events": 0
+    },
+    {
+      "case": "not_executable",
+      "pid": 75476,
+      "source_fault_injected": true,
+      "plan_status": "planned_not_run",
+      "events": [
+        {
+          "type": "error",
+          "message": "Error: Target is not executable: 0x3028"
+        },
+        {
+          "type": "stopped",
+          "reason": "setup_failed",
+          "events": 0
+        }
+      ],
+      "other_listener_events": 0
+    }
+  ]
+}

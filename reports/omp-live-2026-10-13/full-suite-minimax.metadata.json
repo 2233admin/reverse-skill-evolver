@@ -1,0 +1,43 @@
+{
+  "argv": [
+    "--json",
+    "evolve",
+    "--candidate",
+    "D:\\projects\\reverse-skill-evolver\\repair-open-issues-15\\skills\\routing.md",
+    "--catalog",
+    "D:\\projects\\reverse-skill-evolver\\repair-open-issues-15\\skills\\routing.json",
+    "--fixtures",
+    "D:\\projects\\reverse-skill-evolver\\repair-open-issues-15\\skills\\evolution\\fixtures\\route-selection.json",
+    "--output",
+    "D:\\projects\\reverse-skill-evolver\\repair-open-issues-15\\reports\\omp-live-2026-10-13\\full-suite-minimax",
+    "--max-evaluations",
+    "3",
+    "--max-reflections",
+    "1",
+    "--model-timeout",
+    "60"
+  ],
+  "entrypoint": "reverse_skill.cli.main (same public CLI)",
+  "instrumentation": "pin OMP model/key and guard cumulative logical calls; no response substitution",
+  "model": "minimax-code-cn/MiniMax-M3.1-Flash-Preview",
+  "budget_before": {
+    "limit": 37,
+    "forwarded_calls": 1,
+    "blocked_calls": 0
+  },
+  "physical_requests": null,
+  "tokens": null,
+  "cost": null,
+  "config_sha256": "1b18399425c52fa8b66243e2056331921c1526cf012c328d2f90cf0488dcca34",
+  "omp_version": "omp/18.8.9",
+  "source_commit": "8a0ca334e2cc14e3ab5134f1c6530e9ea58455bb",
+  "started_at": "2026-10-13T11:28:30.930960+00:00",
+  "exit_code": 1,
+  "elapsed_seconds": 20.539,
+  "budget_after": {
+    "limit": 37,
+    "forwarded_calls": 3,
+    "blocked_calls": 0
+  },
+  "ended_at": "2026-10-13T11:28:51.470725+00:00"
+}

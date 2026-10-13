@@ -1,0 +1,1 @@
+{"schemaVersion": "1", "ok": false, "command": "evolve", "data": null, "error": {"code": "internal", "message": "[WinError 32] 另一个程序正在使用此文件，进程无法访问。: 'C:\\\\Users\\\\ADMINI~1\\\\AppData\\\\Local\\\\Temp\\\\reverse-skill-evolve-eguox1db'"}}

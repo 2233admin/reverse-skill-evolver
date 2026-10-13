@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "status": "planned_not_run",
+  "source": {
+    "sha256": "cf84f4610adeb1a915ad74262c1d0865e23ef23d66e3aa39e1f72586298fff35",
+    "module": "toy-v1.dll",
+    "format": "Portable executable for AMD64 (PE)",
+    "architecture": "metapc",
+    "bitness": 64,
+    "image_base": "0x180000000",
+    "database_id": "owned-native-v1-cf84f4610ade"
+  },
+  "source_coverage": {
+    "native_enumeration": "full_helper_scan",
+    "functions_total": 2,
+    "functions_truncated": false,
+    "strings_total": 7,
+    "strings_truncated": false,
+    "imports_total": 1,
+    "imports_truncated": false,
+    "callees_truncated": false,
+    "bytes_truncated": false,
+    "strings_text_truncated": false,
+    "pseudocode_requested": false,
+    "pseudocode_functions_collected": 0,
+    "pseudocode_functions_truncated": false,
+    "pseudocode_text_truncated": false,
+    "limits": {
+      "max_functions": 20,
+      "max_strings": 20,
+      "max_imports": 20,
+      "max_callees": 25,
+      "max_bytes_per_function": 256,
+      "max_pseudocode_functions": 10,
+      "max_pseudocode_chars": 8000,
+      "max_text_chars": 4096
+    }
+  },
+  "selection": {
+    "available": 2,
+    "selected": 1,
+    "omitted": 1
+  },
+  "runtime": {
+    "module": "missing-owned-module.dll",
+    "architecture": "x64",
+    "pointer_size": 8,
+    "source_sha256": "cf84f4610adeb1a915ad74262c1d0865e23ef23d66e3aa39e1f72586298fff35",
+    "targets": [
+      {
+        "name": "verify_license",
+        "ea": "0x180001000",
+        "rva": "0x1000"
+      }
+    ],
+    "max_events": 2,
+    "duration_ms": 1000,
+    "arg_count": 1
+  },
+  "preconditions": [
+    {
+      "check": "runtime module file matches source SHA-256",
+      "status": "unverified"
+    },
+    {
+      "check": "trigger input and expected argument/return observations recorded",
+      "status": "unverified"
+    }
+  ],
+  "frida_script": "const config = {\"module\": \"missing-owned-module.dll\", \"architecture\": \"x64\", \"pointer_size\": 8, \"source_sha256\": \"cf84f4610adeb1a915ad74262c1d0865e23ef23d66e3aa39e1f72586298fff35\", \"targets\": [{\"name\": \"verify_license\", \"ea\": \"0x180001000\", \"rva\": \"0x1000\"}], \"max_events\": 2, \"duration_ms\": 1000, \"arg_count\": 1};\n'use strict';\nconst listeners = [];\nlet active = true;\nlet events = 0;\nlet nextCall = 0;\nlet timer = null;\n\nfunction stop(reason) {\n  if (!active) return;\n  active = false;\n  if (timer !== null) clearTimeout(timer);\n  for (const listener of listeners) {\n    try { listener.detach(); }\n    catch (error) { send({ type: 'detach_error', message: String(error) }); }\n  }\n  send({ type: 'stopped', reason, events });\n}\n\nfunction emit(event) {\n  if (!active) return;\n  events += 1;\n  send(event);\n  if (events >= config.max_events) stop('event_limit');\n}\n\ntry {\n  if (Process.pointerSize !== config.pointer_size || Process.arch !== config.architecture)\n    throw new Error('Runtime architecture/bitness differs from the static artifact');\n  const module = Process.getModuleByName(config.module);\n  const checked = config.targets.map(target => {\n    const offset = ptr(target.rva);\n    if (offset.compare(ptr(module.size)) >= 0) throw new Error('RVA outside runtime module: ' + target.rva);\n    const address = module.base.add(offset);\n    const range = Process.findRangeByAddress(address);\n    if (range === null || !range.protection.includes('x'))\n      throw new Error('Target is not executable: ' + target.rva);\n    return { target, address };\n  });\n  for (const { target, address } of checked) {\n    listeners.push(Interceptor.attach(address, {\n      onEnter(args) {\n        if (!active) return;\n        this.ompCallId = ++nextCall;\n        const values = [];\n        for (let i = 0; i < config.arg_count; i++) values.push(args[i].toString());\n        emit({ type: 'enter', call_id: this.ompCallId, name: target.name, rva: target.rva,\n               address: address.toString(), thread: this.threadId, args: values });\n      },\n      onLeave(value) {\n        emit({ type: 'leave', call_id: this.ompCallId, name: target.name, rva: target.rva,\n               thread: this.threadId, retval: value.toString() });\n      }\n    }));\n  }\n  send({ type: 'installed', module: module.name, path: module.path,\n         base: module.base.toString(), source_sha256: config.source_sha256,\n         identity_verified: false, targets: checked.length });\n  timer = setTimeout(() => stop('time_limit'), config.duration_ms);\n} catch (error) {\n  send({ type: 'error', message: String(error) });\n  stop('setup_failed');\n}\n",
+  "observations": []
+}

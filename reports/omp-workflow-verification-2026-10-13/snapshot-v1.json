@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "source": {
+    "sha256": "cf84f4610adeb1a915ad74262c1d0865e23ef23d66e3aa39e1f72586298fff35",
+    "module": "toy-v1.dll",
+    "format": "Portable executable for AMD64 (PE)",
+    "architecture": "metapc",
+    "bitness": 64,
+    "image_base": "0x180000000",
+    "database_id": "owned-native-v1-cf84f4610ade"
+  },
+  "coverage": {
+    "native_enumeration": "full_helper_scan",
+    "functions_total": 2,
+    "functions_truncated": false,
+    "strings_total": 7,
+    "strings_truncated": false,
+    "imports_total": 1,
+    "imports_truncated": false,
+    "callees_truncated": false,
+    "bytes_truncated": false,
+    "strings_text_truncated": false,
+    "pseudocode_requested": false,
+    "pseudocode_functions_collected": 0,
+    "pseudocode_functions_truncated": false,
+    "pseudocode_text_truncated": false,
+    "limits": {
+      "max_functions": 20,
+      "max_strings": 20,
+      "max_imports": 20,
+      "max_callees": 25,
+      "max_bytes_per_function": 256,
+      "max_pseudocode_functions": 10,
+      "max_pseudocode_chars": 8000,
+      "max_text_chars": 4096
+    }
+  },
+  "functions": [
+    {
+      "ea": "0x180001000",
+      "rva": "0x1000",
+      "name": "verify_license",
+      "size": 49,
+      "callees": [
+        "GetCurrentProcessId"
+      ],
+      "callees_truncated": false,
+      "bytes_sha256": "30025713234a4025cb95283dea033c89f5883575aefbaa27e95c06b59fd586e3",
+      "bytes_hashed": 49,
+      "bytes_truncated": false,
+      "bytes_start_ea": "0x180001000",
+      "bytes_end_ea": "0x180001031",
+      "pseudocode": null,
+      "pseudocode_kind": "not_collected",
+      "pseudocode_truncated": false
+    },
+    {
+      "ea": "0x180001040",
+      "rva": "0x1040",
+      "name": "decode_payload",
+      "size": 25,
+      "callees": [
+        "verify_license"
+      ],
+      "callees_truncated": false,
+      "bytes_sha256": "1f585cbe29ecdaecda6c71b8b7f32be10b811dd33ff7091676dbe2b65fed0141",
+      "bytes_hashed": 25,
+      "bytes_truncated": false,
+      "bytes_start_ea": "0x180001040",
+      "bytes_end_ea": "0x180001059",
+      "pseudocode": null,
+      "pseudocode_kind": "not_collected",
+      "pseudocode_truncated": false
+    }
+  ],
+  "strings": [
+    {
+      "ea": "0x180002028",
+      "value": "toy-v1.dll",
+      "value_truncated": false
+    },
+    {
+      "ea": "0x180002051",
+      "value": "decode_payload",
+      "value_truncated": false
+    },
+    {
+      "ea": "0x180002060",
+      "value": "marker_reference",
+      "value_truncated": false
+    },
+    {
+      "ea": "0x180002071",
+      "value": "verify_license",
+      "value_truncated": false
+    },
+    {
+      "ea": "0x1800020ca",
+      "value": "GetCurrentProcessId",
+      "value_truncated": false
+    },
+    {
+      "ea": "0x1800020de",
+      "value": "KERNEL32.dll",
+      "value_truncated": false
+    },
+    {
+      "ea": "0x180003000",
+      "value": "license-invalid-omp-owned-fixture",
+      "value_truncated": false
+    }
+  ],
+  "imports": [
+    {
+      "ea": "0x1800020b8",
+      "module": "KERNEL32",
+      "name": "GetCurrentProcessId"
+    }
+  ]
+}

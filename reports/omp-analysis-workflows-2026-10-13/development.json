@@ -1,0 +1,67 @@
+{
+  "status": "implemented_not_functionally_tested",
+  "base_commit": "caa6013938529cac4d668a249aebc9c80690371f",
+  "issues": [
+    27,
+    28,
+    29,
+    30
+  ],
+  "static_checks": [
+    {
+      "path": ".omp/skills/omp-ida-native/scripts/binary_diff.py",
+      "kind": "Python 3.10 AST",
+      "result": "parsed"
+    },
+    {
+      "path": ".omp/skills/omp-ida-native/scripts/hook_plan.py",
+      "kind": "Python 3.10 AST",
+      "result": "parsed"
+    },
+    {
+      "path": ".omp/skills/omp-ida-native/scripts/ida_analysis.py",
+      "kind": "Python 3.10 AST",
+      "result": "parsed"
+    },
+    {
+      "path": ".omp/skills/omp-js-replay/scripts/signature-replay.mjs",
+      "kind": "Node syntax only",
+      "exit_code": 0,
+      "stderr": ""
+    },
+    {
+      "path": ".omp/skills/omp-ida-native",
+      "kind": "Local markdown references",
+      "result": "resolved"
+    },
+    {
+      "path": ".omp/skills/omp-js-replay",
+      "kind": "Local markdown references",
+      "result": "resolved"
+    }
+  ],
+  "sources": [
+    {
+      "path": ".omp/skills/omp-ida-native/scripts/binary_diff.py",
+      "sha256": "0899f6d8ee03b2e382eef8344ca87cac65132e4b9ecb2d2656396a80a4820950"
+    },
+    {
+      "path": ".omp/skills/omp-ida-native/scripts/hook_plan.py",
+      "sha256": "f31ae26fe8f49e36ac89918e1b5dd38131732b655ee14fa642eb7b3916e86c8e"
+    },
+    {
+      "path": ".omp/skills/omp-ida-native/scripts/ida_analysis.py",
+      "sha256": "6705949a77a384a3b09083672140a0d623b9d966ffd18f4dd9934a294f03fbe2"
+    },
+    {
+      "path": ".omp/skills/omp-js-replay/scripts/signature-replay.mjs",
+      "sha256": "c9e28a9315d587d30d273a5c95bc25fb56f251c3f4f83dc836627a34fbd3e0c0"
+    }
+  ],
+  "unit_tests_added": false,
+  "unit_tests_run_locally": false,
+  "workflow_functions_executed": false,
+  "models_called": 0,
+  "targets_started": false,
+  "host_configuration_changed": false
+}

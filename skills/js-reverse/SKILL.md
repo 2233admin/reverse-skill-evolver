@@ -1,9 +1,13 @@
 ﻿---
 name: js-reverse
-description: 在使用 js-reverse-mcp 做前端 JavaScript 逆向时使用，适用于签名链路定位、页面观察取证、运行时采样、本地补环境复现与证据化输出。优先适配当前环境里的 js-reverse_* 工具，需要更强的浏览器/CDP/Hook 面时联动 jshookmcp。
+description: 用于前端 JavaScript 签名定位、页面取证、运行时采样与本地复现。已有签名函数和捕获样本且 OMP JS eval 可用时，进入 omp-js-replay；页面观察使用当前 js-reverse_* 工具，需要更强的 CDP/Hook 面时联动 jshookmcp。
 ---
 
 # MCP 前端 JS 逆向作业规范
+
+## OMP 已捕获签名复现
+
+已有真实捕获样本和待对照的签名函数、当前 OMP 暴露 JS `eval` 时，先读 [omp-js-replay](../../.omp/skills/omp-js-replay/SKILL.md)。它复用持久 JS 环境，输出样本逐项对照与覆盖信息；本次实现尚未测试。若仍需定位函数或采集请求，先使用下文当前可用的浏览器/MCP 工具取得证据，再进入复现入口。签名匹配不代表新请求已获服务器接受。
 
 ## 适用范围
 

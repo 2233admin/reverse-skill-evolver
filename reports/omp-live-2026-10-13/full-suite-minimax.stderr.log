@@ -1,0 +1,5 @@
+[evolve] Budget: 3 full-suite evaluations x 12 fixtures + 1 reflections = at most 37 logical OMP calls; provider retries may add requests. Archive: D:\projects\reverse-skill-evolver\repair-open-issues-15\reports\omp-live-2026-10-13\full-suite-minimax
+[evolve] no-skill-baseline: 0/12 complete; calling apk-static-reverse
+[evolve] no-skill-baseline: 1/12 complete; saved apk-static-reverse
+[evolve] no-skill-baseline: 1/12 complete; calling browser-signature
+[evolve] Failed at {'stage': 'no-skill-baseline', 'fixture_id': 'browser-signature', 'completed': 1}: [WinError 32] 另一个程序正在使用此文件，进程无法访问。: 'C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\reverse-skill-evolve-eguox1db'; incomplete archive: D:\projects\reverse-skill-evolver\repair-open-issues-15\reports\omp-live-2026-10-13\full-suite-minimax

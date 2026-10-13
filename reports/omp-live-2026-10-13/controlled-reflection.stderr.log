@@ -1,0 +1,10 @@
+[evolve] Budget: 3 full-suite evaluations x 1 fixtures + 1 reflections = at most 4 logical OMP calls; provider retries may add requests. Archive: D:\projects\reverse-skill-evolver\repair-open-issues-15\reports\omp-live-2026-10-13\controlled-reflection
+[evolve] no-skill-baseline: 0/1 complete; calling controlled-apk
+[evolve] no-skill-baseline: 1/1 complete; saved controlled-apk
+[evolve] curated: 0/1 complete; calling controlled-apk
+[evolve] curated: 1/1 complete; saved controlled-apk
+[evolve] reflection 1/1: calling
+[evolve] reflection 1/1: response saved
+[evolve] proposal-1: 0/1 complete; calling controlled-apk
+[evolve] proposal-1: 1/1 complete; saved controlled-apk
+[evolve] Complete: 3 evaluations, 1 reflections; budget_reached; not_promoted

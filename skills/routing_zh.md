@@ -9,6 +9,13 @@
 3. `MUST NOT` 因为“看起来差不多”把任务塞进不匹配 skill。
 4. `MUST` 在路由未命中时联网补充方法论，并提议新增 skill。
 5. `MUST NOT` 只回复“请给具体任务”；应先基于现有输入启动可确定步骤。
+
+## IDA 后端选择
+
+`requires_capabilities` 要求列出的全部能力（AND），空列表不增加要求；存在 `requires_any_capabilities` 时，还要求其中至少一项可用（OR）。`native-binary` 主入口仍是 `ida-reverse/SKILL.md`，接受 `omp_ida_native` 或 `idapro` 任一能力。
+
+`omp_ida_native` 表示当前 OMP 会话暴露的 `ida` 实时 schema 通过 `ida-reverse/SKILL.md` 的原生入口检查，磁盘文件或 CLI 存在并不足够。这是本次会话能力，不写入宿主 capability graph。原生 `ida` 可用时，缺少 `idapro` MCP 不触发降级；两种支持的后端均不可用时，按 `all_supported_ida_backends_unavailable` 进入原有备选路径。已安装的 Hex-Rays OMP extension 若暴露 `ida_*` 工具，按插件自带指导和实时 schema 使用；本包未提供该适配器。
+
 ## 按目标类型
 
 | 目标类型 | 推荐入口 | 备选方案 |
@@ -248,7 +255,7 @@
 | pe-sieve / Detect It Easy | `malware-analysis/` — 进程扫描 + 壳检测 |
 | LLM4Decompile / Glaurung | `reverse-engineering/` — AI 辅助反编译 |
 
-需要确认本机工具是否可用、路径在哪里、哪个脚本会调用它时，统一查看 `tool-index.md`，不要临时猜路径。
+OMP 原生 IDA 记录实时 schema 与实际操作证据；需要确认外部工具是否可用、路径在哪里、哪个脚本会调用它时，查看 `tool-index.md`，不要临时猜路径。
 
 ---
 

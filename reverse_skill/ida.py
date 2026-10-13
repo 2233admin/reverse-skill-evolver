@@ -7,6 +7,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -212,16 +213,152 @@ def install_ida_mcp(*, upgrade: bool = False) -> dict[str, object]:
     return {"installed": True, "installer": ida_installer, "server": find_server_executable()}
 
 
-def _terminate_stale_servers() -> None:
+def _terminate_stale_server(port: int, executable: str) -> None:
     if os.name != "nt":
-        return
-    for image in ("idalib-mcp.exe", "ida-pro-mcp.exe"):
-        subprocess.run(
-            ["taskkill", "/F", "/T", "/IM", image],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=False,
+        raise EnvironmentUnavailable(
+            "--replace-stale requires Windows ownership inspection; inspect the target port manually"
         )
+    # Keep handles open through verification and kill only the selected port's listener.
+    script = r"""
+$ErrorActionPreference = 'Stop'
+$held = [System.Collections.Generic.List[System.Diagnostics.Process]]::new()
+try {
+    Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public static class ReverseSkillCommandLine {
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    static extern IntPtr CommandLineToArgvW(string commandLine, out int argc);
+    [DllImport("kernel32.dll")] static extern IntPtr LocalFree(IntPtr memory);
+    public static string[] Parse(string commandLine) {
+        int count;
+        IntPtr argv = CommandLineToArgvW(commandLine, out count);
+        if (argv == IntPtr.Zero) throw new System.ComponentModel.Win32Exception();
+        try {
+            string[] result = new string[count];
+            for (int i = 0; i < count; i++)
+                result[i] = Marshal.PtrToStringUni(Marshal.ReadIntPtr(argv, i * IntPtr.Size));
+            return result;
+        } finally { LocalFree(argv); }
+    }
+}
+'@
+    function Read-Identity([int]$processId) {
+        $process = Get-Process -Id $processId
+        $null = $process.Handle
+        $held.Add($process)
+        $info = Get-CimInstance Win32_Process -Filter "ProcessId = $processId"
+        if (!$info.ExecutablePath -or !$info.CommandLine -or !$info.CreationDate -or
+            $process.HasExited -or $process.Path -ne $info.ExecutablePath -or
+            [Math]::Abs(($process.StartTime.ToUniversalTime() - $info.CreationDate.ToUniversalTime()).TotalMilliseconds) -ge 1) {
+            throw 'process identity changed or is unavailable; no process was stopped'
+        }
+        return [pscustomobject]@{ Process = $process; Info = $info }
+    }
+    function Read-PythonInvocation($identity) {
+        $arguments = [ReverseSkillCommandLine]::Parse($identity.Info.CommandLine)
+        if ([IO.Path]::GetFileName($identity.Info.ExecutablePath) -notin @('python.exe', 'pythonw.exe') -or
+            $arguments.Count -ne 6 -or
+            [IO.Path]::GetFullPath($arguments[1]) -ne $env:REVERSE_SKILL_SERVER -or
+            $arguments[2] -cne '--host' -or $arguments[3] -cne '127.0.0.1' -or
+            $arguments[4] -cne '--port' -or $arguments[5] -cne $env:REVERSE_SKILL_PORT) {
+            throw 'listener command does not match the selected launcher and endpoint; no process was stopped'
+        }
+        return [IO.Path]::GetFullPath($arguments[0])
+    }
+    $owners = @(Get-NetTCPConnection -State Listen | Where-Object {
+        $_.LocalPort -eq [int]$env:REVERSE_SKILL_PORT
+    } | Select-Object -ExpandProperty OwningProcess -Unique)
+    if ($owners.Count -gt 1) { throw 'multiple listener owners; no process was stopped' }
+    foreach ($owner in $owners) {
+        $listener = Read-Identity $owner
+        $chain = @($listener)
+        if ($listener.Info.ExecutablePath -ne $env:REVERSE_SKILL_SERVER) {
+            # distlib runs python.exe <launcher.exe>; venv Python may add a redirector parent.
+            $interpreter = Read-PythonInvocation $listener
+            $child = $listener
+            $foundLauncher = $false
+            for ($depth = 0; $depth -lt 4; $depth++) {
+                $parent = Read-Identity $child.Info.ParentProcessId
+                if ($parent.Info.CreationDate -gt $child.Info.CreationDate) {
+                    throw 'parent PID was reused; no process was stopped'
+                }
+                $chain += $parent
+                if ($parent.Info.ExecutablePath -eq $env:REVERSE_SKILL_SERVER) {
+                    $arguments = [ReverseSkillCommandLine]::Parse($parent.Info.CommandLine)
+                    if ($arguments.Count -ne 5 -or
+                        [IO.Path]::GetFullPath($arguments[0]) -ne $env:REVERSE_SKILL_SERVER -or
+                        $arguments[1] -cne '--host' -or $arguments[2] -cne '127.0.0.1' -or
+                        $arguments[3] -cne '--port' -or $arguments[4] -cne $env:REVERSE_SKILL_PORT) {
+                        throw 'launcher command does not match the selected endpoint; no process was stopped'
+                    }
+                    $foundLauncher = $true
+                    break
+                }
+                if ((Read-PythonInvocation $parent) -ne $interpreter) {
+                    throw 'interpreter ancestry does not match; no process was stopped'
+                }
+                $child = $parent
+            }
+            if (!$foundLauncher -or !($chain | Where-Object { $_.Info.ExecutablePath -eq $interpreter })) {
+                throw "port owner PID $owner does not match the selected executable ancestry; no process was stopped"
+            }
+        }
+        foreach ($identity in $chain) {
+            $current = Get-CimInstance Win32_Process -Filter "ProcessId = $($identity.Info.ProcessId)"
+            if ($identity.Process.HasExited -or !$current -or
+                $current.CreationDate -ne $identity.Info.CreationDate -or
+                $current.ParentProcessId -ne $identity.Info.ParentProcessId -or
+                $current.ExecutablePath -ne $identity.Info.ExecutablePath -or
+                $current.CommandLine -cne $identity.Info.CommandLine) {
+                throw 'process ancestry changed during inspection; no process was stopped'
+            }
+        }
+        $currentOwners = @(Get-NetTCPConnection -State Listen | Where-Object {
+            $_.LocalPort -eq [int]$env:REVERSE_SKILL_PORT
+        } | Select-Object -ExpandProperty OwningProcess -Unique)
+        if ($currentOwners.Count -ne 1 -or $currentOwners[0] -ne $owner) {
+            throw 'port owner changed during inspection; no process was stopped'
+        }
+        $listener.Process.Kill()
+        if (!$listener.Process.WaitForExit(3000)) { throw "PID $owner did not stop within 3 seconds" }
+    }
+} catch { [Console]::Error.WriteLine($_.Exception.Message); exit 1 }
+finally { foreach ($process in $held) { $process.Dispose() } }
+"""
+    env = os.environ.copy()
+    env.update(REVERSE_SKILL_PORT=str(port), REVERSE_SKILL_SERVER=str(Path(executable).resolve()))
+    try:
+        completed = subprocess.run(
+            ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script],
+            capture_output=True, text=True, check=False, timeout=10, env=env,
+        )
+    except OSError as exc:
+        raise EnvironmentUnavailable(
+            f"cannot start ownership helper for port {port}; processes preserved: {exc}"
+        ) from exc
+    except subprocess.TimeoutExpired as exc:
+        raise EnvironmentUnavailable(
+            f"inspection/replacement of port {port} timed out; target state unknown; "
+            f"inspect `Get-NetTCPConnection -LocalPort {port}` and its OwningProcess before retrying: {exc}"
+        ) from exc
+    if completed.returncode:
+        raise EnvironmentUnavailable(
+            f"cannot replace service on port {port}: {completed.stderr.strip()}; "
+            f"inspect `Get-NetTCPConnection -LocalPort {port}` and its OwningProcess before retrying"
+        )
+
+
+def _startup_failure(process, log_path: Path, reason: str) -> McpTransportError:
+    try:
+        with log_path.open("rb") as log:
+            log.seek(max(0, log_path.stat().st_size - 2000))
+            detail = log.read().decode("utf-8", errors="replace").strip()
+    except OSError:
+        detail = "log could not be read"
+    return McpTransportError(
+        f"{reason}; PID={process.pid}, exitCode={process.poll()}, log={log_path}; {detail}"
+    )
 
 
 def start_server(
@@ -231,7 +368,7 @@ def start_server(
     port: int = 13337,
     server_path: str | None = None,
     replace_stale: bool = False,
-    wait_seconds: int = 15,
+    wait_seconds: float = 15,
 ) -> dict[str, object]:
     installation = find_latest_ida([ida_dir] if ida_dir else (), only_candidates=bool(ida_dir))
     if installation is None:
@@ -248,30 +385,43 @@ def start_server(
     if not executable:
         raise EnvironmentUnavailable("idalib-mcp is not installed; run `reverse-skill install` first")
     if replace_stale:
-        _terminate_stale_servers()
-        time.sleep(1)
+        _terminate_stale_server(port, executable)
 
     env = os.environ.copy()
     env["IDADIR"] = installation.install_dir
     creationflags = 0
     if os.name == "nt":
         creationflags = subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP
-    subprocess.Popen(
-        [executable, "--host", "127.0.0.1", "--port", str(port)],
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        env=env,
-        close_fds=True,
-        creationflags=creationflags,
-    )
+    with tempfile.NamedTemporaryFile(prefix=f"reverse-skill-ida-{port}-", suffix=".log", delete=False) as log:
+        log_path = Path(log.name)
+        try:
+            process = subprocess.Popen(
+                [executable, "--host", "127.0.0.1", "--port", str(port)],
+                stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
+                env=env, close_fds=True, creationflags=creationflags,
+            )
+        except OSError as exc:
+            raise EnvironmentUnavailable(f"cannot start {executable}: {exc}; log={log_path}") from exc
 
-    for _ in range(wait_seconds):
-        time.sleep(1)
-        tool_count = probe(port, 3.0)
+    deadline = time.monotonic() + wait_seconds
+    while time.monotonic() < deadline:
+        if process.poll() is not None:
+            raise _startup_failure(process, log_path, "idalib-mcp exited before becoming ready")
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        tool_count = probe(port, min(3.0, remaining))
         if tool_count > 0:
+            if process.poll() is not None:
+                raise _startup_failure(process, log_path, "idalib-mcp exited during startup")
+            if time.monotonic() >= deadline:
+                break
             return {
                 "ida": installation.public(),
-                "server": {"url": f"http://127.0.0.1:{port}/mcp", "toolCount": tool_count, "reused": False},
+                "server": {
+                    "url": f"http://127.0.0.1:{port}/mcp", "toolCount": tool_count,
+                    "reused": False, "pid": process.pid, "logPath": str(log_path),
+                },
             }
-    raise McpTransportError(f"idalib-mcp did not become ready within {wait_seconds} seconds")
+        time.sleep(min(0.2, max(0, deadline - time.monotonic())))
+    raise _startup_failure(process, log_path, f"idalib-mcp did not become ready within {wait_seconds} seconds")

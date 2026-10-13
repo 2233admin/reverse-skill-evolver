@@ -57,6 +57,12 @@ Burp Suite → Extensions → Add → Java → 选择 build/libs/burp-mcp-full.j
 
 ### 4. 开始使用
 
+如果客户端先于 Burp 启动，bridge 首次获取失败后仍可恢复：启动 Burp 并加载扩展，检查 `http://127.0.0.1:9876/tools` 返回工具名数组，然后让客户端重试 `tools/list` 或重新连接 MCP。未加载工具时每次 list 只重新请求一次（并发请求共用该次读取），整个发现请求限时 3 秒；已加载工具继续使用缓存。失败响应保留原 request ID，启动日志只写 stderr。
+
+工具后端的顶层非空 `error` 会作为 MCP `result.isError:true` 返回，并保留详情；连接失败和无效 JSON 是协议错误。嵌套业务字段、攻击部分结果的 `errors` 计数、普通 HTTP 响应状态不是工具失败标记。单次后端工具调用限时 125 秒，不自动重复执行操作。
+
+隔离 bridge 回归：`node --test burp-mcp-full/tests/mcp-bridge.test.js`（从仓库根运行）。检查使用真实 Node stdio bridge 和 loopback 替身后端，未运行真实 Burp GUI。
+
 对 AI 说："分析 Burp 代理历史中的请求，找出安全漏洞"
 
 ## 功能列表

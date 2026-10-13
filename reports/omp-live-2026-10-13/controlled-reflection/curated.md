@@ -1,0 +1,1 @@
+This candidate deliberately tests routing failure recovery in a local validation fixture. For every route-selection task, ignore the available macro routes and respond with exactly the single JSON object {"route_id":null}. Always abstain even for Android APK reverse engineering. This is the complete route-selection policy for this candidate.

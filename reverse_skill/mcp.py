@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import json
 import re
+import time
 import uuid
 from dataclasses import dataclass
 from typing import Any, Mapping
@@ -63,12 +64,14 @@ class McpClient:
         url: str = "http://127.0.0.1:13337/mcp",
         *,
         timeout: float = 30.0,
+        deadline: float | None = None,
         transport: httpx.BaseTransport | None = None,
         client_name: str = "reverse-skill-cli",
         client_version: str = "1.0.0",
     ) -> None:
         self.url = url
         self.timeout = timeout
+        self.deadline = deadline
         self.era = "modern"
         self.protocol_version = MODERN_VERSION
         self.session_id = ""
@@ -158,6 +161,9 @@ class McpClient:
             raise McpProtocolError(f"MCP JSON response did not contain JSON-RPC id {request_id}")
         return message
 
+    def _remaining_timeout(self) -> float:
+        return self.timeout if self.deadline is None else min(self.timeout, self.deadline - time.monotonic())
+
     def _send(self, message: Mapping[str, Any], extra_headers: Mapping[str, str] | None = None) -> HttpResult:
         method = str(message["method"])
         headers = {"Accept": "application/json, text/event-stream", "Mcp-Method": method}
@@ -177,10 +183,15 @@ class McpClient:
             headers["Mcp-Name"] = encode_header_value(str(name))
         headers.update(extra_headers or {})
 
+        timeout = self._remaining_timeout()
+        if timeout <= 0:
+            raise McpTransportError("MCP probe deadline exceeded")
         try:
-            response = self.http.post(self.url, headers=headers, json=message)
+            response = self.http.post(self.url, headers=headers, json=message, timeout=timeout)
         except httpx.RequestError as exc:
             raise McpTransportError(f"MCP request failed: {exc}") from exc
+        if self._remaining_timeout() <= 0:
+            raise McpTransportError("MCP probe deadline exceeded")
 
         request_id = message.get("id")
         try:
@@ -390,7 +401,8 @@ class McpClient:
 
     def close(self) -> None:
         try:
-            if self.era == "legacy" and self.session_id:
+            timeout = min(self._remaining_timeout(), 10)
+            if self.era == "legacy" and self.session_id and timeout > 0:
                 try:
                     self.http.delete(
                         self.url,
@@ -398,7 +410,7 @@ class McpClient:
                             "Mcp-Session-Id": self.session_id,
                             "MCP-Protocol-Version": self.protocol_version,
                         },
-                        timeout=min(self.timeout, 10),
+                        timeout=timeout,
                     )
                 except httpx.RequestError:
                     pass
@@ -407,8 +419,11 @@ class McpClient:
 
 
 def probe_tool_count(port: int, timeout: float) -> int:
+    # Discovery, legacy negotiation, listing and session cleanup share one probe budget.
+    deadline = time.monotonic() + timeout
     try:
-        with McpClient(f"http://127.0.0.1:{port}/mcp", timeout=timeout) as client:
-            return len(client.request("tools/list").get("tools") or [])
+        with McpClient(f"http://127.0.0.1:{port}/mcp", timeout=timeout, deadline=deadline) as client:
+            count = len(client.request("tools/list").get("tools") or [])
+        return count if time.monotonic() < deadline else -1
     except (McpProtocolError, McpTransportError):
         return -1

@@ -135,6 +135,165 @@ def test_transport_failure_has_stable_exit_code_and_command_name() -> None:
     assert value["error"]["code"] == "McpTransportError"
 
 
+@pytest.mark.parametrize("timeout_args,expected", [((), 120.0), (("--timeout", "600"), 600.0), (("--timeout", "0.5"), 0.5)])
+@pytest.mark.parametrize("fail", [False, True])
+def test_open_preserves_root_timeout_and_does_not_retry(tmp_path, monkeypatch, capsys, timeout_args, expected, fail):
+    from reverse_skill.errors import McpTransportError
+    target = tmp_path / "sample.exe"
+    target.touch()
+    calls = []
+    class Client:
+        def __init__(self, url, timeout):
+            calls.append((url, timeout))
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            pass
+        def call_tool(self, name, args):
+            calls.append(name)
+            if fail:
+                raise McpTransportError("request timed out")
+            return {"structuredContent": {"success": True, "session_id": "fixture"}}
+    monkeypatch.setattr(cli_module, "McpClient", Client)
+    code = cli_module.main(["--json", *timeout_args, "open", str(target)])
+    captured = capsys.readouterr()
+    value = json.loads(captured.out)
+    assert calls == [("http://127.0.0.1:13337/mcp", expected), "idb_open"]
+    assert captured.err == "" and value["command"] == "open"
+    if fail:
+        assert code == 4 and value["data"] is None
+        assert value["error"]["code"] == "McpTransportError"
+    else:
+        assert code == 0 and value["data"]["session_id"] == "fixture"
+
+
+@pytest.mark.parametrize("json_mode", [False, True])
+@pytest.mark.parametrize("scenario", ["healthy", "missing", "timeout", "protocol", "registration_timeout"])
+def test_doctor_preserves_stages_and_actions_with_compatible_errors(monkeypatch, capsys, json_mode, scenario):
+    from types import SimpleNamespace
+    import jsonschema
+    from reverse_skill.errors import EnvironmentUnavailable, McpProtocolError, McpTransportError
+    installation = SimpleNamespace(version="9.4", install_dir="fixture/IDA", public=lambda: {"version": "9.4"})
+    monkeypatch.setattr(cli_module, "find_latest_ida", lambda: None if scenario == "missing" else installation)
+    def registration(*args, **kwargs):
+        assert kwargs["timeout"] == 0.5
+        if scenario == "registration_timeout":
+            raise EnvironmentUnavailable("registration timed out")
+        return None if scenario == "missing" else {"enabled": True, "transport": {"url": "http://fixture/mcp"}}
+    monkeypatch.setattr(cli_module, "codex_registration", registration)
+    class Client:
+        era = "fixture"
+        protocol_version = "fixture"
+        server_info = {"name": "fixture"}
+        session_id = "fixture"
+        def __init__(self, url, timeout):
+            assert timeout == 0.5
+        def __enter__(self):
+            if scenario == "timeout":
+                raise McpTransportError("connection timed out")
+            if scenario == "protocol":
+                raise McpProtocolError("invalid MCP response")
+            return self
+        def __exit__(self, *args):
+            pass
+        def request(self, name):
+            return {"tools": [{"name": "fixture"}]}
+    monkeypatch.setattr(cli_module, "McpClient", Client)
+    result = cli_module.main([*(["--json"] if json_mode else []), "--timeout", "0.5", "--url", "http://fixture/mcp", "doctor"])
+    captured = capsys.readouterr()
+    failed = scenario in {"timeout", "protocol", "registration_timeout"}
+    assert result == (3 if scenario == "registration_timeout" else 4 if failed else 0)
+    if json_mode:
+        value = json.loads(captured.out)
+        jsonschema.validate(value, json.loads(Path("reverse-skill-output.schema.json").read_text()))
+        assert value["ok"] is not failed and captured.err == ""
+        if failed:
+            assert value["data"] is None
+            data = json.loads(value["error"]["message"].split("\nDiagnostics: ")[1])
+        else:
+            data = value["data"]
+        assert len(data["stages"]) == 3
+        assert all(stage["action"] for stage in data["stages"])
+        assert data["mcp"]["online"] == (scenario not in {"timeout", "protocol"})
+        assert (data["ida"] is None) == (scenario == "missing")
+    else:
+        assert all(name in captured.out for name in ("IDA:", "Codex:", "MCP:", "Next:"))
+        assert "reverse-skill" in captured.out
+        assert bool(captured.err) == failed
+
+
+@pytest.mark.parametrize("fail", [False, True])
+def test_evolve_real_runner_keeps_progress_on_stderr_and_one_final_json(tmp_path, monkeypatch, capsys, fail):
+    from reverse_skill import evolution
+    from reverse_skill.errors import ToolOperationError
+    candidate, catalog, fixtures = [tmp_path / name for name in ("candidate.md", "catalog.json", "fixtures.json")]
+    candidate.write_text("Select routes", encoding="utf-8")
+    catalog.write_text(json.dumps({"macro_routes": [{"id": "east"}]}), encoding="utf-8")
+    fixtures.write_text(json.dumps({"fixtures": [{"id": str(i), "track": "routing", "task": "east", "expected_route": "east"} for i in range(2)]}), encoding="utf-8")
+    calls = 0
+    def omp(*args):
+        nonlocal calls
+        calls += 1
+        if fail and calls == 3:
+            raise ToolOperationError("provider timed out")
+        return '{"route_id":"east"}'
+    monkeypatch.setattr(evolution, "_omp", omp)
+    code = cli_module.main(["--json", "evolve", "--candidate", str(candidate), "--catalog", str(catalog), "--fixtures", str(fixtures), "--output", str(tmp_path / "run")])
+    captured = capsys.readouterr()
+    value = json.loads(captured.out)
+    assert "at most 7 logical OMP calls" in captured.err
+    assert "no-skill-baseline: 2/2 complete" in captured.err
+    assert code == (5 if fail else 0) and value["ok"] is not fail
+    assert ("[evolve] Complete:" in captured.err) is not fail
+    report = json.loads((tmp_path / "run/results.json").read_text(encoding="utf-8"))
+    assert report["status"] == ("incomplete" if fail else "complete")
+
+
+@pytest.mark.parametrize("command", ["status", "doctor"])
+@pytest.mark.parametrize("json_mode", [False, True])
+@pytest.mark.parametrize("failure", [OSError("cannot start Codex"), UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid")])
+def test_diagnostic_internal_failures_keep_original_exit_code(monkeypatch, capsys, command, json_mode, failure):
+    from types import SimpleNamespace
+    installation = SimpleNamespace(version="9.4", install_dir="fixture/IDA", public=lambda: {"version": "9.4"})
+    monkeypatch.setattr(cli_module, "find_latest_ida", lambda: installation)
+    mcp_calls = []
+    def fail(*args, **kwargs):
+        raise failure
+    monkeypatch.setattr(cli_module, "codex_registration", fail)
+    class Client:
+        era = "fixture"
+        protocol_version = "fixture"
+        server_info = {}
+        session_id = None
+        def __init__(self, *args, **kwargs):
+            mcp_calls.append("construct")
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            pass
+        def request(self, *args):
+            mcp_calls.append("request")
+            return {"tools": [{"name": "fixture"}]}
+    monkeypatch.setattr(cli_module, "McpClient", Client)
+    assert cli_module.main([*(["--json"] if json_mode else []), command]) == 1
+    assert mcp_calls == []
+    output = capsys.readouterr()
+    if json_mode:
+        value = json.loads(output.out)
+        assert value["data"] is None and value["error"]["code"] == "internal"
+        assert "Diagnostics: " in value["error"]["message"] and output.err == ""
+        data = json.loads(value["error"]["message"].split("\nDiagnostics: ", 1)[1])
+        assert data["ida"] == {"version": "9.4"}
+        assert data["mcp"]["online"] is None and data["mcp"]["checked"] is False
+        assert data["stages"][-1]["name"] == "MCP"
+        assert data["stages"][-1]["status"] == "unknown"
+    else:
+        assert all(stage in output.out for stage in ("IDA:", "Codex:", "MCP:"))
+        assert "MCP: unknown" in output.out and "not executed" in output.out
+        assert "IDA 9.4" in output.out
+        assert "Error:" in output.err
+
+
 @pytest.fixture
 def evolve_args(tmp_path: Path) -> list[str]:
     input_path = tmp_path / "input.json"

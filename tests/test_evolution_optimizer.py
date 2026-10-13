@@ -224,7 +224,7 @@ def test_invalid_budgets_reject_before_model_use(optimizer_inputs: dict, monkeyp
     ('{"route_id":"east"}', "route answer"),
     ("x" * (evolution.MAX_CANDIDATE_BYTES + 1), "Reflected candidate exceeds"),
     ('"' * 20_000, "serialized Windows command"),
-])
+], ids=["empty", "route_answer", "too_large", "windows_argv"])
 def test_invalid_reflection_never_evaluates_a_proposal(
     optimizer_inputs: dict, monkeypatch: pytest.MonkeyPatch, response: str, diagnostic: str,
 ) -> None:
@@ -244,7 +244,60 @@ def test_invalid_reflection_never_evaluates_a_proposal(
     with pytest.raises(ToolOperationError, match=diagnostic):
         evolution.evolve(paths["candidate"], paths["catalog"], paths["fixtures"], paths["output"], 3, 1, 1)
     assert len(calls) == 2 * len(optimizer_inputs["cases"]) + 1
-    assert not paths["output"].exists()
+    report = json.loads((paths["output"] / "results.json").read_text(encoding="utf-8"))
+    assert report["status"] == "incomplete" and report["pareto_frontier"] == []
+    assert report["evaluations_consumed"] == 2 and report["reflections_consumed"] == 1
+    assert report["reflections"][0]["raw_response"] == response
+    assert report["failure"]["location"]["stage"] == "reflection"
+    assert len(report["candidates"]) == 1 and report["promotion"].startswith("not_promoted")
+
+
+@pytest.mark.parametrize("failure", [ToolOperationError("provider failed"), ToolOperationError("OMP evaluation exceeded 1 seconds"), KeyboardInterrupt()])
+def test_failed_evaluation_retains_frozen_inputs_and_completed_responses(optimizer_inputs, monkeypatch, capsys, failure):
+    paths = optimizer_inputs["paths"]
+    frozen = {name: paths[name].read_bytes() for name in ("catalog", "fixtures", "candidate")}
+    count = 0
+    def omp(*args):
+        nonlocal count
+        count += 1
+        assert (paths["output"] / "fixtures.json").read_bytes() == frozen["fixtures"]
+        if count == 5:
+            raise failure
+        return 'Working...\n{"route_id":null}'
+    monkeypatch.setattr(evolution, "_omp", omp)
+    with pytest.raises(ToolOperationError):
+        evolution.evolve(paths["candidate"], paths["catalog"], paths["fixtures"], paths["output"], 3, 1, 1)
+    report = json.loads((paths["output"] / "results.json").read_text(encoding="utf-8"))
+    assert report["status"] == "incomplete" and report["evaluations_consumed"] == 1
+    assert report["logical_calls_started"] == 5 and report["pareto_frontier"] == []
+    assert report["baseline"]["complete"] is True
+    assert len(report["baseline"]["outcomes"]) == 3
+    assert len(report["candidates"][0]["outcomes"]) == 1
+    assert report["candidates"][0]["pass_rates"] == {} and report["candidates"][0]["complete"] is False
+    assert report["failure"]["location"]["stage"] == "curated"
+    assert report["failure"]["location"]["fixture_id"] == "west-case"
+    assert (paths["output"] / "curated.md").read_bytes() == frozen["candidate"]
+    assert all(row["raw_response"].startswith("Working...") for row in report["baseline"]["outcomes"])
+    captured = capsys.readouterr()
+    assert captured.out == "" and "[evolve] Complete:" not in captured.err
+    assert "Failed at" in captured.err and "at most 10 logical OMP calls" in captured.err
+
+
+def test_archive_failure_does_not_mask_original_model_error(optimizer_inputs, monkeypatch):
+    paths = optimizer_inputs["paths"]
+    original_write = evolution._write_report
+    def write(output, report):
+        if "failure" in report:
+            raise OSError("controlled archive denial")
+        original_write(output, report)
+    monkeypatch.setattr(evolution, "_write_report", write)
+    def fail(*args):
+        raise ToolOperationError("original provider error")
+    monkeypatch.setattr(evolution, "_omp", fail)
+    with pytest.raises(ToolOperationError, match="original provider error.*archive also failed: controlled archive denial"):
+        evolution.evolve(paths["candidate"], paths["catalog"], paths["fixtures"], paths["output"], 3, 1, 1)
+    report = json.loads((paths["output"] / "results.json").read_text(encoding="utf-8"))
+    assert report["status"] == "incomplete" and report["logical_calls_started"] == 1
 
 
 def test_non_windows_accepts_candidate_that_only_exceeds_windows_argv_limit(

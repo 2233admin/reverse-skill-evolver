@@ -49,9 +49,10 @@
       "target_kinds": ["elf", "pe", "dll", "so", "macho", "stripped_binary"],
       "intent_keywords": ["ida", "disassemble", "decompile", "function map", "strings", "xref"],
       "primary_skill": "ida-reverse/SKILL.md",
-      "requires_capabilities": ["idapro"],
+      "requires_capabilities": [],
+      "requires_any_capabilities": ["omp_ida_native", "idapro"],
       "fallback_edges": [
-        { "when": "idapro_unavailable", "goto": "radare2/SKILL.md" },
+        { "when": "all_supported_ida_backends_unavailable", "goto": "radare2/SKILL.md" },
         { "when": "ghidra_available_and_ida_missing", "goto": "reverse-engineering/SKILL.md" },
         { "when": "exploitability_needed", "goto": "pwn-chain/SKILL.md" }
       ],

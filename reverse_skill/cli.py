@@ -14,7 +14,7 @@ import click
 from . import __version__
 from .evolution import evolve as run_evolution
 from .evolution import validate_trace_card
-from .errors import EnvironmentUnavailable, ReverseSkillError, ToolOperationError
+from .errors import EnvironmentUnavailable, McpError, ReverseSkillError, ToolOperationError
 from .ida import find_latest_ida, install_ida_mcp, start_server
 from .integrations import annotate_yara_matches, integration_inventory, scan_yara
 from .mcp import McpClient, probe_tool_count
@@ -58,7 +58,22 @@ def _envelope(command: str, *, data: Any = None, error: Mapping[str, Any] | None
     }
 
 
-def _human(value: Any) -> str:
+def _human(value: Any, command: str = "") -> str:
+    if command in {"status", "doctor"} and isinstance(value, Mapping):
+        return "\n".join(
+            f"{stage['name']}: {stage['status']} — {stage['detail']}\n  Next: {stage['action']}"
+            for stage in value["stages"]
+        )
+    if command == "integrations":
+        return "\n".join(
+            f"{item['name']}: {'available' if item['available'] else 'unavailable'} ({item['support']})\n"
+            + ("  Next: Use yara-scan; add --database SESSION --annotate for verified unique matches"
+               if item["name"] == "yara" and item["available"]
+               else "  Next: Install .[ida-integrations] to enable YARA scans"
+               if item["name"] == "yara"
+               else "  Next: Use the companion tool separately; its IDA bridge is discovery only")
+            for item in value["integrations"]
+        )
     if isinstance(value, str):
         return value
     return json.dumps(value, ensure_ascii=False, indent=2)
@@ -68,7 +83,17 @@ def emit(state: State, command: str, data: Any) -> None:
     if state.json_output:
         click.echo(json.dumps(_envelope(command, data=data), ensure_ascii=False))
     else:
-        click.echo(_human(data))
+        click.echo(_human(data, command))
+
+
+def _error_message(exc: Exception, command: str, json_output: bool) -> str:
+    diagnostics = getattr(exc, "diagnostics", None)
+    if diagnostics is None:
+        return str(exc)
+    if json_output:
+        return str(exc) + "\nDiagnostics: " + json.dumps(diagnostics, ensure_ascii=False)
+    click.echo(_human(diagnostics, command))
+    return str(exc)
 
 
 def structured_content(result: Mapping[str, Any]) -> Mapping[str, Any]:
@@ -147,14 +172,17 @@ def register_codex(name: str, url: str, *, timeout: float = DEFAULT_TIMEOUT) -> 
 
 
 @click.group(no_args_is_help=True, context_settings={"help_option_names": ["-h", "--help"]})
-@click.option("--url", default="http://127.0.0.1:13337/mcp", show_default=True)
+@click.option("--url", default="http://127.0.0.1:13337/mcp", show_default=True, help="Endpoint for calls and Codex registration; start uses its own local --port.")
 @click.option("--name", default="idapro", show_default=True, help="Codex MCP registration name.")
 @click.option("--json", "json_output", is_flag=True, help="Emit one stable JSON envelope on stdout.")
 @click.option("--timeout", type=click.FloatRange(min=0.1), default=DEFAULT_TIMEOUT, show_default=True)
 @click.version_option(__version__, prog_name="reverse-skill")
 @click.pass_context
 def cli(ctx: click.Context, url: str, name: str, json_output: bool, timeout: float) -> None:
-    """Operate IDA Pro MCP workflows and bounded route-evolution search."""
+    """Operate IDA Pro MCP workflows and bounded route-evolution search.
+
+    Put root options such as --url and --timeout before the command.
+    """
     ctx.obj = State(url=url, name=name, json_output=json_output, timeout=timeout)
 
 
@@ -195,9 +223,9 @@ def register(state: State) -> None:
 
 @cli.command()
 @click.option("--ida-dir", type=click.Path(file_okay=False, path_type=Path))
-@click.option("--port", type=click.IntRange(1, 65535), default=13337, show_default=True)
+@click.option("--port", type=click.IntRange(1, 65535), default=13337, show_default=True, help="Local loopback listening port, independent of root --url. Use the matching --url for status/register/calls.")
 @click.option("--server-path", type=click.Path(dir_okay=False, path_type=Path))
-@click.option("--replace-stale", is_flag=True, help="Terminate stale idalib-mcp processes before starting.")
+@click.option("--replace-stale", is_flag=True, help="Replace an unhealthy Windows listener only after verifying its executable and port.")
 @click.pass_obj
 def start(state: State, ida_dir: Path | None, port: int, server_path: Path | None, replace_stale: bool) -> None:
     """Start or reuse the local IDA MCP service."""
@@ -212,19 +240,47 @@ def start(state: State, ida_dir: Path | None, port: int, server_path: Path | Non
 
 
 def _status_data(state: State) -> dict[str, Any]:
-    """Collect IDA discovery, Codex registration, and live MCP metadata using the state timeout.
-
-    Codex lookup timeouts and MCP transport or protocol errors propagate;
-    an unreachable MCP endpoint does not produce an offline status result.
-    """
+    """Keep local diagnostics on failure while preserving the original error and exit code."""
     ida = find_latest_ida()
-    registration = codex_registration(state.name, timeout=state.timeout)
+    failures = []
+    registration = None
+    try:
+        registration = codex_registration(state.name, timeout=state.timeout)
+    except (EnvironmentUnavailable, OSError, UnicodeError) as exc:
+        failures.append(exc)
     transport = (registration or {}).get("transport") or {}
-    with McpClient(state.url, timeout=state.timeout) as client:
-        tools = client.request("tools/list")
-        return {
-            "ida": ida.public() if ida else None,
-            "mcp": {
+    data = {
+        "ida": ida.public() if ida else None,
+        "mcp": {"url": state.url, "online": False},
+        "codex": {
+            "registered": registration is not None, "name": state.name,
+            "url": transport.get("url"), "enabled": bool((registration or {}).get("enabled")),
+        },
+        "stages": [{
+            "name": "IDA", "status": "ready" if ida else "missing",
+            "detail": f"IDA {ida.version} at {ida.install_dir}" if ida else "No usable local installation found",
+            "action": "Continue to MCP service check" if ida else "Install IDA with idalib; then use start --ida-dir PATH",
+        }],
+    }
+    registered = bool(registration and registration.get("enabled") and transport.get("url") == state.url)
+    data["stages"].append({
+        "name": "Codex", "status": "ready" if registered else ("failed" if failures else "needs registration"),
+        "detail": str(failures[0]) if failures else (f"Registration {state.name}: {transport.get('url') or 'not found'}"),
+        "action": "Create a new Codex task to reload tools" if registered else f"Install/check Codex CLI; run reverse-skill --url {state.url} --name {state.name} register",
+    })
+    if failures and isinstance(failures[0], (OSError, UnicodeError)):
+        data["mcp"].update({"online": None, "checked": False})
+        data["stages"].append({
+            "name": "MCP", "status": "unknown",
+            "detail": "Check not executed because the Codex query failed",
+            "action": "Fix the Codex CLI startup/decoding error, then rerun reverse-skill doctor",
+        })
+        failures[0].diagnostics = data
+        raise failures[0]
+    try:
+        with McpClient(state.url, timeout=state.timeout) as client:
+            tools = client.request("tools/list")
+            data["mcp"].update({
                 "url": state.url,
                 "online": True,
                 "era": client.era,
@@ -232,14 +288,20 @@ def _status_data(state: State) -> dict[str, Any]:
                 "server": client.server_info,
                 "protocolSession": bool(client.session_id),
                 "toolCount": len(tools.get("tools") or []),
-            },
-            "codex": {
-                "registered": registration is not None,
-                "name": state.name,
-                "url": transport.get("url"),
-                "enabled": bool((registration or {}).get("enabled")),
-            },
-        }
+            })
+    except McpError as exc:
+        failures.append(exc)
+        data["mcp"]["error"] = str(exc)
+    online = data["mcp"]["online"]
+    data["stages"].append({
+        "name": "MCP", "status": "ready" if online else "failed",
+        "detail": f"{data['mcp']['toolCount']} tools at {state.url}" if online else data["mcp"].get("error", "Unavailable"),
+        "action": "Use reverse-skill open SAMPLE then sessions" if online else f"Check endpoint {state.url}; start its local service and inspect reported PID/log; rerun reverse-skill --url {state.url} doctor",
+    })
+    if failures:
+        failures[0].diagnostics = data
+        raise failures[0]
+    return data
 
 
 @cli.command()
@@ -252,7 +314,7 @@ def status(state: State) -> None:
 @cli.command()
 @click.pass_obj
 def doctor(state: State) -> None:
-    """Alias for status."""
+    """Diagnose IDA, Codex registration and MCP, with recovery actions."""
     emit(state, "doctor", _status_data(state))
 
 
@@ -288,8 +350,8 @@ def integrations(state: State) -> None:
 @click.option("--catalog", required=True, type=click.Path(exists=True, dir_okay=False, resolve_path=True, path_type=Path))
 @click.option("--fixtures", required=True, type=click.Path(exists=True, dir_okay=False, resolve_path=True, path_type=Path))
 @click.option("--output", required=True, type=click.Path(file_okay=False, path_type=Path))
-@click.option("--max-evaluations", type=click.IntRange(min=3), default=3, show_default=True)
-@click.option("--max-reflections", type=click.IntRange(min=1), default=1, show_default=True)
+@click.option("--max-evaluations", type=click.IntRange(min=3), default=3, show_default=True, help="Full fixture-suite evaluations, including baseline and curated; calls scale with fixture count.")
+@click.option("--max-reflections", type=click.IntRange(min=1), default=1, show_default=True, help="Separate reflection call budget; maximum logical calls = evaluations x fixtures + reflections (provider retries may add requests).")
 @click.option("--model-timeout", type=click.IntRange(min=1, max=3600), default=120, show_default=True)
 @click.pass_obj
 def evolve(
@@ -400,7 +462,7 @@ def open(
     }
     if preferred_session_id:
         arguments["preferred_session_id"] = preferred_session_id
-    with McpClient(state.url, timeout=min(state.timeout, 30.0)) as client:
+    with McpClient(state.url, timeout=state.timeout) as client:
         output = structured_content(client.call_tool("idb_open", arguments))
     if output.get("success") is not True:
         raise ToolOperationError(f"idb_open failed: {output.get('error') or output.get('message')}")
@@ -487,10 +549,11 @@ def main(argv: list[str] | None = None) -> int:
             exc.show(file=sys.stderr)
         return 2
     except ReverseSkillError as exc:
+        message = _error_message(exc, command, json_output)
         if json_output:
             click.echo(
                 json.dumps(
-                    _envelope(command, error={"code": exc.__class__.__name__, "message": str(exc)}),
+                    _envelope(command, error={"code": exc.__class__.__name__, "message": message}),
                     ensure_ascii=False,
                 )
             )
@@ -498,10 +561,11 @@ def main(argv: list[str] | None = None) -> int:
             click.echo(f"Error: {exc}", err=True)
         return exc.exit_code
     except Exception as exc:
+        message = _error_message(exc, command, json_output)
         if json_output:
             click.echo(
                 json.dumps(
-                    _envelope(command, error={"code": "internal", "message": str(exc)}),
+                    _envelope(command, error={"code": "internal", "message": message}),
                     ensure_ascii=False,
                 )
             )

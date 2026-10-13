@@ -1,0 +1,11 @@
+{
+  "model": "minimax-code-cn/MiniMax-M3.1-Flash-Preview",
+  "logical_omp_invocations": 1,
+  "cumulative_invocations": 32,
+  "exit_code": 0,
+  "elapsed_seconds": 9.501,
+  "module_sha256": "ea4b4c1204c4cf713224e7f739aaa3b68a64bdeea080a49dd954818191b685e9",
+  "module_source_commit": "5223544be12cc756179098bb6f57832abad6c7fb",
+  "module_git_blob_sha256": "8fcd29fa007e60ffdbf99db93d62e4ca0d0107a824da4b3a877b309df78dd0ef",
+  "module_sha256_scope": "actual Windows checkout bytes at execution; Git blob hash is separately recorded for newline-independent retrieval"
+}

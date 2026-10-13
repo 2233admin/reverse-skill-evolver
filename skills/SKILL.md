@@ -2,7 +2,15 @@
 
 本目录收录了一系列逆向工程相关的技能模块，每个子目录是一个独立模块，内含 `SKILL.md` 描述其适用场景、工具链和工作流程。
 
+OMP 中已有捕获样本与签名函数、需要本地逐项对照时，先进入 [omp-js-replay](../.omp/skills/omp-js-replay/SKILL.md)。该入口使用当前 JS eval 和本地数据，不需要为复现步骤刷新外部工具索引或注册浏览器 MCP；尚未采集证据的任务继续共享 JS 路由。
+
+## OMP 原生 IDA 入口
+
+OMP 中的 IDA 任务先读 `ida-reverse/SKILL.md`，根据当前工具 schema 选择入口。原生 `ida` 可用时，进入 [omp-ida-native](../.omp/skills/omp-ida-native/SKILL.md)；该分支使用会话中的原生能力，不要求刷新外部 CLI 索引、注册 Codex MCP 或额外安装 `idalib-mcp`。其余后端按共享 IDA 入口和路由矩阵继续。
+
 ## CRITICAL: 路由执行契约（必须立即执行）
+
+OMP 原生 IDA 分支的执行步骤以 `omp-ida-native` 为准；以下契约用于其他共享路由任务。
 
 读完本文件后，不允许只回复“已读/已理解”。必须按顺序执行：
 
@@ -29,7 +37,7 @@
 | **无人值守过夜运行** | `overnight-run/` | 无人值守跑到绝对 DEADLINE：slot 填表 → validate 冒烟 → 脚手架（.night/ + night 分支 + pre-commit 红线）→ 增量报告 → 经验回流（OVERNIGHT.md v2 契约） |
 | **通用逆向** | `reverse-engineering/` | GDB / Frida / angr / Unicorn / Qiling / 反分析对抗 / 全语言平台逆向 / CTF 模式库 |
 | **APK 逆向** | `apk-reverse/` | Android APK 解包、jadx 反编译、smali 修改、Frida Hook、重打包签名安装 |
-| **IDA Pro 逆向** | `ida-reverse/` | IDA Pro Streamable HTTP MCP：工具由 `tools/list` 动态发现，支持反编译、反汇编、数据流追踪、交叉引用 |
+| **IDA Pro 逆向** | `ida-reverse/` | 先选择 OMP 原生 `ida` 或 `idapro` HTTP MCP，再按各自实时 schema 分析 |
 | **前端 JS 逆向** | `js-reverse/` | 浏览器端签名定位、加密参数分析、运行时采样、Node 补环境复现；优先用现有 `js-reverse_*`，需要更强的浏览器/CDP/Hook 面时接入 jshookmcp，但前提是先把该 MCP server 下载/注册并启用 |
 | **radare2 分析** | `radare2/` | CLI 二进制侦察、反汇编、patch：r2 / rabin2 / rasm2 / radiff2 |
 | **CTF 竞赛全栈** | `../CTF-Sandbox-Orchestrator/` | 40+ 子技能：Web/逆向/Pwn/云/容器/AD/取证/隐写/移动端/密码学，由总控统一编排 |
@@ -91,7 +99,7 @@
 powershell -NoProfile -ExecutionPolicy Bypass -File "<skill-root>\scripts\bootstrap-reverse.ps1" -Capability @('工具名') -StartServices
 ```
 
-支持的能力：jadx、apktool、frida、jshookmcp、anything-analyzer、r2、rabin2、adb、agent-browser、ghidra-mcp、nmap、proxycat、burpsuite-mcp、binwalk、unblob、emba、firmadyne、qemu-static、pwntools、ropgadget、one_gadget、bindiff、ghidriff、syswhispers3、pe-sieve、garak、pyrit、osv-scanner、trivy、syft、gitleaks、objection、yara、floss。IDA 与 idalib-mcp 的安装、注册和启动只走 Python `reverse-skill`。
+支持的能力：jadx、apktool、frida、jshookmcp、anything-analyzer、r2、rabin2、adb、agent-browser、ghidra-mcp、nmap、proxycat、burpsuite-mcp、binwalk、unblob、emba、firmadyne、qemu-static、pwntools、ropgadget、one_gadget、bindiff、ghidriff、syswhispers3、pe-sieve、garak、pyrit、osv-scanner、trivy、syft、gitleaks、objection、yara、floss。`idapro` MCP 分支的 IDA/idalib-mcp 安装、注册和启动走 Python `reverse-skill`；OMP 原生分支按 `omp-ida-native` 的 setup 指导配置。
 
 自举完成后会自动刷新 `tool-index`。
 

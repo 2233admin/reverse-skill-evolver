@@ -42,7 +42,7 @@
           { "name": "--ida-dir", "arguments": [{ "name": "DIRECTORY", "required": true }] },
           { "name": "--port", "arguments": [{ "name": "PORT", "required": true }] },
           { "name": "--server-path", "arguments": [{ "name": "FILE", "required": true }] },
-          { "name": "--replace-stale", "description": "Terminate stale server processes before starting." }
+          { "name": "--replace-stale", "description": "Replace an unhealthy Windows listener only after verifying its executable and port." }
         ]
       },
       { "name": "status", "description": "Report IDA, MCP negotiation, and Codex registration." },
@@ -105,8 +105,8 @@
           { "name": "--catalog", "required": true, "arguments": [{ "name": "FILE", "required": true }] },
           { "name": "--fixtures", "required": true, "arguments": [{ "name": "FILE", "required": true }] },
           { "name": "--output", "required": true, "arguments": [{ "name": "DIRECTORY", "required": true }] },
-          { "name": "--max-evaluations", "arguments": [{ "name": "COUNT", "required": true }] },
-          { "name": "--max-reflections", "arguments": [{ "name": "COUNT", "required": true }] },
+          { "name": "--max-evaluations", "description": "Full fixture-suite evaluations, including baseline and curated; calls scale with fixture count.", "arguments": [{ "name": "COUNT", "required": true }] },
+          { "name": "--max-reflections", "description": "Separate reflection budget; maximum logical calls = evaluations x fixtures + reflections. Provider retries may add requests.", "arguments": [{ "name": "COUNT", "required": true }] },
           { "name": "--model-timeout", "arguments": [{ "name": "SECONDS", "required": true }] }
         ]
       }

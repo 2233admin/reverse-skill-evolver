@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "source": {
+    "sha256": "cf84f4610adeb1a915ad74262c1d0865e23ef23d66e3aa39e1f72586298fff35",
+    "module": "toy-v1.dll",
+    "format": "Portable executable for AMD64 (PE)",
+    "architecture": "metapc",
+    "bitness": 64,
+    "image_base": "0x180000000",
+    "database_id": "owned-native-v1-cf84f4610ade"
+  },
+  "coverage": {
+    "native_enumeration": "full_helper_scan",
+    "functions_total": 2,
+    "functions_truncated": false,
+    "strings_truncated": false,
+    "imports_truncated": false,
+    "source_scans": {
+      "functions": {
+        "total": 2,
+        "scanned": 2,
+        "scan_truncated": false,
+        "matches": 2,
+        "text_truncated": false
+      },
+      "strings": {
+        "total": 7,
+        "scanned": 7,
+        "scan_truncated": false,
+        "matches": 2,
+        "text_truncated": false
+      },
+      "imports": {
+        "total": 1,
+        "scanned": 1,
+        "scan_truncated": false,
+        "matches": 0,
+        "text_truncated": false
+      }
+    },
+    "xref_queries": 2,
+    "xref_rows_total": 3,
+    "xref_rows_truncated": false,
+    "non_function_xrefs_skipped": 2,
+    "evidence_truncated": false,
+    "patterns": {
+      "functions": "parse|decode|decrypt|auth|login|check|verify|password|token|key|exec|system|shell|memcpy|strcpy",
+      "strings": "password|token|secret|license|invalid|unauthorized|https?://",
+      "imports": "memcpy|strcpy|sprintf|system|exec|crypt|socket|connect|recv|send|read|write"
+    },
+    "limits": {
+      "max_candidates": 50,
+      "max_matches_per_source": 100,
+      "max_xref_queries": 100,
+      "max_xrefs_per_source": 100,
+      "max_evidence_per_candidate": 20,
+      "max_scan_per_source": 10000,
+      "max_subject_chars": 4096,
+      "max_pattern_chars": 256
+    },
+    "xref_queries_truncated": false,
+    "candidates_total": 2,
+    "candidates_truncated": false
+  },
+  "candidates": [
+    {
+      "ea": "0x180001000",
+      "rva": "0x1000",
+      "name": "verify_license",
+      "score": 5,
+      "evidence": [
+        {
+          "kind": "function_name",
+          "source_ea": "0x180001000",
+          "value": "verify_license"
+        },
+        {
+          "kind": "string",
+          "source_ea": "0x180003000",
+          "value": "license-invalid-omp-owned-fixture",
+          "value_truncated": false,
+          "xref_from": "0x18000100c",
+          "xref_type": "READ"
+        }
+      ],
+      "next_action": "Inspect this function's pseudocode or assembly and verify the cited xref sites."
+    },
+    {
+      "ea": "0x180001040",
+      "rva": "0x1040",
+      "name": "decode_payload",
+      "score": 3,
+      "evidence": [
+        {
+          "kind": "function_name",
+          "source_ea": "0x180001040",
+          "value": "decode_payload"
+        }
+      ],
+      "next_action": "Inspect this function's pseudocode or assembly and verify the cited xref sites."
+    }
+  ]
+}

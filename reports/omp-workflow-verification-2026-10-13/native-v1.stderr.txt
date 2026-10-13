@@ -1,0 +1,13 @@
+no PySide6, skipping
+C:\Users\Administrator\AppData\Roaming\Hex-Rays\IDA Pro\plugins\xray\xray.py:46: SyntaxWarning: invalid escape sequence '\('
+  expr_01=^while\(
+no PySide6, skipping
+C:\Users\Administrator\AppData\Roaming\Hex-Rays\IDA Pro\plugins\xray\xray.py:46: SyntaxWarning: invalid escape sequence '\('
+  expr_01=^while\(
+C:\Users\Administrator\AppData\Roaming\Hex-Rays\IDA Pro\plugins\xray\xray.py:46: SyntaxWarning: invalid escape sequence '\('
+  expr_01=^while\(
+no PySide6, skipping
+C:\Users\Administrator\AppData\Roaming\Hex-Rays\IDA Pro\plugins\xray\xray.py:46: SyntaxWarning: invalid escape sequence '\('
+  expr_01=^while\(
+Signsrch (Python Version) (v1.0.1) plugin has been loaded.
+[Driver Buddy Reloaded] v2.5.1 loaded (IDA SDK 940).
