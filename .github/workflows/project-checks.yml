@@ -23,6 +23,8 @@ jobs:
         run: python -m pip install -e ".[test]"
       - name: Run Python tests
         run: python -m pytest -q
+      - name: Check repository contracts
+        run: python -m reverse_skill --json gates all
 
   java:
     name: Java checks

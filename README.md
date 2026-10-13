@@ -16,6 +16,10 @@ Reverse Skill Evolver provides reverse-engineering skills and tool integration f
 
 ## Install the Complete Skill
 
+The complete bundle also provides deterministic route suggestions, Python
+repository checks, case scope/evidence review and optional local SQLite
+indexing. See [local workflow commands](docs/local-workflows.md).
+
 The canonical entry is the repository-root [`SKILL.md`](SKILL.md), named
 `reverse-skill-evolver`. Install the whole directory so routing modules, shared
 scripts, CTF resources, and Python source retain their relative paths.

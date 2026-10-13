@@ -41,6 +41,7 @@ def test_opencli_description_matches_click_command_surface() -> None:
     for command in described:
         assert f"  {command}" in result.stdout
     assert described == {
+        "route", "gates", "case", "index", "retrieve",
         "asr",
         "install",
         "register",

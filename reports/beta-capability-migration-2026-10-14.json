@@ -1,0 +1,78 @@
+{
+  "base": "66999bfe6f92bcb90ea5a4a3d6e011ef806b75df",
+  "beta_source": "4a026a6f62849fc39eaac300b76d9b3a7ece0504",
+  "scope": [
+    "deterministic route suggestions and fixed benchmark",
+    "Python repository gates",
+    "case scope and evidence review",
+    "optional SQLite index and supplied IDA export ingestion"
+  ],
+  "migration_rules": {
+    "main_route_ids_preserved": true,
+    "firmware_beta_id_mapped_to": "firmware-iot",
+    "aigx_policy_imported": false,
+    "powershell_scripts_deleted": false,
+    "mcp_server_added": false,
+    "user_configuration_changed": false
+  },
+  "checks": [
+    {
+      "command": "python -m pytest -q",
+      "passed": 731,
+      "skipped": 5,
+      "duration_seconds": 185.12,
+      "scope": "full tree before final ASR priority addition"
+    },
+    {
+      "command": "python -m pytest -q tests/test_routing_benchmark.py tests/test_routing_contract.py tests/test_case_unit.py tests/test_case_review.py tests/test_repository_gates.py",
+      "passed": 215,
+      "scope": "after final ASR priority addition"
+    },
+    {
+      "command": "python -m reverse_skill --json gates all",
+      "status": "clean"
+    },
+    {
+      "command": "python -m ruff check <changed Python sources and tests>",
+      "status": "passed"
+    },
+    {
+      "command": "git diff --check",
+      "status": "passed"
+    },
+    {
+      "command": "python -m pip wheel . --no-deps --no-build-isolation",
+      "status": "passed",
+      "packaged_contracts": [
+        "routing.json",
+        "case-contracts.json",
+        "index-contracts.json"
+      ],
+      "wheel_only_route": "apk-android"
+    }
+  ],
+  "installed_package": {
+    "installer": "skills 1.7.2 --agent universal --copy",
+    "runtime": "fresh private Python environment",
+    "foreign_working_directory": true,
+    "route": "asr-registry",
+    "asr_priority_update_verified": true,
+    "repository_gates": "clean",
+    "case_default_authorization": "pending",
+    "case_default_network": "offline",
+    "case_review_invalid_exit": 5,
+    "case_hash_review": "PASS",
+    "index_plan_writes": false,
+    "index_apply_documents": 5,
+    "index_status_nodes": 25,
+    "retrieve_hybrid": "passed",
+    "omp": "18.8.9",
+    "omp_root_and_case_reads": "passed"
+  },
+  "limits": [
+    "No model requests or target analysis executed",
+    "IDA ingestion tests use supplied synthetic export data",
+    "Optional syntax parsers and beta MCP adapter are outside this migration",
+    "Deferred AIGX policy and removal of existing PowerShell workflows remain on beta"
+  ]
+}

@@ -19,11 +19,18 @@ from .errors import EnvironmentUnavailable, McpError, ReverseSkillError, ToolOpe
 from .ida import find_latest_ida, install_ida_mcp, start_server
 from .integrations import annotate_yara_matches, integration_inventory, scan_yara
 from .mcp import McpClient, probe_tool_count
+from .workflow_cli import case, gates, route
+from .index_cli import index_group, retrieve_command
 
 
 SCHEMA_VERSION = "1"
 DEFAULT_TIMEOUT = 120.0
 COMMAND_NAMES = {
+    "route",
+    "gates",
+    "case",
+    "index",
+    "retrieve",
     "asr",
     "install",
     "register",
@@ -194,6 +201,11 @@ def cli(ctx: click.Context, url: str, name: str, json_output: bool, timeout: flo
 
 
 cli.add_command(asr)
+cli.add_command(route)
+cli.add_command(gates)
+cli.add_command(case)
+cli.add_command(index_group)
+cli.add_command(retrieve_command)
 
 
 @cli.command(name="tracecard-validate")
@@ -563,7 +575,7 @@ def main(argv: list[str] | None = None) -> int:
         if json_output:
             click.echo(
                 json.dumps(
-                    _envelope(command, error={"code": exc.__class__.__name__, "message": message}),
+                    _envelope(command, error={"code": getattr(exc, "code", exc.__class__.__name__), "message": message}),
                     ensure_ascii=False,
                 )
             )

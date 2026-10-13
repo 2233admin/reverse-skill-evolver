@@ -1,132 +1,723 @@
 {
   "schema_version": 1,
-  "routing_entry": ["SKILL.md", "routing.md", "routing.json"],
+  "routing_entry": [
+    "SKILL.md",
+    "routing.md",
+    "routing.json"
+  ],
   "evolution_protocol": {
-    "pre_route": ["goal_contract", "capability_graph"],
-    "route_levels": ["macro_route", "micro_route"],
-    "post_route": ["trace_card", "success_oracle", "promotion_gate"],
-    "stable_change_requires": ["oracle_passed", "regression_checked", "sensitive_data_scan_passed", "rollback_documented"]
+    "pre_route": [
+      "goal_contract",
+      "capability_graph"
+    ],
+    "route_levels": [
+      "macro_route",
+      "micro_route"
+    ],
+    "post_route": [
+      "trace_card",
+      "success_oracle",
+      "promotion_gate"
+    ],
+    "stable_change_requires": [
+      "oracle_passed",
+      "regression_checked",
+      "sensitive_data_scan_passed",
+      "rollback_documented"
+    ]
   },
   "macro_routes": [
     {
       "id": "asr-registry",
-      "target_kinds": ["asr_registry", "asr_item", "registry_chain"],
-      "intent_keywords": ["asr", "forefy", "audited skills", "registry chain", "list ASR items", "注册表", "已审计技能"],
+      "target_kinds": [
+        "asr_registry",
+        "asr_item",
+        "registry_chain"
+      ],
+      "intent_keywords": [
+        "asr",
+        "forefy",
+        "audited skills",
+        "registry chain",
+        "list ASR items",
+        "注册表",
+        "已审计技能"
+      ],
       "primary_skill": "asr-registry/SKILL.md",
-      "requires_capabilities": ["python"],
+      "requires_capabilities": [
+        "python"
+      ],
       "fallback_edges": [],
-      "success_oracles": ["audited_items_verified", "mcp_servers_excluded", "task_relevant_chain_proposed"]
+      "success_oracles": [
+        "audited_items_verified",
+        "mcp_servers_excluded",
+        "task_relevant_chain_proposed"
+      ]
     },
     {
       "id": "apk-android",
-      "target_kinds": ["apk", "android", "xapk", "dex", "smali"],
-      "intent_keywords": ["decompile", "repack", "smali", "frida", "ssl pinning", "signature bypass", "root detection"],
-      "primary_skill": "apk-reverse/SKILL.md",
-      "requires_capabilities": ["jadx", "apktool"],
-      "fallback_edges": [
-        { "when": "native_validation_detected", "goto": "ida-reverse/SKILL.md" },
-        { "when": "cli_only_or_ida_missing", "goto": "radare2/SKILL.md" },
-        { "when": "dynamic_verification_needed", "goto": "reverse-engineering/tools-dynamic.md" }
+      "target_kinds": [
+        "apk",
+        "android",
+        "xapk",
+        "dex",
+        "smali"
       ],
-      "success_oracles": ["decoded_artifact_exists", "target_function_labeled", "replay_or_bypass_verified"]
+      "intent_keywords": [
+        "decompile",
+        "repack",
+        "smali",
+        "frida",
+        "ssl pinning",
+        "signature bypass",
+        "root detection"
+      ],
+      "primary_skill": "apk-reverse/SKILL.md",
+      "requires_capabilities": [
+        "jadx",
+        "apktool"
+      ],
+      "fallback_edges": [
+        {
+          "when": "native_validation_detected",
+          "goto": "ida-reverse/SKILL.md"
+        },
+        {
+          "when": "cli_only_or_ida_missing",
+          "goto": "radare2/SKILL.md"
+        },
+        {
+          "when": "dynamic_verification_needed",
+          "goto": "reverse-engineering/tools-dynamic.md"
+        }
+      ],
+      "success_oracles": [
+        "decoded_artifact_exists",
+        "target_function_labeled",
+        "replay_or_bypass_verified"
+      ]
     },
     {
       "id": "firmware-iot",
-      "target_kinds": ["firmware_image", "router_firmware", "iot_device"],
-      "intent_keywords": ["router firmware", "firmware image", "firmware extraction", "binwalk", "unblob", "firmadyne", "squashfs", "jffs2"],
+      "target_kinds": [
+        "firmware_image",
+        "router_firmware",
+        "iot_device",
+        "firmware",
+        "iot"
+      ],
+      "intent_keywords": [
+        "router firmware",
+        "firmware image",
+        "firmware extraction",
+        "binwalk",
+        "unblob",
+        "firmadyne",
+        "squashfs",
+        "jffs2",
+        "firmware",
+        "iot",
+        "qemu",
+        "emulation",
+        "fuzz"
+      ],
       "primary_skill": "firmware-pentest/SKILL.md",
       "requires_capabilities": [],
       "fallback_edges": [
-        { "when": "single_embedded_binary_static_analysis", "goto": "reverse-engineering/platforms.md" }
+        {
+          "when": "single_embedded_binary_static_analysis",
+          "goto": "reverse-engineering/platforms.md"
+        }
       ],
-      "success_oracles": ["firmware_stage_evidence_recorded", "requested_security_oracle_verified"]
+      "success_oracles": [
+        "firmware_stage_evidence_recorded",
+        "requested_security_oracle_verified"
+      ]
     },
     {
       "id": "js-browser-signature",
-      "target_kinds": ["js_bundle", "web_frontend", "browser_runtime", "sourcemap"],
-      "intent_keywords": ["signature", "encrypted params", "js reverse", "request replay", "websocket"],
-      "primary_skill": "js-reverse/SKILL.md",
-      "requires_capabilities": ["node", "npx"],
-      "fallback_edges": [
-        { "when": "runtime_observation_needed", "goto": "browser-automation/SKILL.md" },
-        { "when": "hook_or_cdp_needed", "goto": "jshookmcp" }
+      "target_kinds": [
+        "js_bundle",
+        "web_frontend",
+        "browser_runtime",
+        "sourcemap"
       ],
-      "success_oracles": ["entry_function_identified", "local_replay_matches_browser"]
+      "intent_keywords": [
+        "signature",
+        "encrypted params",
+        "js reverse",
+        "request replay",
+        "websocket"
+      ],
+      "primary_skill": "js-reverse/SKILL.md",
+      "requires_capabilities": [
+        "node",
+        "npx"
+      ],
+      "fallback_edges": [
+        {
+          "when": "runtime_observation_needed",
+          "goto": "browser-automation/SKILL.md"
+        },
+        {
+          "when": "hook_or_cdp_needed",
+          "goto": "jshookmcp"
+        }
+      ],
+      "success_oracles": [
+        "entry_function_identified",
+        "local_replay_matches_browser"
+      ]
     },
     {
       "id": "native-binary",
-      "target_kinds": ["elf", "pe", "dll", "so", "macho", "stripped_binary"],
-      "intent_keywords": ["ida", "disassemble", "decompile", "function map", "strings", "xref"],
+      "target_kinds": [
+        "elf",
+        "pe",
+        "dll",
+        "so",
+        "macho",
+        "stripped_binary"
+      ],
+      "intent_keywords": [
+        "ida",
+        "disassemble",
+        "decompile",
+        "function map",
+        "strings",
+        "xref",
+        "pathfinder",
+        "dyld",
+        "git-ida",
+        "ida teams"
+      ],
       "primary_skill": "ida-reverse/SKILL.md",
       "requires_capabilities": [],
-      "requires_any_capabilities": ["omp_ida_native", "idapro"],
-      "fallback_edges": [
-        { "when": "all_supported_ida_backends_unavailable", "goto": "radare2/SKILL.md" },
-        { "when": "ghidra_available_and_ida_missing", "goto": "reverse-engineering/SKILL.md" },
-        { "when": "exploitability_needed", "goto": "pwn-chain/SKILL.md" }
+      "requires_any_capabilities": [
+        "omp_ida_native",
+        "idapro"
       ],
-      "success_oracles": ["target_function_labeled", "control_flow_evidence_recorded"]
+      "fallback_edges": [
+        {
+          "when": "all_supported_ida_backends_unavailable",
+          "goto": "radare2/SKILL.md"
+        },
+        {
+          "when": "ghidra_available_and_ida_missing",
+          "goto": "reverse-engineering/SKILL.md"
+        },
+        {
+          "when": "exploitability_needed",
+          "goto": "pwn-chain/SKILL.md"
+        }
+      ],
+      "success_oracles": [
+        "target_function_labeled",
+        "control_flow_evidence_recorded"
+      ]
     },
     {
       "id": "patch-diff",
-      "target_kinds": ["two_versions", "vendor_patch", "nday", "cve_reproduction"],
-      "intent_keywords": ["patch diff", "bindiff", "ghidriff", "symbol migration", "root cause"],
-      "primary_skill": "binary-diff/SKILL.md",
-      "requires_capabilities": ["radiff2"],
-      "fallback_edges": [
-        { "when": "exploit_path_requested", "goto": "patch-diff-exploit/SKILL.md" },
-        { "when": "native_decompile_needed", "goto": "ida-reverse/SKILL.md" }
+      "target_kinds": [
+        "two_versions",
+        "vendor_patch",
+        "nday",
+        "cve_reproduction"
       ],
-      "success_oracles": ["changed_function_identified", "root_cause_explained"]
+      "intent_keywords": [
+        "patch diff",
+        "bindiff",
+        "ghidriff",
+        "symbol migration",
+        "root cause"
+      ],
+      "primary_skill": "binary-diff/SKILL.md",
+      "requires_capabilities": [
+        "radiff2"
+      ],
+      "fallback_edges": [
+        {
+          "when": "exploit_path_requested",
+          "goto": "patch-diff-exploit/SKILL.md"
+        },
+        {
+          "when": "native_decompile_needed",
+          "goto": "ida-reverse/SKILL.md"
+        }
+      ],
+      "success_oracles": [
+        "changed_function_identified",
+        "root_cause_explained"
+      ]
     },
     {
       "id": "protocol-pcap",
-      "target_kinds": ["pcap", "custom_protocol", "packet_capture", "websocket_capture"],
-      "intent_keywords": ["pcap", "protocol reverse", "packet analysis", "replay", "parser"],
-      "primary_skill": "reverse-engineering/platforms.md",
-      "requires_capabilities": ["python"],
-      "fallback_edges": [
-        { "when": "browser_origin_protocol", "goto": "js-reverse/SKILL.md" },
-        { "when": "ctf_fixture", "goto": "../CTF-Sandbox-Orchestrator/competition-pcap-protocol/SKILL.md" }
+      "target_kinds": [
+        "pcap",
+        "custom_protocol",
+        "packet_capture",
+        "websocket_capture"
       ],
-      "success_oracles": ["fields_extracted", "message_sequence_replayed_or_documented"]
+      "intent_keywords": [
+        "pcap",
+        "protocol reverse",
+        "packet analysis",
+        "replay",
+        "parser"
+      ],
+      "primary_skill": "reverse-engineering/platforms.md",
+      "requires_capabilities": [
+        "python"
+      ],
+      "fallback_edges": [
+        {
+          "when": "browser_origin_protocol",
+          "goto": "js-reverse/SKILL.md"
+        },
+        {
+          "when": "ctf_fixture",
+          "goto": "../CTF-Sandbox-Orchestrator/competition-pcap-protocol/SKILL.md"
+        }
+      ],
+      "success_oracles": [
+        "fields_extracted",
+        "message_sequence_replayed_or_documented"
+      ]
     },
     {
       "id": "protocol-source-implementation",
-      "target_kinds": ["source_tree", "rust_workspace", "go_workspace", "custom_protocol_client", "market_data_protocol"],
-      "intent_keywords": ["protocol implementation", "codec", "packet parser", "fixture replay", "cargo test", "tdx", "level2", "l2", "levin"],
-      "primary_skill": "reverse-engineering/platforms.md",
-      "requires_capabilities": ["python"],
-      "fallback_edges": [
-        { "when": "compiled_binary_needed", "goto": "reverse-engineering/languages-compiled.md" },
-        { "when": "runtime_or_live_endpoint_needed", "goto": "reverse-engineering/tools-dynamic.md" },
-        { "when": "websocket_or_http_origin", "goto": "js-reverse/SKILL.md" }
+      "target_kinds": [
+        "source_tree",
+        "rust_workspace",
+        "go_workspace",
+        "custom_protocol_client",
+        "market_data_protocol"
       ],
-      "success_oracles": ["offline_unit_tests_pass", "cli_or_fixture_replay_passed", "live_tests_isolated_or_explicitly_marked"]
+      "intent_keywords": [
+        "protocol implementation",
+        "codec",
+        "packet parser",
+        "fixture replay",
+        "cargo test",
+        "tdx",
+        "level2",
+        "l2",
+        "levin"
+      ],
+      "primary_skill": "reverse-engineering/platforms.md",
+      "requires_capabilities": [
+        "python"
+      ],
+      "fallback_edges": [
+        {
+          "when": "compiled_binary_needed",
+          "goto": "reverse-engineering/languages-compiled.md"
+        },
+        {
+          "when": "runtime_or_live_endpoint_needed",
+          "goto": "reverse-engineering/tools-dynamic.md"
+        },
+        {
+          "when": "websocket_or_http_origin",
+          "goto": "js-reverse/SKILL.md"
+        }
+      ],
+      "success_oracles": [
+        "offline_unit_tests_pass",
+        "cli_or_fixture_replay_passed",
+        "live_tests_isolated_or_explicitly_marked"
+      ]
     },
     {
       "id": "active-security-assessment",
-      "target_kinds": ["web_app", "api", "cloud", "network", "source_tree"],
-      "intent_keywords": ["pentest", "api security", "bug bounty", "src", "nuclei", "burp", "graphql", "jwt"],
+      "target_kinds": [
+        "web_app",
+        "api",
+        "cloud",
+        "network",
+        "source_tree"
+      ],
+      "intent_keywords": [
+        "pentest",
+        "api security",
+        "bug bounty",
+        "src",
+        "nuclei",
+        "burp",
+        "graphql",
+        "jwt"
+      ],
       "primary_skill": "pentest-tools/SKILL.md",
       "requires_capabilities": [],
       "fallback_edges": [
-        { "when": "api_specific", "goto": "api-security/SKILL.md" },
-        { "when": "llm_agent_surface", "goto": "llm-security/SKILL.md" },
-        { "when": "end_to_end_attack_chain", "goto": "attack-chain/SKILL.md" }
+        {
+          "when": "api_specific",
+          "goto": "api-security/SKILL.md"
+        },
+        {
+          "when": "llm_agent_surface",
+          "goto": "llm-security/SKILL.md"
+        },
+        {
+          "when": "end_to_end_attack_chain",
+          "goto": "attack-chain/SKILL.md"
+        }
       ],
-      "success_oracles": ["scope_respected", "finding_reproduced", "evidence_recorded"]
+      "success_oracles": [
+        "scope_respected",
+        "finding_reproduced",
+        "evidence_recorded"
+      ]
     },
     {
       "id": "unattended-overnight-run",
-      "target_kinds": ["overnight_run", "unattended_task", "deadline_run"],
-      "intent_keywords": ["overnight", "过夜", "整夜", "unattended", "无人值守", "deadline", "早上看结果"],
+      "target_kinds": [
+        "overnight_run",
+        "unattended_task",
+        "deadline_run"
+      ],
+      "intent_keywords": [
+        "overnight",
+        "过夜",
+        "整夜",
+        "unattended",
+        "无人值守",
+        "deadline",
+        "早上看结果"
+      ],
       "primary_skill": "overnight-run/SKILL.md",
       "requires_capabilities": [],
       "fallback_edges": [
-        { "when": "evolution_loop_needed", "goto": "evolution/SKILL.md" }
+        {
+          "when": "evolution_loop_needed",
+          "goto": "evolution/SKILL.md"
+        }
       ],
-      "success_oracles": ["slots_validated", "night_branch_exists", "report_readable"]
+      "success_oracles": [
+        "slots_validated",
+        "night_branch_exists",
+        "report_readable"
+      ]
+    },
+    {
+      "id": "mobile-reverse",
+      "target_kinds": [
+        "ipa",
+        "ios",
+        "mobile_app"
+      ],
+      "intent_keywords": [
+        "ios reverse",
+        "mobile security",
+        "objection",
+        "ssl pinning",
+        "root detection"
+      ],
+      "primary_skill": "mobile-reverse/SKILL.md",
+      "requires_capabilities": [
+        "frida"
+      ],
+      "fallback_edges": [
+        {
+          "when": "native_validation_detected",
+          "goto": "ida-reverse/SKILL.md"
+        },
+        {
+          "when": "cli_only_or_ida_missing",
+          "goto": "reverse-engineering/tools-dynamic.md"
+        }
+      ],
+      "success_oracles": [
+        "target_function_identified",
+        "dynamic_behavior_replayed",
+        "bypass_or_failure_evidence_recorded"
+      ]
+    },
+    {
+      "id": "malware-analysis",
+      "target_kinds": [
+        "malware",
+        "virus_sample",
+        "malware_fixture"
+      ],
+      "intent_keywords": [
+        "malware",
+        "virus",
+        "sample analysis",
+        "yara",
+        "sigma",
+        "ioc",
+        "sandbox"
+      ],
+      "primary_skill": "malware-analysis/SKILL.md",
+      "requires_capabilities": [
+        "python"
+      ],
+      "fallback_edges": [
+        {
+          "when": "native_validation_detected",
+          "goto": "ida-reverse/SKILL.md"
+        },
+        {
+          "when": "dynamic_verification_needed",
+          "goto": "reverse-engineering/tools-dynamic.md"
+        }
+      ],
+      "success_oracles": [
+        "static_indicators_recorded",
+        "behavior_evidence_recorded",
+        "ioc_or_rule_artifact_written"
+      ]
+    },
+    {
+      "id": "api-security",
+      "target_kinds": [
+        "api_security",
+        "graphql_api",
+        "jwt_api"
+      ],
+      "intent_keywords": [
+        "api security",
+        "graphql",
+        "jwt",
+        "oauth",
+        "bola",
+        "idor",
+        "api test"
+      ],
+      "primary_skill": "api-security/SKILL.md",
+      "requires_capabilities": [
+        "python"
+      ],
+      "fallback_edges": [
+        {
+          "when": "end_to_end_attack_chain",
+          "goto": "attack-chain/SKILL.md"
+        },
+        {
+          "when": "browser_origin_protocol",
+          "goto": "browser-automation/SKILL.md"
+        }
+      ],
+      "success_oracles": [
+        "scope_respected",
+        "request_reproduced",
+        "finding_or_negative_evidence_recorded"
+      ]
+    },
+    {
+      "id": "llm-security",
+      "target_kinds": [
+        "llm_application",
+        "agent_surface",
+        "prompt_injection"
+      ],
+      "intent_keywords": [
+        "llm security",
+        "prompt injection",
+        "agent security",
+        "tool abuse",
+        "memory poisoning"
+      ],
+      "primary_skill": "llm-security/SKILL.md",
+      "requires_capabilities": [],
+      "fallback_edges": [
+        {
+          "when": "end_to_end_attack_chain",
+          "goto": "attack-chain/SKILL.md"
+        }
+      ],
+      "success_oracles": [
+        "scope_respected",
+        "attack_case_reproduced_or_rejected",
+        "mitigation_evidence_recorded"
+      ]
+    },
+    {
+      "id": "supply-chain-security",
+      "target_kinds": [
+        "supply_chain",
+        "sbom",
+        "sca"
+      ],
+      "intent_keywords": [
+        "supply chain",
+        "sbom",
+        "sca",
+        "dependency scan",
+        "container security",
+        "cicd"
+      ],
+      "primary_skill": "supply-chain-security/SKILL.md",
+      "requires_capabilities": [
+        "python"
+      ],
+      "fallback_edges": [],
+      "success_oracles": [
+        "sbom_written",
+        "dependency_findings_reproduced",
+        "reachability_or_risk_recorded"
+      ]
+    },
+    {
+      "id": "pwn-chain",
+      "target_kinds": [
+        "pwn",
+        "rop",
+        "exploit_chain"
+      ],
+      "intent_keywords": [
+        "pwn",
+        "stack overflow",
+        "heap",
+        "rop",
+        "ret2libc",
+        "exploit"
+      ],
+      "primary_skill": "pwn-chain/SKILL.md",
+      "requires_capabilities": [
+        "python"
+      ],
+      "fallback_edges": [
+        {
+          "when": "native_decompile_needed",
+          "goto": "ida-reverse/SKILL.md"
+        }
+      ],
+      "success_oracles": [
+        "crash_or_control_evidence_recorded",
+        "exploit_reproduced_in_scope",
+        "stability_limit_documented"
+      ]
+    },
+    {
+      "id": "ghidra-reverse",
+      "target_kinds": [
+        "ghidra",
+        "ghidra_headless"
+      ],
+      "intent_keywords": [
+        "ghidra",
+        "ghidra headless",
+        "free ida alternative"
+      ],
+      "primary_skill": "ghidra-reverse/SKILL.md",
+      "requires_capabilities": [
+        "analyzeHeadless"
+      ],
+      "fallback_edges": [
+        {
+          "when": "idapro_unavailable",
+          "goto": "radare2/SKILL.md"
+        }
+      ],
+      "success_oracles": [
+        "ghidra_project_created",
+        "analysis_artifact_written"
+      ]
+    },
+    {
+      "id": "edr-bypass-re",
+      "target_kinds": [
+        "edr",
+        "av_bypass",
+        "edr_bypass"
+      ],
+      "intent_keywords": [
+        "edr bypass",
+        "amsi",
+        "etw",
+        "hook survey",
+        "telemetry"
+      ],
+      "primary_skill": "edr-bypass-re/SKILL.md",
+      "requires_capabilities": [
+        "python"
+      ],
+      "fallback_edges": [
+        {
+          "when": "native_decompile_needed",
+          "goto": "ida-reverse/SKILL.md"
+        }
+      ],
+      "success_oracles": [
+        "hook_or_telemetry_evidence_recorded",
+        "claim_reproduced_in_authorized_lab"
+      ]
+    },
+    {
+      "id": "diagram-generator",
+      "target_kinds": [
+        "diagram",
+        "flowchart",
+        "architecture_diagram"
+      ],
+      "intent_keywords": [
+        "draw diagram",
+        "flowchart",
+        "architecture diagram",
+        "sequence diagram",
+        "state machine"
+      ],
+      "primary_skill": "diagram-generator/SKILL.md",
+      "requires_capabilities": [
+        "python"
+      ],
+      "fallback_edges": [],
+      "success_oracles": [
+        "diagram_artifact_rendered",
+        "diagram_matches_requested_relationships"
+      ]
+    },
+    {
+      "id": "docs-generator",
+      "target_kinds": [
+        "report",
+        "writeup",
+        "technical_report"
+      ],
+      "intent_keywords": [
+        "write report",
+        "writeup",
+        "technical documentation",
+        "报告",
+        "文档"
+      ],
+      "primary_skill": "docs-generator/SKILL.md",
+      "requires_capabilities": [],
+      "fallback_edges": [],
+      "success_oracles": [
+        "report_artifact_written",
+        "evidence_and_limitations_present"
+      ]
+    },
+    {
+      "id": "case-review",
+      "target_kinds": [
+        "case_package",
+        "evidence_graph",
+        "case_evidence"
+      ],
+      "intent_keywords": [
+        "case review",
+        "case audit",
+        "evidence chain",
+        "evidence graph",
+        "traceability",
+        "fixity check",
+        "证据链",
+        "证据图",
+        "可追溯性",
+        "案件审查",
+        "案例审计"
+      ],
+      "primary_skill": "case-review/SKILL.md",
+      "requires_capabilities": [],
+      "fallback_edges": [],
+      "success_oracles": [
+        "case_review_passed",
+        "traceability_verified"
+      ]
     }
   ],
   "micro_route_rules": [
@@ -146,5 +737,334 @@
       "when": "trace_contains_no_new_evidence_for_two_steps",
       "action": "change_static_dynamic_or_tool_family"
     }
-  ]
+  ],
+  "route_aliases": {
+    "apk-android": [
+      "apk",
+      "android",
+      "安卓",
+      "smali",
+      "jadx",
+      "apktool",
+      "ssl pinning",
+      "root detection"
+    ],
+    "js-browser-signature": [
+      "javascript",
+      "js",
+      "前端",
+      "浏览器",
+      "签名",
+      "加密参数",
+      "websocket",
+      "sourcemap",
+      "cdp"
+    ],
+    "native-binary": [
+      "binary",
+      "二进制",
+      "exe",
+      "dll",
+      "sys",
+      "elf",
+      "so",
+      "macho",
+      "反编译",
+      "反汇编",
+      "ida",
+      "xref",
+      "pathfinder",
+      "dyld",
+      "git-ida",
+      "ida teams"
+    ],
+    "patch-diff": [
+      "diff",
+      "差分",
+      "bindiff",
+      "diaphora",
+      "补丁",
+      "patch diff",
+      "cve reproduction",
+      "符号迁移"
+    ],
+    "protocol-pcap": [
+      "pcap",
+      "pcapng",
+      "抓包",
+      "协议逆向",
+      "数据包",
+      "packet",
+      "wireshark",
+      "tshark"
+    ],
+    "protocol-source-implementation": [
+      "协议实现",
+      "协议源码",
+      "codec",
+      "packet parser",
+      "fixture replay",
+      "cargo test",
+      "rust workspace",
+      "go workspace"
+    ],
+    "mobile-reverse": [
+      "mobile",
+      "移动端",
+      "ios",
+      "ipa",
+      "objection"
+    ],
+    "firmware-iot": [
+      "firmware",
+      "固件",
+      "iot",
+      "路由器固件",
+      "qemu",
+      "afl++"
+    ],
+    "malware-analysis": [
+      "malware",
+      "恶意软件",
+      "病毒",
+      "样本分析",
+      "ioc",
+      "sigma",
+      "sandbox"
+    ],
+    "api-security": [
+      "api security",
+      "api 安全",
+      "graphql",
+      "jwt",
+      "oauth",
+      "bola",
+      "idor"
+    ],
+    "llm-security": [
+      "llm security",
+      "llm 安全",
+      "prompt injection",
+      "提示词注入",
+      "agent security",
+      "模型安全"
+    ],
+    "supply-chain-security": [
+      "supply chain",
+      "供应链",
+      "sbom",
+      "sca",
+      "依赖扫描",
+      "trivy"
+    ],
+    "pwn-chain": [
+      "pwn",
+      "rop",
+      "ret2libc",
+      "栈溢出",
+      "堆利用",
+      "pwntools"
+    ],
+    "ghidra-reverse": [
+      "ghidra",
+      "ghidra headless"
+    ],
+    "edr-bypass-re": [
+      "edr",
+      "edr bypass",
+      "av bypass",
+      "amsi",
+      "etw",
+      "edr 绕过"
+    ],
+    "diagram-generator": [
+      "diagram",
+      "图表",
+      "流程图",
+      "架构图",
+      "状态机"
+    ],
+    "docs-generator": [
+      "report",
+      "报告",
+      "writeup",
+      "文档",
+      "技术报告"
+    ],
+    "active-security-assessment": [
+      "security assessment",
+      "安全测试",
+      "渗透测试",
+      "bug bounty",
+      "漏洞扫描",
+      "api security",
+      "graphql",
+      "jwt",
+      "nuclei",
+      "burp"
+    ],
+    "unattended-overnight-run": [
+      "overnight",
+      "过夜",
+      "整夜",
+      "无人值守",
+      "unattended",
+      "deadline",
+      "早上看结果"
+    ],
+    "asr-registry": [
+      "forefy",
+      "asr registry",
+      "audited skills",
+      "审计技能",
+      "技能注册表"
+    ],
+    "case-review": [
+      "case review",
+      "case-review",
+      "案件审查",
+      "证据复核"
+    ]
+  },
+  "target_aliases": {
+    "apk-android": [
+      "apk",
+      "android",
+      "xapk",
+      "dex",
+      "smali",
+      "安卓"
+    ],
+    "js-browser-signature": [
+      "js_bundle",
+      "javascript",
+      "web_frontend",
+      "browser_runtime",
+      "sourcemap",
+      "网页",
+      "前端"
+    ],
+    "native-binary": [
+      "elf",
+      "pe",
+      "dll",
+      "so",
+      "macho",
+      "stripped_binary",
+      "exe",
+      "sys",
+      "二进制"
+    ],
+    "patch-diff": [
+      "two_versions",
+      "vendor_patch",
+      "nday",
+      "cve_reproduction",
+      "补丁",
+      "差分"
+    ],
+    "protocol-pcap": [
+      "pcap",
+      "custom_protocol",
+      "packet_capture",
+      "websocket_capture",
+      "抓包"
+    ],
+    "protocol-source-implementation": [
+      "source_tree",
+      "rust_workspace",
+      "go_workspace",
+      "custom_protocol_client",
+      "market_data_protocol",
+      "源码",
+      "协议源码"
+    ],
+    "mobile-reverse": [
+      "ipa",
+      "ios",
+      "mobile_app",
+      "移动端",
+      "iOS"
+    ],
+    "firmware-iot": [
+      "firmware",
+      "iot",
+      "固件",
+      "router_firmware"
+    ],
+    "malware-analysis": [
+      "malware",
+      "virus_sample",
+      "恶意样本",
+      "病毒样本"
+    ],
+    "api-security": [
+      "api",
+      "web_api",
+      "graphql",
+      "jwt",
+      "api_security",
+      "API安全"
+    ],
+    "llm-security": [
+      "llm_application",
+      "agent_surface",
+      "prompt_injection",
+      "LLM安全"
+    ],
+    "supply-chain-security": [
+      "supply_chain",
+      "sbom",
+      "sca",
+      "供应链安全"
+    ],
+    "pwn-chain": [
+      "pwn",
+      "rop",
+      "exploit_chain",
+      "利用链"
+    ],
+    "ghidra-reverse": [
+      "ghidra",
+      "ghidra_headless"
+    ],
+    "edr-bypass-re": [
+      "edr",
+      "av_bypass",
+      "edr_bypass"
+    ],
+    "diagram-generator": [
+      "diagram",
+      "flowchart",
+      "architecture_diagram",
+      "图表"
+    ],
+    "docs-generator": [
+      "report",
+      "writeup",
+      "technical_report",
+      "报告"
+    ],
+    "active-security-assessment": [
+      "web_app",
+      "api",
+      "cloud",
+      "network",
+      "source_tree",
+      "安全测试"
+    ],
+    "unattended-overnight-run": [
+      "overnight_run",
+      "unattended_task",
+      "deadline_run",
+      "过夜"
+    ],
+    "asr-registry": [
+      "asr_item",
+      "agent_skill",
+      "agent_goal",
+      "agent_workflow",
+      "asr registry"
+    ]
+  }
 }
