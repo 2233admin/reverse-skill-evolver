@@ -273,7 +273,8 @@ public static class ReverseSkillCommandLine {
     foreach ($owner in $owners) {
         $listener = Read-Identity $owner
         $chain = @($listener)
-        if ($listener.Info.ExecutablePath -ne $env:REVERSE_SKILL_SERVER) {
+        if ($listener.Info.ExecutablePath -ne $env:REVERSE_SKILL_SERVER -or
+            [IO.Path]::GetFileName($listener.Info.ExecutablePath) -in @('python.exe', 'pythonw.exe')) {
             # distlib runs python.exe <launcher.exe>; venv Python may add a redirector parent.
             $interpreter = Read-PythonInvocation $listener
             $child = $listener

@@ -554,7 +554,7 @@ def test_codex_mcp_timeouts_fail_without_fallback_or_retry(
         """Record subprocess options and simulate a timeout at the selected MCP operation."""
         calls.append((args, kwargs))
         if args[2] == operation:
-            raise subprocess.TimeoutExpired(args, kwargs.get("timeout", expected_timeout))
+            raise subprocess.TimeoutExpired(args, kwargs["timeout"])
         if args[2] == "get":
             if not existing:
                 return subprocess.CompletedProcess(args, 1, b"", b"not found")
@@ -612,3 +612,24 @@ def test_codex_invalid_utf8_propagates_from_real_subprocess(tmp_path, monkeypatc
             cli_module.codex_registration("idapro")
         else:
             cli_module.register_codex("idapro", "http://new.example/mcp")
+
+
+@pytest.mark.parametrize("operation", ["get", "add"])
+def test_codex_configured_timeout_stops_real_slow_subprocess(tmp_path, monkeypatch, operation):
+    script = tmp_path / "mcp"
+    script.write_text(
+        "import json, sys, time\n"
+        f"if sys.argv[1] == 'get' and {operation!r} == 'add':\n"
+        "    print(json.dumps({'enabled': True, 'transport': {'type': 'streamable_http', 'url': 'http://old.example/mcp'}}))\n"
+        "else:\n"
+        "    time.sleep(1.5)\n"
+        "    print('{}')\n",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(cli_module.shutil, "which", lambda _: sys._base_executable)
+    with pytest.raises(cli_module.EnvironmentUnavailable, match="timed out after 0.5 seconds"):
+        if operation == "get":
+            cli_module.codex_registration("idapro", timeout=0.5)
+        else:
+            cli_module.register_codex("idapro", "http://new.example/mcp", timeout=0.5)

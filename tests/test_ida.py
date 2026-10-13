@@ -156,34 +156,42 @@ def test_start_success_returns_log_and_pid(tmp_path, monkeypatch):
 
 @pytest.mark.skipif(os.name != "nt", reason="Windows ownership inspection")
 def test_replace_real_isolated_listeners_preserves_other_port_and_unknown_owner(tmp_path):
-    code = """import _winapi, json, socket, time
+    import _winapi
+
+    code = """import _winapi, json, os, socket, time
 s = socket.socket()
 s.bind(('127.0.0.1', 0))
 s.listen()
-print(json.dumps({'port': s.getsockname()[1], 'executable': _winapi.GetModuleFileName(0)}), flush=True)
+print(json.dumps({'pid': os.getpid(), 'port': s.getsockname()[1], 'executable': _winapi.GetModuleFileName(0)}), flush=True)
 time.sleep(60)
 """
     children = [subprocess.Popen([sys.executable, "-c", code], stdout=subprocess.PIPE, text=True) for _ in range(2)]
+    handles = []
     try:
         listeners = [json.loads(child.stdout.readline()) for child in children]
+        for listener in listeners:
+            handles.append(_winapi.OpenProcess(_winapi.PROCESS_ALL_ACCESS, False, listener['pid']))
         ports = [listener['port'] for listener in listeners]
-        for port in ports:
-            with pytest.raises(EnvironmentUnavailable):
-                ida._terminate_stale_server(port, str(tmp_path / "unknown.exe"))
+        for selected in (str(tmp_path / "unknown.exe"), listeners[0]['executable']):
+            with pytest.raises(EnvironmentUnavailable, match='no process was stopped'):
+                ida._terminate_stale_server(ports[0], selected)
         assert all(child.poll() is None for child in children)
         for port in ports:
             with socket.create_connection(('127.0.0.1', port), timeout=1):
                 pass
-        ida._terminate_stale_server(ports[0], listeners[0]['executable'])
-        children[0].wait(timeout=3)
-        assert children[1].poll() is None
-        with socket.create_connection(('127.0.0.1', ports[1]), timeout=1):
-            pass
     finally:
+        for handle in handles:
+            try:
+                if _winapi.WaitForSingleObject(handle, 0) == _winapi.WAIT_TIMEOUT:
+                    _winapi.TerminateProcess(handle, 1)
+                    assert _winapi.WaitForSingleObject(handle, 3000) != _winapi.WAIT_TIMEOUT
+            finally:
+                _winapi.CloseHandle(handle)
         for child in children:
             if child.poll() is None:
                 child.terminate()
             child.wait(timeout=3)
+            child.stdout.close()
 
 
 def _inert_console_launcher(directory, interpreter=sys.executable):
