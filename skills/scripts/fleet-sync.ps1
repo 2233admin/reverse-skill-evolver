@@ -69,15 +69,23 @@ $script:SkippedNoSource = New-Object System.Collections.Generic.List[string]
 
 function Invoke-RemotePowerShell {
     param([Parameter(Mandatory = $true)][string]$Command)
-    $remoteCmd = "powershell -NoProfile -NonInteractive -Command `"$Command`""
+    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($Command))
+    $remoteCmd = "powershell -NoProfile -NonInteractive -EncodedCommand $encoded"
     $fullArgs = $SshBaseArgs + @($remoteCmd)
     $output = & ssh @fullArgs 2>$null
+    if ($LASTEXITCODE -ne 0) { throw "SSH failed ($LASTEXITCODE): $SshTarget" }
     return $output
+}
+
+function Invoke-FleetCopy {
+    param([string]$Source, [string]$Destination)
+    & scp -F none -P 22 $Source $Destination
+    if ($LASTEXITCODE -ne 0) { throw "SCP failed ($LASTEXITCODE): $Source -> $Destination" }
 }
 
 function Get-RemoteFileNames {
     param([Parameter(Mandatory = $true)][string]$RelDir)
-    $remoteDir = "$RemotePath\$RelDir"
+    $remoteDir = "$RemotePath\$RelDir".Replace("'", "''")
     $cmd = "if (-not (Test-Path -LiteralPath '$remoteDir')) { New-Item -ItemType Directory -Force -Path '$remoteDir' | Out-Null }; Get-ChildItem -LiteralPath '$remoteDir' -File | Select-Object -ExpandProperty Name"
     $names = Invoke-RemotePowerShell -Command $cmd
     if ($null -eq $names) { return @() }
@@ -86,7 +94,7 @@ function Get-RemoteFileNames {
 
 function Test-RemoteFileExists {
     param([Parameter(Mandatory = $true)][string]$RelFile)
-    $remoteFile = "$RemotePath\$RelFile"
+    $remoteFile = "$RemotePath\$RelFile".Replace("'", "''")
     $cmd = "if (Test-Path -LiteralPath '$remoteFile' -PathType Leaf) { 'YES' } else { 'NO' }"
     $result = Invoke-RemotePowerShell -Command $cmd
     return (($result -join '') -match 'YES')
@@ -94,7 +102,7 @@ function Test-RemoteFileExists {
 
 function Assert-RemoteDir {
     param([Parameter(Mandatory = $true)][string]$RelDir)
-    $remoteDir = "$RemotePath\$RelDir"
+    $remoteDir = "$RemotePath\$RelDir".Replace("'", "''")
     $cmd = "if (-not (Test-Path -LiteralPath '$remoteDir')) { New-Item -ItemType Directory -Force -Path '$remoteDir' | Out-Null }"
     Invoke-RemotePowerShell -Command $cmd | Out-Null
 }
@@ -121,7 +129,7 @@ function Sync-Directory {
             }
             $remoteFile = "$RemotePath\$RelDir\$name"
             $localFile = Join-Path $localDir $name
-            & scp -P 22 "${SshTarget}:${remoteFile}" "$localFile"
+            Invoke-FleetCopy -Source "${SshTarget}:${remoteFile}" -Destination $localFile
             $script:Copied.Add("PULL $RelDir\$name")
         }
     }
@@ -133,7 +141,7 @@ function Sync-Directory {
             }
             $localFile = Join-Path $localDir $name
             $remoteFile = "$RemotePath\$RelDir\$name"
-            & scp -P 22 "$localFile" "${SshTarget}:${remoteFile}"
+            Invoke-FleetCopy -Source $localFile -Destination "${SshTarget}:${remoteFile}"
             $script:Copied.Add("PUSH $RelDir\$name")
         }
     }
@@ -163,7 +171,7 @@ function Sync-File {
             New-Item -ItemType Directory -Force -Path $localParent | Out-Null
         }
         $remoteFile = "$RemotePath\$RelFile"
-        & scp -P 22 "${SshTarget}:${remoteFile}" "$localFile"
+        Invoke-FleetCopy -Source "${SshTarget}:${remoteFile}" -Destination $localFile
         $script:Copied.Add("PULL $RelFile")
     }
     else {
@@ -178,7 +186,7 @@ function Sync-File {
         $remoteParentRel = Split-Path -Parent $RelFile
         if ($remoteParentRel) { Assert-RemoteDir -RelDir $remoteParentRel }
         $remoteFile = "$RemotePath\$RelFile"
-        & scp -P 22 "$localFile" "${SshTarget}:${remoteFile}"
+        Invoke-FleetCopy -Source $localFile -Destination "${SshTarget}:${remoteFile}"
         $script:Copied.Add("PUSH $RelFile")
     }
 }

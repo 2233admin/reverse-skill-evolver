@@ -32,75 +32,10 @@ $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 
+. (Join-Path $PSScriptRoot '..\..\scripts\lib\ToolDiscovery.ps1')
+
 if ([string]::IsNullOrWhiteSpace($KeystorePath)) {
     $KeystorePath = Join-Path $PSScriptRoot '..\debug.keystore'
-}
-
-function Get-ToolPath {
-    param([Parameter(Mandatory = $true)][string]$Name)
-
-    $cmd = Get-Command $Name -ErrorAction SilentlyContinue
-    if ($cmd) {
-        return $cmd.Source
-    }
-
-    $sdkRoot = Join-Path $env:LOCALAPPDATA 'Android\Sdk'
-    $buildTools = @()
-    if (Test-Path -LiteralPath (Join-Path $sdkRoot 'build-tools')) {
-        $buildTools = Get-ChildItem -LiteralPath (Join-Path $sdkRoot 'build-tools') -Directory -ErrorAction SilentlyContinue |
-            Sort-Object -Property Name -Descending
-    }
-
-    $fallbacks = @{
-        'apktool' = @(
-            (Join-Path $env:USERPROFILE 'Tools\apktool\apktool.bat')
-        )
-        'zipalign' = @($buildTools | ForEach-Object { Join-Path $_.FullName 'zipalign.exe' })
-        'apksigner' = @($buildTools | ForEach-Object { Join-Path $_.FullName 'apksigner.bat' })
-        'keytool' = @()
-        'adb' = @(
-            (Join-Path $sdkRoot 'platform-tools\adb.exe'),
-            (Join-Path $env:USERPROFILE 'AppData\Local\Android\Sdk\platform-tools\adb.exe')
-        )
-    }
-
-    if ($fallbacks.Contains($Name)) {
-        foreach ($candidate in $fallbacks[$Name]) {
-            if (-not [string]::IsNullOrWhiteSpace($candidate) -and (Test-Path -LiteralPath $candidate)) {
-                return $candidate
-            }
-        }
-    }
-
-    # Attempt auto-bootstrap for supported tools
-    $bootstrapScript = Join-Path $PSScriptRoot '..\..\scripts\bootstrap-reverse.ps1'
-    $bootstrapSupported = @('adb', 'apktool')
-    if ($Name -in $bootstrapSupported -and (Test-Path -LiteralPath $bootstrapScript)) {
-        Write-Host "INFO: $Name not found, attempting auto-bootstrap..." -ForegroundColor Yellow
-        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $bootstrapScript -Capability @($Name) -SkipRefresh
-        $cmd = Get-Command $Name -ErrorAction SilentlyContinue
-        if ($cmd) {
-            Write-Host "INFO: $Name bootstrapped successfully." -ForegroundColor Green
-            return $cmd.Source
-        }
-        # Re-check fallbacks after bootstrap
-        if ($fallbacks.Contains($Name)) {
-            foreach ($candidate in $fallbacks[$Name]) {
-                if (-not [string]::IsNullOrWhiteSpace($candidate) -and (Test-Path -LiteralPath $candidate)) {
-                    Write-Host "INFO: $Name found at fallback path after bootstrap." -ForegroundColor Green
-                    return $candidate
-                }
-            }
-        }
-    }
-
-    # Clear error message for tools that cannot be auto-bootstrapped
-    $manualHint = switch ($Name) {
-        'zipalign'  { 'Install Android Build-Tools via Android SDK Manager (sdkmanager "build-tools;35.0.0")' }
-        'apksigner' { 'Install Android Build-Tools via Android SDK Manager (sdkmanager "build-tools;35.0.0")' }
-        default     { "Install $Name manually" }
-    }
-    throw "Missing required CLI tool: $Name — $manualHint"
 }
 
 function Ensure-DebugKeystore {
@@ -139,13 +74,15 @@ if ([string]::IsNullOrWhiteSpace($OutDir)) {
     $OutDir = $projectParent
 }
 
-$apktool = Get-ToolPath -Name 'apktool'
-$zipalign = Get-ToolPath -Name 'zipalign'
-$apksigner = Get-ToolPath -Name 'apksigner'
-$keytool = Get-ToolPath -Name 'keytool'
-$adb = Get-ToolPath -Name 'adb'
+$apktool = Get-RequiredReverseToolSpec -Name 'apktool'
+$zipalign = Get-RequiredReverseToolSpec -Name 'zipalign'
+$apksigner = Get-RequiredReverseToolSpec -Name 'apksigner'
+$adb = if ($Install) { Get-RequiredReverseToolSpec -Name 'adb' } else { $null }
 
-Ensure-DebugKeystore -Path $KeystorePath -Keytool $keytool -Alias $KeyAlias -StorePassword $StorePass -KeyPassword $KeyPass
+if (-not (Test-Path -LiteralPath $KeystorePath -PathType Leaf)) {
+    $keytool = Get-RequiredReverseToolSpec -Name 'keytool'
+    Ensure-DebugKeystore -Path $KeystorePath -Keytool $keytool.Command -Alias $KeyAlias -StorePassword $StorePass -KeyPassword $KeyPass
+}
 
 if (-not (Test-Path -LiteralPath $OutDir)) {
     New-Item -ItemType Directory -Path $OutDir -Force | Out-Null
@@ -164,23 +101,22 @@ if ($Clean) {
     }
 }
 
-& $apktool b $ProjectDir -o $unsignedApk
+& $apktool.Command @($apktool.PrefixArgs + @('b', $ProjectDir, '-o', $unsignedApk))
 if ($LASTEXITCODE -ne 0) {
     throw 'apktool build failed.'
 }
 
-& $zipalign -f -p 4 $unsignedApk $alignedApk
+& $zipalign.Command @($zipalign.PrefixArgs + @('-f', '-p', '4', $unsignedApk, $alignedApk))
 if ($LASTEXITCODE -ne 0) {
     throw 'zipalign failed.'
 }
 
-Copy-Item -LiteralPath $alignedApk -Destination $signedApk -Force
-& $apksigner sign --ks $KeystorePath --ks-key-alias $KeyAlias --ks-pass "pass:$StorePass" --key-pass "pass:$KeyPass" --out $signedApk $alignedApk
+& $apksigner.Command @($apksigner.PrefixArgs + @('sign', '--ks', $KeystorePath, '--ks-key-alias', $KeyAlias, '--ks-pass', "pass:$StorePass", '--key-pass', "pass:$KeyPass", '--out', $signedApk, $alignedApk))
 if ($LASTEXITCODE -ne 0) {
     throw 'apksigner sign failed.'
 }
 
-& $apksigner verify --print-certs $signedApk
+& $apksigner.Command @($apksigner.PrefixArgs + @('verify', '--print-certs', $signedApk))
 if ($LASTEXITCODE -ne 0) {
     throw 'apksigner verify failed.'
 }
@@ -202,7 +138,7 @@ if ($Install) {
     }
     $installArgs += $signedApk
 
-    & $adb @installArgs
+    & $adb.Command @($adb.PrefixArgs + $installArgs)
     if ($LASTEXITCODE -ne 0) {
         throw 'adb install failed.'
     }

@@ -27,79 +27,11 @@ $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 
-function Get-PythonScriptCandidates {
-    param([Parameter(Mandatory = $true)][string]$ExecutableName)
-
-    $roots = @(
-        (Join-Path $env:APPDATA 'Python'),
-        (Join-Path $env:LOCALAPPDATA 'Programs\Python')
-    )
-
-    $candidates = New-Object System.Collections.Generic.List[string]
-    foreach ($root in $roots) {
-        if (-not (Test-Path -LiteralPath $root)) {
-            continue
-        }
-
-        $matches = Get-ChildItem -LiteralPath $root -Directory -ErrorAction SilentlyContinue
-        foreach ($dir in $matches) {
-            $candidate = Join-Path $dir.FullName (Join-Path 'Scripts' $ExecutableName)
-            if (Test-Path -LiteralPath $candidate) {
-                $candidates.Add($candidate)
-            }
-        }
-    }
-
-    return $candidates
-}
-
-function Get-ToolPath {
-    param([Parameter(Mandatory = $true)][string]$Name)
-
-    $cmd = Get-Command $Name -ErrorAction SilentlyContinue
-    if ($cmd) {
-        return $cmd.Source
-    }
-
-    foreach ($candidate in Get-PythonScriptCandidates -ExecutableName ($Name + '.exe')) {
-        if (Test-Path -LiteralPath $candidate) {
-            return $candidate
-        }
-    }
-
-    # Attempt auto-bootstrap for frida tools
-    $bootstrapScript = Join-Path $PSScriptRoot '..\..\scripts\bootstrap-reverse.ps1'
-    if (($Name -in @('frida', 'frida-ps', 'frida-ls-devices')) -and (Test-Path -LiteralPath $bootstrapScript)) {
-        Write-Host "INFO: $Name not found, attempting isolated auto-bootstrap (uv tool install frida-tools)..." -ForegroundColor Yellow
-        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $bootstrapScript -Capability @('frida') -SkipRefresh
-        $cmd = Get-Command $Name -ErrorAction SilentlyContinue
-        if ($cmd) {
-            Write-Host "INFO: $Name bootstrapped successfully." -ForegroundColor Green
-            return $cmd.Source
-        }
-        foreach ($candidate in Get-PythonScriptCandidates -ExecutableName ($Name + '.exe')) {
-            if (Test-Path -LiteralPath $candidate) {
-                return $candidate
-            }
-        }
-    }
-
-    throw "Missing required CLI tool: $Name — install with: uv tool install frida-tools"
-}
-
-$fridaLsDevices = Get-ToolPath -Name 'frida-ls-devices'
-$fridaPs = Get-ToolPath -Name 'frida-ps'
-$frida = Get-ToolPath -Name 'frida'
-$python = Get-Command python -ErrorAction SilentlyContinue
-
-if (-not $python) {
-    throw 'Missing required CLI tool: python'
-}
-
-$pythonExe = $python.Source
+. (Join-Path $PSScriptRoot '..\..\scripts\lib\ToolDiscovery.ps1')
 
 if ($ListDevices) {
-    & $pythonExe -c "import frida; [print(f'{d.id}`t{d.type}`t{d.name}') for d in frida.enumerate_devices()]"
+    $devices = Get-RequiredReverseToolSpec -Name 'frida-ls-devices'
+    & $devices.Command @($devices.PrefixArgs)
     exit $LASTEXITCODE
 }
 
@@ -111,13 +43,13 @@ if ([string]::IsNullOrWhiteSpace($target) -and -not $ListProcesses) {
 $deviceFlag = if ($Usb) { '-U' } else { '-H' }
 
 if ($ListProcesses) {
-    $escapedRemoteHost = $RemoteHost.Replace("'", "''")
-    $pythonFlag = if ($Usb) { 'usb' } else { 'remote-host' }
-    & $pythonExe -c "import frida; manager = frida.get_device_manager(); device = frida.get_usb_device() if '$pythonFlag' == 'usb' else manager.add_remote_device('$escapedRemoteHost'); [print(f'{p.pid}`t{p.name}') for p in device.enumerate_processes()]"
+    $processes = Get-RequiredReverseToolSpec -Name 'frida-ps'
+    $processArgs = if ($Usb) { @('-U') } else { @('-H', $RemoteHost) }
+    & $processes.Command @($processes.PrefixArgs + $processArgs)
     exit $LASTEXITCODE
 }
 
-if (-not (Test-Path -LiteralPath $ScriptPath)) {
+if ([string]::IsNullOrWhiteSpace($ScriptPath) -or -not (Test-Path -LiteralPath $ScriptPath -PathType Leaf)) {
     throw "Frida script not found: $ScriptPath"
 }
 
@@ -133,9 +65,10 @@ if ($Spawn) {
 $fridaArgs += $target
 $fridaArgs += '-l'
 $fridaArgs += $ScriptPath
-if (-not $Pause) {
-    $fridaArgs += '--no-pause'
+if ($Pause) {
+    $fridaArgs += '--pause'
 }
 
-& $frida @fridaArgs
+$frida = Get-RequiredReverseToolSpec -Name 'frida'
+& $frida.Command @($frida.PrefixArgs + $fridaArgs)
 exit $LASTEXITCODE

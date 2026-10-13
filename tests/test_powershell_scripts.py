@@ -1,0 +1,256 @@
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+
+import pytest
+
+
+ROOT = Path(__file__).resolve().parents[1]
+LIBRARY = ROOT / "skills/scripts/lib/ToolDiscovery.ps1"
+pytestmark = pytest.mark.skipif(os.name != "nt", reason="Windows PowerShell entrypoints")
+
+
+def quote(value: str | Path) -> str:
+    return "'" + str(value).replace("'", "''") + "'"
+
+
+@pytest.fixture(params=["powershell", "pwsh"])
+def engine(request: pytest.FixtureRequest) -> str:
+    executable = shutil.which(request.param)
+    if executable is None:
+        pytest.skip(f"{request.param} is unavailable")
+    return executable
+
+
+def run_ps(engine: str, tmp_path: Path, body: str, bin_dir: Path | None = None, expected_exit: int = 0) -> str:
+    script = tmp_path / "test.ps1"
+    script.write_text(
+        "$ErrorActionPreference = 'Stop'\n"
+        "[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)\n"
+        + body,
+        encoding="utf-8-sig",
+    )
+    env = dict(os.environ)
+    env.update(
+        USERPROFILE=str(tmp_path),
+        LOCALAPPDATA=str(tmp_path),
+        APPDATA=str(tmp_path),
+        UV_TOOL_BIN_DIR="",
+        ANDROID_HOME="",
+        ANDROID_SDK_ROOT="",
+        PATH=str(bin_dir) if bin_dir else "",
+    )
+    result = subprocess.run(
+        [engine, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script)],
+        env=env,
+        capture_output=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=30,
+    )
+    assert result.returncode == expected_exit, result.stdout + result.stderr
+    return result.stdout if expected_exit == 0 else result.stdout + result.stderr
+
+
+def fake_tools(tmp_path: Path, names: list[str]) -> tuple[Path, Path]:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    trace = tmp_path / "calls.jsonl"
+    stub = tmp_path / "tool.py"
+    stub.write_text(
+        "import json, os, sys\n"
+        "from pathlib import Path\n"
+        f"trace = Path({str(trace)!r})\n"
+        "tool, *args = sys.argv[1:]\n"
+        "with trace.open('a', encoding='utf-8') as out:\n"
+        "    out.write(json.dumps([tool, args]) + '\\n')\n"
+        "if tool == os.environ.get('REVERSE_TEST_FAIL_TOOL'):\n"
+        "    sys.exit(17)\n"
+        "if tool in ('apktool', 'java'):\n"
+        "    Path(args[args.index('-o') + 1]).write_text('unsigned')\n"
+        "elif tool == 'zipalign':\n"
+        "    Path(args[-1]).write_text('aligned')\n"
+        "elif tool == 'apksigner' and args[0] == 'sign':\n"
+        "    Path(args[args.index('--out') + 1]).write_text('signed')\n"
+        "print(tool)\n",
+        encoding="utf-8",
+    )
+    for name in names:
+        (bin_dir / f"{name}.cmd").write_text(
+            f'@"{sys.executable}" "{stub}" "{name}" %*\n', encoding="utf-8"
+        )
+    return bin_dir, trace
+
+
+def test_jar_is_unavailable_without_java(engine: str, tmp_path: Path) -> None:
+    jar = tmp_path / "Tools/apktool/apktool.jar"
+    jar.parent.mkdir(parents=True)
+    jar.touch()
+    output = run_ps(
+        engine, tmp_path,
+        f". {quote(LIBRARY)}\nResolve-ReverseToolSpec -Name apktool | ConvertTo-Json -Compress",
+    )
+    spec = json.loads(output)
+    assert spec["Available"] is False
+    assert spec["Command"] == ""
+
+
+def test_fallbacks_find_new_installs_and_newest_sdk(engine: str, tmp_path: Path) -> None:
+    sdk = tmp_path / "Android/Sdk/build-tools"
+    for version in ("9.0.0", "35.0.0"):
+        directory = sdk / version
+        directory.mkdir(parents=True)
+        (directory / "zipalign.exe").touch()
+    python_bin = tmp_path / "Python/Python313/Scripts"
+    python_bin.mkdir(parents=True)
+    (python_bin / "frida-ps.exe").touch()
+    uv_bin = tmp_path / ".local/bin"
+    uv_bin.mkdir(parents=True)
+    output = run_ps(engine, tmp_path, f"""
+. {quote(LIBRARY)}
+$before = Resolve-ReverseToolSpec -Name frida
+New-Item -ItemType File -Path {quote(uv_bin / 'frida.exe')} | Out-Null
+$after = Resolve-ReverseToolSpec -Name frida
+@{{ before = $before.Available; after = $after.ResolvedPath;
+    sdk = (Resolve-ReverseToolSpec -Name zipalign).ResolvedPath;
+    python = (Resolve-ReverseToolSpec -Name frida-ps).ResolvedPath }} | ConvertTo-Json -Compress
+""")
+    result = json.loads(output)
+    assert result["before"] is False
+    assert Path(result["after"]) == uv_bin / "frida.exe"
+    assert Path(result["sdk"]) == sdk / "35.0.0/zipalign.exe"
+    assert Path(result["python"]) == python_bin / "frida-ps.exe"
+
+
+def test_mcp_config_roundtrip_preserves_other_servers(engine: str, tmp_path: Path) -> None:
+    config = tmp_path / "mcp.json"
+    original = {"other": [1, True], "mcpServers": {"existing": {"args": ["a", "b"]}}}
+    config.write_text(json.dumps(original), encoding="utf-8")
+    bootstrap = ROOT / "skills/scripts/bootstrap-reverse.ps1"
+    run_ps(engine, tmp_path, f"""
+$tokens = $null; $errors = $null
+$ast = [System.Management.Automation.Language.Parser]::ParseFile({quote(bootstrap)}, [ref]$tokens, [ref]$errors)
+$names = @('Get-McpConfig', 'Save-McpConfig', 'Ensure-McpServer')
+$functions = $ast.FindAll({{ param($node)
+    $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -in $names
+}}, $false)
+foreach ($node in $functions) {{ Invoke-Expression $node.Extent.Text }}
+function Get-ClaudeMcpConfigPath {{ return {quote(config)} }}
+Ensure-McpServer -ServerName new-server -ServerDefinition @{{ command = 'npx'; args = @('package'); env = @{{ MODE = 'test' }} }}
+""")
+    actual = json.loads(config.read_text(encoding="utf-8-sig"))
+    assert actual["other"] == original["other"]
+    assert actual["mcpServers"]["existing"] == original["mcpServers"]["existing"]
+    assert actual["mcpServers"]["new-server"]["env"] == {"MODE": "test"}
+
+
+@pytest.mark.parametrize("listing", ["devices", "processes"])
+def test_frida_listing_uses_only_requested_cli(engine: str, tmp_path: Path, listing: str) -> None:
+    name = "frida-ls-devices" if listing == "devices" else "frida-ps"
+    bin_dir, trace = fake_tools(tmp_path, [name])
+    switch = "-ListDevices" if listing == "devices" else "-Usb -ListProcesses"
+    run_ps(engine, tmp_path,
+           f"& {quote(ROOT / 'skills/apk-reverse/scripts/frida-run.ps1')} {switch}", bin_dir)
+    calls = [json.loads(line) for line in trace.read_text().splitlines()]
+    assert calls == [[name, [] if listing == "devices" else ["-U"]]]
+
+
+@pytest.mark.parametrize("pause", [False, True])
+def test_frida_spawn_arguments(engine: str, tmp_path: Path, pause: bool) -> None:
+    bin_dir, trace = fake_tools(tmp_path, ["frida", "frida-ps", "frida-ls-devices"])
+    hook = tmp_path / "hook with space.js"
+    hook.touch()
+    run_ps(engine, tmp_path,
+           f"& {quote(ROOT / 'skills/apk-reverse/scripts/frida-run.ps1')} -Usb -Spawn "
+           f"-Package com.example.app -ScriptPath {quote(hook)} {'-Pause' if pause else ''}", bin_dir)
+    calls = [json.loads(line) for line in trace.read_text().splitlines()]
+    assert calls == [["frida", ["-U", "-f", "com.example.app", "-l", str(hook)] + (["--pause"] if pause else [])]]
+
+
+@pytest.mark.parametrize("jar_only", [False, True])
+def test_apk_build_needs_adb_only_when_installing(engine: str, tmp_path: Path, jar_only: bool) -> None:
+    bin_dir, trace = fake_tools(tmp_path, ["java" if jar_only else "apktool", "zipalign", "apksigner", "keytool"])
+    if jar_only:
+        jar = tmp_path / "Tools/apktool/apktool.jar"
+        jar.parent.mkdir(parents=True)
+        jar.touch()
+    project = tmp_path / "sample project"
+    project.mkdir()
+    keystore = tmp_path / "debug.keystore"
+    keystore.touch()
+    run_ps(engine, tmp_path,
+           f"& {quote(ROOT / 'skills/apk-reverse/scripts/rebuild-sign-install.ps1')} "
+           f"-ProjectDir {quote(project)} -OutDir {quote(tmp_path)} -KeystorePath {quote(keystore)}", bin_dir)
+    calls = [json.loads(line) for line in trace.read_text().splitlines()]
+    assert [name for name, _ in calls] == ["java" if jar_only else "apktool", "zipalign", "apksigner", "apksigner"]
+    assert (tmp_path / "sample project-signed.apk").read_text() == "signed"
+    if jar_only:
+        assert calls[0][1][:3] == ["-jar", str(jar), "b"]
+
+
+def test_all_powershell_scripts_parse(engine: str, tmp_path: Path) -> None:
+    run_ps(engine, tmp_path, f"""
+Get-ChildItem -LiteralPath {quote(ROOT / 'skills')} -Recurse -Filter *.ps1 | ForEach-Object {{
+    $tokens = $null; $errors = $null
+    $null = [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$errors)
+    if ($errors.Count) {{ throw ($_.FullName + ': ' + ($errors.Message -join '; ')) }}
+}}
+""")
+
+
+@pytest.mark.parametrize("failed_tool", ["ssh", "scp"])
+def test_fleet_sync_stops_on_transport_errors(engine: str, tmp_path: Path, failed_tool: str) -> None:
+    bin_dir, _ = fake_tools(tmp_path, ["ssh", "scp"])
+    output = run_ps(engine, tmp_path,
+                    f"$env:REVERSE_TEST_FAIL_TOOL = {quote(failed_tool)}\n"
+                    f"& {quote(ROOT / 'skills/scripts/fleet-sync.ps1')} "
+                    "-RemoteHost example.invalid -RemotePath 'D:\\test project' -Direction Push",
+                    bin_dir, expected_exit=1)
+    assert f"{failed_tool.upper()} failed (17)" in output
+    assert "=== Copied" not in output
+
+
+def test_required_tool_bootstraps_the_owning_package(engine: str, tmp_path: Path) -> None:
+    executable = tmp_path / "Tools/radare2/bin/rabin2.exe"
+    executable.parent.mkdir(parents=True)
+    output = run_ps(engine, tmp_path, f"""
+. {quote(LIBRARY)}
+function powershell.exe {{
+    $script:bootstrapArgs = $args
+    New-Item -ItemType File -Path {quote(executable)} | Out-Null
+    $global:LASTEXITCODE = 0
+    '{{"status":"ready"}}'
+}}
+$specs = @(Get-RequiredReverseToolSpec -Name rabin2)
+@{{ count = $specs.Count; name = $specs[0].Name;
+    capability = $script:bootstrapArgs[$script:bootstrapArgs.IndexOf('-Capability') + 1] }} | ConvertTo-Json -Compress
+""")
+    assert json.loads(output.splitlines()[-1]) == {"count": 1, "name": "rabin2", "capability": "r2"}
+
+
+def test_bootstrap_unknown_capability_exits_nonzero(engine: str, tmp_path: Path) -> None:
+    output = run_ps(engine, tmp_path,
+                    f"& {quote(ROOT / 'skills/scripts/bootstrap-reverse.ps1')} "
+                    "-Capability nonexistent-test-tool -SkipRefresh\nexit $LASTEXITCODE", expected_exit=1)
+    assert json.loads(output)["status"] == "missing-definition"
+
+
+def test_refresh_entry_writes_consistent_indexes(engine: str, tmp_path: Path) -> None:
+    markdown = tmp_path / "tools.md"
+    index = tmp_path / "tools.json"
+    graph = tmp_path / "graph.json"
+    run_ps(engine, tmp_path,
+           f"& {quote(ROOT / 'skills/scripts/refresh-tool-index.ps1')} "
+           f"-OutputMarkdown {quote(markdown)} -OutputJson {quote(index)} -OutputCapabilityGraph {quote(graph)}")
+    payload = json.loads(index.read_text(encoding="utf-8-sig"))
+    nodes = json.loads(graph.read_text(encoding="utf-8-sig"))["nodes"]
+    tools = {tool["name"]: tool for tool in payload["tools"]}
+    assert {"keytool", "frida-ls-devices"} <= tools.keys()
+    for capability in payload["capabilities"]:
+        if capability["name"] in tools:
+            assert capability["tool_available"] == tools[capability["name"]]["available"]
+    assert {node["id"] for node in nodes if node["kind"] == "tool"} == tools.keys()
+    assert "## 能力状态视图" in markdown.read_text(encoding="utf-8-sig")

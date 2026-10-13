@@ -28,17 +28,19 @@ $scriptRefs = @{
     'apktool' = @('apk-reverse/scripts/decode.ps1', 'apk-reverse/scripts/rebuild-sign-install.ps1')
     'adb' = @('apk-reverse/scripts/rebuild-sign-install.ps1')
     'java' = @('apk-reverse/scripts/decode.ps1')
+    'keytool' = @('apk-reverse/scripts/rebuild-sign-install.ps1')
     'apksigner' = @('apk-reverse/scripts/rebuild-sign-install.ps1')
     'zipalign' = @('apk-reverse/scripts/rebuild-sign-install.ps1')
     'frida' = @('apk-reverse/scripts/frida-run.ps1')
     'frida-ps' = @('apk-reverse/scripts/frida-run.ps1')
+    'frida-ls-devices' = @('apk-reverse/scripts/frida-run.ps1')
     'r2' = @('radare2/scripts/recon.ps1')
     'rabin2' = @('radare2/scripts/recon.ps1')
     'rasm2' = @('radare2/SKILL.md')
     'radiff2' = @('radare2/SKILL.md')
     'rahash2' = @('radare2/SKILL.md')
     'rax2' = @('radare2/SKILL.md')
-    'python' = @('apk-reverse/scripts/frida-run.ps1')
+    'python' = @()
     'pip' = @()
     'node' = @('js-reverse/SKILL.md')
     'npx' = @('js-reverse/SKILL.md')
@@ -51,6 +53,8 @@ $scriptRefs = @{
 }
 
 $reports = @(Get-ReverseToolReport)
+$reportsByName = @{}
+foreach ($report in $reports) { $reportsByName[$report.Name] = $report }
 $generatedAt = Get-Date -Format 'yyyy-MM-dd HH:mm:ss K'
 
 $markdownLines = @(
@@ -77,27 +81,27 @@ foreach ($report in $reports) {
     $markdownLines += "| $($report.Name) | $($report.Skill) | $($report.Purpose) | $availableText | $escapedPath | $escapedVersion | $($report.Source) | $escapedRefs |"
 }
 
-$markdownContent = ($markdownLines -join [Environment]::NewLine) + [Environment]::NewLine
-$markdownContent | Set-Content -LiteralPath $OutputMarkdown -Encoding utf8
-
 # --- Capability status view ---
 $capabilityNames = @('jadx', 'apktool', 'frida', 'idalib-mcp', 'jshookmcp', 'anything-analyzer', 'idapro', 'r2', 'adb', 'agent-browser', 'ghidra-mcp', 'seclists', 'proxycat', 'burpsuite-mcp', 'nmap')
 $capabilityRows = @()
 foreach ($capName in $capabilityNames) {
+    $report = $reportsByName[$capName]
+    if ($report) {
+        $capabilityRows += [pscustomobject]@{
+            name = $capName
+            tool_available = $report.Available
+            mcp_registered = $report.McpRegistered
+            service_online = $report.ServiceOnline
+            can_auto_install = $report.CanAutoInstall
+            bootstrap_kind = $report.BootstrapKind
+        }
+        continue
+    }
     $state = Get-ReverseCapabilityState -Name $capName
     if ($null -eq $state) { continue }
-    $toolAvailable = $false
-    try {
-        $toolSpec = Resolve-ReverseToolSpec -Name $capName
-        $toolAvailable = $toolSpec.Available
-    }
-    catch {
-        # Capability exists in bootstrap manifest but not in tool catalog (e.g. MCP-only capabilities)
-        $toolAvailable = $false
-    }
     $capabilityRows += [pscustomobject]@{
         name = $capName
-        tool_available = $toolAvailable
+        tool_available = $false
         mcp_registered = $state.Registered
         service_online = $state.ServiceOnline
         can_auto_install = $state.CanAutoInstall
@@ -127,8 +131,8 @@ $markdownCapLines += ''
 $markdownCapLines += '> ✓ = 是 | ✗ = 否 | — = 不适用或未检测'
 $markdownCapLines += ''
 
-$capContent = ($markdownCapLines -join [Environment]::NewLine)
-Add-Content -LiteralPath $OutputMarkdown -Value $capContent -Encoding utf8
+$markdownContent = (($markdownLines + $markdownCapLines) -join [Environment]::NewLine) + [Environment]::NewLine
+Set-Content -LiteralPath $OutputMarkdown -Value $markdownContent -Encoding utf8
 
 $jsonRows = foreach ($report in $reports) {
     [pscustomobject]@{
