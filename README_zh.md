@@ -12,7 +12,7 @@ AI社区：https://linux.do
 
 在本源码项目启动 OMP，会发现 `.omp/skills/omp-ida-native/`；需要时显式调用 `/skill:omp-ida-native`。用于其他项目时，将**完整目录**（含 `references/`）复制到目标项目的 `.omp/skills/`；用户级位置以实际 agent 目录下的 `skills/` 为准（默认 `~/.omp/agent/skills/`，profile 和环境设置可重定位）。原生 IDA 的前置条件和配置见 [setup](.omp/skills/omp-ida-native/references/setup.md)。此入口随源码文件分发，pip/npm 安装不会注册 OMP skill；本包不写模型设置或 API key。
 
-IDA 入口包括[快照与候选初筛](.omp/skills/omp-ida-native/references/triage.md)、[跨版本对照](.omp/skills/omp-ida-native/references/version-diff.md)和[Frida 观察计划生成](.omp/skills/omp-ida-native/references/dynamic-validation.md)。限定验证覆盖自制 x64 PE/native worker、真实生成脚本的 Frida 观察，以及真实 OMP 持久 eval 内的 signer 样本；[证据与边界见此](reports/omp-workflow-verification-2026-10-13/README.md)。`/skill:omp-js-replay` 对照实际 signer 与固定样本；迁移时复制完整 `.omp/skills/omp-js-replay/` 目录，[说明见此](.omp/skills/omp-js-replay/references/replay.md)。集成仍为 Draft，生成计划不证明一般目标或授权晋级。
+IDA 入口包括[快照与候选初筛](.omp/skills/omp-ida-native/references/triage.md)、[跨版本对照](.omp/skills/omp-ida-native/references/version-diff.md)和[Frida 观察计划生成](.omp/skills/omp-ida-native/references/dynamic-validation.md)。限定验证覆盖自制 x64 PE/native worker、真实生成脚本的 Frida 观察，以及真实 OMP 持久 eval 内的 signer 样本；[证据与边界见此](reports/omp-workflow-verification-2026-10-13/README.md)。`/skill:omp-js-replay` 对照实际 signer 与固定样本；迁移时复制完整 `.omp/skills/omp-js-replay/` 目录，[说明见此](.omp/skills/omp-js-replay/references/replay.md)。这些工作流已合入 main，生成计划不证明一般目标或授权晋级。
 
 OMP 的 IDA 任务先进入该 skill，再选择所需工作流。共享 [IDA skill](skills/ida-reverse/SKILL.md) 根据实时 schema 选择 OMP 原生 `ida` 或 `idapro` MCP。原生分支使用已发现的 skill 和自身数据库句柄，无需全局提示词注入、Codex MCP 注册或额外 MCP 服务。Hex-Rays 官方 OMP extension 若暴露 `ida_*` 工具，按插件自带指导和 schema 使用；本包未实现该适配器。
 
