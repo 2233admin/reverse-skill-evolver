@@ -33,6 +33,7 @@ npx skills add 2233admin/reverse-skill-evolver --skill reverse-skill-evolver
 | Codex | `--agent codex` |
 | Cursor | `--agent cursor` |
 | OpenCode | `--agent opencode` |
+| OMP（项目共享技能目录） | `--agent universal` |
 
 可以一次指定多个目标：
 
@@ -40,9 +41,31 @@ npx skills add 2233admin/reverse-skill-evolver --skill reverse-skill-evolver
 npx skills add 2233admin/reverse-skill-evolver --skill reverse-skill-evolver --agent claude-code codex cursor opencode
 ```
 
-追加 `--global` 可安装到用户级目录；默认安装范围是当前项目。客户端的 MCP 注册
-与技能目录安装分别处理。其他目标见[安装器支持的客户端](https://github.com/vercel-labs/skills#supported-agents)。
+默认安装范围是当前项目。Claude Code、Codex、Cursor、OpenCode 追加 `--global` 可安装到其用户级目录；
+OMP 的原生用户级位置见下文。客户端的 MCP 注册与技能目录安装分别处理。
+其他目标见[安装器支持的客户端](https://github.com/vercel-labs/skills#supported-agents)。
 发布前验证本地检出时，在另一个工作目录运行安装器，将仓库标识替换为本检出的绝对路径。
+
+**OMP（Oh My Pi）** 可以直接安装到它会发现的项目共享目录：
+
+```console
+npx skills add 2233admin/reverse-skill-evolver --skill reverse-skill-evolver --agent universal
+omp read skill://reverse-skill-evolver
+```
+
+完整包会安装到 `.agents/skills/reverse-skill-evolver/`。在该项目启动 OMP 后，
+用 `/skill:reverse-skill-evolver <任务>` 调用。OMP 的[技能发现机制](https://github.com/can1357/oh-my-pi/blob/main/docs/skills.md)
+支持项目 `.agents/skills/` 和原生 `.omp/skills/`。需要放到原生项目目录时，
+直接克隆整个仓库：
+
+```console
+git clone https://github.com/2233admin/reverse-skill-evolver.git .omp/skills/reverse-skill-evolver
+```
+
+原生用户级安装将同一个完整目录放到当前 OMP agent 目录的 `skills/` 下，默认是
+`~/.omp/agent/skills/reverse-skill-evolver/`，profile 和环境设置可重定位。
+`omp skill install` 安装的是 Skillshare 注册表中有名称和版本的包；本仓库的
+GitHub 分发使用上面的命令。包内 IDA、JS 模块由根路由通过相对路径读取。
 
 Codex 的 `skill-installer` 也可以安装同一个完整目录：
 
@@ -113,7 +136,7 @@ python "<PACK_ROOT>/scripts/run.py" --json asr list
 
 ### 安装 Python 包会自动注册 OMP skills 吗
 
-Python 包安装 `reverse-skill` 与 `reverse-skill-swarm` CLI。完整 skills 随源码 ZIP 分发，OMP 接入按下方说明复制完整目录；安装 Python 包不会注册这些 skills。
+Python 包安装 `reverse-skill` 与 `reverse-skill-swarm` CLI。OMP 的完整路由包使用上方技能安装命令；独立的原生工作流目录也可以按下方说明复制。安装 Python 包不会注册这些 skills。
 
 ### 蜂群如何取得 IDA 或 Frida 的观察结果
 
