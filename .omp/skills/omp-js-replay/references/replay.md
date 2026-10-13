@@ -35,4 +35,4 @@ At most `maxCases` cases are replayed. The complete fixture array is validated f
 
 This helper adds no timeout or network transport. Run eval with a finite task budget. A callback that never settles can hold this comparison; cancelling eval must not be presented as guaranteed cancellation of callback I/O. Do not add automatic network retries to chase a matching signature.
 
-Development status: source created and statically inspected only; functional tests, real captures and eval execution have not been performed for this delivery.
+Verification status: synthetic cases passed in Node/Bun and a real OMP 18.8.9 persistent eval session. That session explicitly imported the module with `--no-skills`; automatic skill discovery and third-party captures remain unverified.

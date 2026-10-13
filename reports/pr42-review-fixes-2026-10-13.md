@@ -10,7 +10,7 @@
 
 | 结论 | 验证方式 | 结果与局限 |
 | --- | --- | --- |
-| 实际 launcher 可清理且其他 launcher 保留 | `test_replace_real_distlib_launcher_preserves_other_launcher[current/venv]`；真实不同 PID，含自建无 pip venv 的 redirector 链，连接伴随 socket | 两种实际入口通过；仅自有惯性 socket 服务，没有真实 IDA 服务 |
+| 实际 launcher 可清理且其他 launcher 保留 | `test_replace_real_distlib_launcher_preserves_other_launcher[current/venv]`；真实不同 PID，含自建无 pip venv 的 redirector 链，连接伴随 socket | 两种实际入口通过；仅自有 socket 服务，没有真实 IDA 服务 |
 | 任意 Python / 错 launcher 或端点不被接受 | `test_replace_distlib_listener_rejects_unrelated_identity[launcher/port/host/parent]`；真实进程/端口 | 四种负例均保留进程，socket 仍可连接 |
 | 既有健康复用/未知归属/多端口/退出日志仍可用 | `python -m pytest tests/test_ida.py -q --tb=short`，TEMP/TMP 指向本 worktree | **17 passed，28.16 秒，退出码 0**；首次绿检查中只更新了一项旧的变量名字符串断言 |
 | PID 复用竞态 | 核查 handle、CIM 创建时间、父子先后、二次身份及端口重读的拒绝分支 | 源码核查；未制造操作系统精确 PID 复用，不能写成实测覆盖 |
@@ -30,3 +30,7 @@
 | 受影响调用合同与原诊断保留 | `python -m pytest tests/test_ida.py tests/test_mcp.py tests/test_cli.py tests/test_contract.py -q --tb=short` | **114 passed，51.99 秒，退出码 0**；包含 R1 两种真实 launcher、负例、原健康复用及日志检查 |
 
 新注释只说明 handle 的生命周期、distlib/venv 进程关系与整轮 budget；已对照真实入口和调用方检查，不改 field-journal 校验或引入结构重构。
+
+## R3：replay 参考页的旧开发状态
+
+末行“仅静态检查，未 functional/eval”确实与同页及既有真实报告矛盾。修订为实际 Node/Bun 合成测试与真实 OMP 持久 eval 已执行，同时明确该次显式模块导入使用 `--no-skills`，自动 skill 发现和第三方 capture 未验。仅改说明，不改变 skill 入口、模块或归档；严格 UTF-8 读取、既有 evidence 链接及 `git diff --check` 核对。
