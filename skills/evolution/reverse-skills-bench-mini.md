@@ -29,6 +29,8 @@ Promotion requires matching or exceeding the curated baseline on oracle pass rat
 
 One evaluation is one candidate run across the entire frozen fixture set. `max_evaluations` counts the no-skill baseline, curated candidate, and every proposal; reflection calls have a separate `max_reflections` cap. The `reverse-skill evolve` command requires at least three full-suite evaluations and does not count a later, independent promotion check in its search budget. Never report partial-suite scores as comparable results.
 
+Maximum logical OMP invocations are `max_evaluations * fixture_count + max_reflections`; provider retries can increase physical requests. The CLI reports this bound from the actual frozen fixture count and prints baseline/curated/reflection/proposal progress to stderr. JSON stdout remains one final envelope. Inputs and candidate text are frozen before model use; each response is checkpointed to the fresh output directory. Failures/interrupts retain `status:incomplete`, completed responses and a failure location, with no partial-suite rates or Pareto frontier. Inspect the archive before a new run; no automatic restart or resume occurs. If error archiving also fails, the original evaluation error remains visible along with the archive failure. `not_promoted` applies to complete and incomplete runs.
+
 1. Select a parent from the current Pareto frontier.
 2. Give the parent and exact failed fixture outputs to the configured OMP model for one targeted text mutation.
 3. Evaluate the proposal on every same fixture; record per-track oracle pass counts/rates, invalid responses, and failure diagnostics.

@@ -9,15 +9,15 @@
 | #40 | 已推送 b0d78e9，Draft PR #42 | [交付回执](https://github.com/2233admin/reverse-skill-evolver/issues/40#issuecomment-6144184603)，未合并 |
 | #33 | 已推送 af900b4，Draft PR #42 | [交付回执](https://github.com/2233admin/reverse-skill-evolver/issues/33#issuecomment-6144196773) |
 | #34 | 已推送 dc09539，Draft PR #42 | [交付回执](https://github.com/2233admin/reverse-skill-evolver/issues/34#issuecomment-6144253174) |
-| #35 | 修复并验证，交付同一 Draft PR #42 | Burp bridge 恢复与错误标记；接续 #36 |
-| #36 | 待实施 | evolve 预算、进度、中断 |
+| #35 | 已推送 f410993，Draft PR #42 | [交付回执](https://github.com/2233admin/reverse-skill-evolver/issues/35#issuecomment-6144302542) |
+| #36 | 修复并验证，交付同一 Draft PR #42 | evolve 预算、进度、中断，见下方 |
 | #37 | 待实施 | start 端口与根 URL |
 | #38 | 待实施 | 经验索引编码与引用 |
 | #39 | 待实施 | 首次上手文档，依赖前述行为 |
 | #32 | 总览，待逐项回收 | 不视为独立代码修复，不提前关闭 |
 | #41 | 已有提交待形成 PR | 复用 `632cf1a`，不重写 |
 | #27–#30 | 已有 Draft PR #31，待功能验证 | 依赖 Draft PR #26；复用实现 |
-| #21 | 待恢复有限真实模型预算 | 无预算不进行模型调用，推进独立项 |
+| #21 | 用户已要求调用真实模型，恢复有限预算 | [21-D1 回执](https://github.com/2233admin/reverse-skill-evolver/issues/21#issuecomment-6144393049)；37 逻辑调用总上限，单次 60 秒，候选不晋级 |
 
 ## #40 验证
 
@@ -54,3 +54,13 @@
 实际运行：`node --check burp-mcp-full/mcp-bridge.js` 通过；`node --test burp-mcp-full/tests/mcp-bridge.test.js` → **6 passed, 0 failed**。真实 Node stdio + 隔离 loopback 后端覆盖后启动恢复/缓存、持续无效内容、挂起后端 3 秒截止、正常工具列表、200/500 操作错误、普通业务数据、无效调用响应、连接重置。该检查也由 Python 常规测试入口执行（缺少 Node 时明确 skip）。`git diff --check` 通过。
 
 未运行：真实 Burp GUI/扩展/代理流量；Java 调度与攻击语义无改动。下一责任人：PR 审阅者；本 Session 接续 #36。
+
+## #36 验证
+
+修复：预算单位为完整 fixture-suite evaluations；实际 frozen fixture 数计算 `max_evaluations * fixture_count + max_reflections` 逻辑调用上限，provider 重试可能增加物理请求。stderr 输出预算和 baseline/curated/reflection/proposal 阶段/完成数；stdout 保持一个最终 JSON。模型调用前归档输入字节和哈希、curated 文本；逐次响应写入原子替换的 results.json。异常/中断保存失败阶段、fixture、已完成响应和可取得的失败进程 stdout/stderr/退出码，status=incomplete；部分候选没有 pass_rates，整体不生成 Pareto frontier，保持 not_promoted。错误归档也失败时保留原异常并附归档错误，不自动复跑/续跑。
+
+实际运行：`python -m pytest tests/test_evolution_optimizer.py tests/test_evolution_contracts.py tests/test_cli.py tests/test_contract.py -q --tb=short` → **160 passed**。包含完整成功/预算停止/提前全通过、反思与祖先证据、非法反思原响应归档、提供方失败/超时/KeyboardInterrupt 中断、错误归档自身失败以及 CLI 单 JSON/stderr 进度，预算随 2/3 fixture 数变化。`git diff --check` 通过。
+
+完整 Python 回归：`python -m pytest -q --tb=short` → **257 passed, 5 skipped**（包含真实 Node bridge 检查）。
+
+尚未运行：本项检查没有真实模型调用；#21 将单独记录新获授权的真实 OMP 结果，不与本项模拟证据混同。

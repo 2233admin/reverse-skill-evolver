@@ -289,12 +289,16 @@ def _omp(prompt: str, system_prompt: str, timeout: int) -> str:
                 check=False,
             )
         except subprocess.TimeoutExpired as exc:
-            raise ToolOperationError(f"OMP evaluation exceeded {timeout} seconds") from exc
+            failure = ToolOperationError(f"OMP evaluation exceeded {timeout} seconds")
+            failure.process_output = {"stdout": exc.stdout, "stderr": exc.stderr, "exit_code": None}
+            raise failure from exc
         except OSError as exc:
             raise ToolOperationError(f"Cannot start OMP: {exc}") from exc
         if result.returncode != 0:
             detail = (result.stderr or result.stdout).strip()[-1000:]
-            raise ToolOperationError(f"OMP exited {result.returncode}: {detail}")
+            failure = ToolOperationError(f"OMP exited {result.returncode}: {detail}")
+            failure.process_output = {"stdout": result.stdout, "stderr": result.stderr, "exit_code": result.returncode}
+            raise failure
         return result.stdout
 
 
@@ -308,12 +312,19 @@ def _route_prompt(fixture: Fixture, catalog_json: str) -> str:
     )
 
 
-def _evaluate(candidate_id: str, candidate_text: str, fixtures: list[Fixture], catalog_json: str, route_ids: set[str], timeout: int) -> dict[str, Any]:
+def _evaluate(candidate_id: str, candidate_text: str, fixtures: list[Fixture], catalog_json: str, route_ids: set[str], timeout: int, *, checkpoint=None) -> dict[str, Any]:
     outcomes: list[dict[str, Any]] = []
     passes: dict[str, int] = {}
     totals: dict[str, int] = {}
     invalids: dict[str, int] = {}
+    row = {
+        "id": candidate_id, "candidate_text": candidate_text, "complete": False,
+        "pass_counts": passes, "fixture_counts": totals, "pass_rates": {},
+        "invalid_counts": invalids, "outcomes": outcomes,
+    }
     for fixture in fixtures:
+        if checkpoint:
+            checkpoint(row, fixture.id, True)
         output = _omp(_route_prompt(fixture, catalog_json), candidate_text, timeout)
         route, invalid = _parse_response(output, route_ids)
         passed = invalid is None and route == fixture.expected_route
@@ -330,17 +341,15 @@ def _evaluate(candidate_id: str, candidate_text: str, fixtures: list[Fixture], c
             "invalid": invalid,
             "raw_response": output,
         })
-    return {
-        "id": candidate_id,
-        "pass_counts": passes,
-        "fixture_counts": totals,
-        "pass_rates": {track: passes[track] / count for track, count in totals.items()},
-        "invalid_counts": invalids,
-        "outcomes": outcomes,
-    }
+        if len(outcomes) == len(fixtures):
+            row["complete"] = True
+            row["pass_rates"] = {track: passes[track] / count for track, count in totals.items()}
+        if checkpoint:
+            checkpoint(row, fixture.id, False)
+    return row
 
 
-def _reflect(parent_text: str, outcomes: list[dict[str, Any]], catalog: dict[str, Any], timeout: int) -> dict[str, Any]:
+def _reflect(parent_text: str, outcomes: list[dict[str, Any]], catalog: dict[str, Any], timeout: int, *, checkpoint=None) -> dict[str, Any]:
     """Ask OMP for replacement routing instructions using the parsed catalog.
 
     Return the candidate text, raw response, and reflection context. Empty,
@@ -360,7 +369,11 @@ def _reflect(parent_text: str, outcomes: list[dict[str, Any]], catalog: dict[str
         "instructions only. Do not answer a fixture and do not return route_id JSON.\n"
         f"Reflection data:\n{json.dumps(payload, ensure_ascii=False)}"
     )
+    if checkpoint:
+        checkpoint({"context": payload}, True)
     output = _omp(prompt, "", timeout)
+    if checkpoint:
+        checkpoint({"raw_response": output}, False)
     candidate = _answer_text(output)
     if candidate.startswith("```") and candidate.endswith("```"):
         candidate = "\n".join(candidate.splitlines()[1:-1]).strip()
@@ -377,6 +390,12 @@ def _reflect(parent_text: str, outcomes: list[dict[str, Any]], catalog: dict[str
     return {"candidate_text": candidate, "raw_response": output, "context": payload}
 
 
+def _write_report(output_dir: Path, report: dict[str, Any]) -> None:
+    pending = output_dir / "results.json.tmp"
+    pending.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    pending.replace(output_dir / "results.json")
+
+
 def evolve(candidate_path: Path, catalog_path: Path, fixtures_path: Path, output_dir: Path, max_evaluations: int, max_reflections: int, timeout: int) -> dict[str, Any]:
     """Run bounded routing-prompt search against frozen catalog and fixture inputs.
 
@@ -388,7 +407,8 @@ def evolve(candidate_path: Path, catalog_path: Path, fixtures_path: Path, output
     max_evaluations - 2. Stop early if every frontier candidate passes all fixtures.
     Invalid inputs, budgets, or an existing output path raise ToolOperationError.
     Missing OMP raises EnvironmentUnavailable; OMP failures raise ToolOperationError.
-    Archive I/O errors propagate as OSError and may leave partial output.
+    Freeze inputs before model use and checkpoint completed responses. Failures
+    leave an incomplete archive with no comparable partial-suite scores.
     The timeout in seconds applies to each OMP call, with 10 additional seconds
     allowed before the subprocess is killed.
     """
@@ -416,51 +436,6 @@ def evolve(candidate_path: Path, catalog_path: Path, fixtures_path: Path, output
     catalog_json = json.dumps(catalog, ensure_ascii=False)
     curated_text = _read_text(candidate_path, "candidate")
     _preflight_candidate(curated_text, timeout)
-    baseline = _evaluate("no-skill-baseline", "", fixtures, catalog_json, route_ids, timeout)
-    curated = _evaluate("curated", curated_text, fixtures, catalog_json, route_ids, timeout)
-    curated["candidate_text"] = curated_text
-    candidates: list[dict[str, Any]] = [curated]
-    candidate_by_id = {row["id"]: row for row in candidates}
-    evaluation_count = 2
-    reflections_count = 0
-    reflections: list[dict[str, Any]] = []
-    stop_reason = "budget_reached"
-    for iteration in range(max_reflections):
-        if evaluation_count >= max_evaluations:
-            break
-        frontier = pareto_frontier([
-            CandidateScore(row["id"], row["pass_rates"], row["invalid_counts"]) for row in candidates
-        ])
-        eligible = [
-            score for score in frontier
-            if any(
-                not outcome["passed"]
-                for outcome in candidate_by_id[score.id]["outcomes"]
-            )
-        ]
-        if not eligible:
-            stop_reason = "all_frontier_candidates_passed"
-            break
-        parent_id = eligible[iteration % len(eligible)].id
-        parent = candidate_by_id[parent_id]
-        failed_ids = [row["fixture_id"] for row in parent["outcomes"] if not row["passed"]]
-        reflection = _reflect(parent["candidate_text"], parent["outcomes"], catalog, timeout)
-        proposal_text = reflection["candidate_text"]
-        _preflight_candidate(proposal_text, timeout)
-        proposal_id = f"proposal-{iteration + 1}"
-        proposal = _evaluate(proposal_id, proposal_text, fixtures, catalog_json, route_ids, timeout)
-        proposal["parent_id"] = parent_id
-        proposal["mutation_hypothesis"] = f"Targeted reflection on failed fixtures: {', '.join(failed_ids)}"
-        proposal["candidate_text"] = proposal_text
-        candidates.append(proposal)
-        candidate_by_id[proposal_id] = proposal
-        reflections.append({"parent_id": parent_id, "proposal_id": proposal_id, **reflection})
-        evaluation_count += 1
-        reflections_count += 1
-    frontier = pareto_frontier([
-        CandidateScore(row["id"], row["pass_rates"], row["invalid_counts"]) for row in candidates
-    ])
-    frontier_ids = [row.id for row in frontier]
     output_dir.mkdir(parents=True, exist_ok=False)
     inputs = {}
     for name, path, raw in (
@@ -470,7 +445,7 @@ def evolve(candidate_path: Path, catalog_path: Path, fixtures_path: Path, output
         artifact = f"{name}.json"
         (output_dir / artifact).write_bytes(raw)
         inputs[name] = {"source_path": str(path), "artifact": artifact, "sha256": hashlib.sha256(raw).hexdigest()}
-    for row, text in [(baseline, ""), *[(row, row["candidate_text"]) for row in candidates]]:
+    def archive_candidate(row, text):
         artifact = f"{row['id']}.md"
         raw = text.encode("utf-8")
         (output_dir / artifact).write_bytes(raw)
@@ -480,19 +455,109 @@ def evolve(candidate_path: Path, catalog_path: Path, fixtures_path: Path, output
         row["input_sha256"] = {name: identity["sha256"] for name, identity in inputs.items()}
         if "parent_id" in row:
             row["parent_sha256"] = candidate_by_id[row["parent_id"]]["candidate_sha256"]
+
+    curated_input = {"id": "curated"}
+    archive_candidate(curated_input, curated_text)
+    candidates = []
+    candidate_by_id = {}
     report = {
         "inputs": inputs,
-        "reflections": reflections,
-        "evaluations_consumed": evaluation_count,
+        "curated_input": curated_input,
+        "status": "incomplete",
+        "reflections": [],
+        "evaluations_consumed": 0,
         "max_evaluations": max_evaluations,
-        "reflections_consumed": reflections_count,
+        "reflections_consumed": 0,
         "max_reflections": max_reflections,
         "fixture_count": len(fixtures),
-        "baseline": baseline,
+        "max_logical_calls": max_evaluations * len(fixtures) + max_reflections,
+        "logical_calls_started": 0,
+        "baseline": None,
         "candidates": candidates,
-        "pareto_frontier": frontier_ids,
-        "termination_reason": stop_reason,
+        "pareto_frontier": [],
+        "termination_reason": "in_progress",
         "promotion": "not_promoted; human review and independent full-suite verification required",
     }
-    (output_dir / "results.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    _write_report(output_dir, report)
+    print(f"[evolve] Budget: {max_evaluations} full-suite evaluations x {len(fixtures)} fixtures + {max_reflections} reflections = at most {report['max_logical_calls']} logical OMP calls; provider retries may add requests. Archive: {output_dir}", file=sys.stderr, flush=True)
+    meta = {}
+
+    def checkpoint(row, fixture_id, starting):
+        if "candidate_artifact" not in row:
+            row.update(meta)
+            archive_candidate(row, row["candidate_text"])
+            if row["id"] == "no-skill-baseline":
+                report["baseline"] = row
+            else:
+                candidates.append(row)
+                candidate_by_id[row["id"]] = row
+        report["location"] = {"stage": row["id"], "fixture_id": fixture_id, "completed": len(row["outcomes"])}
+        if starting:
+            report["logical_calls_started"] += 1
+        elif row["complete"]:
+            report["evaluations_consumed"] += 1
+        _write_report(output_dir, report)
+        print(f"[evolve] {row['id']}: {len(row['outcomes'])}/{len(fixtures)} complete; {'calling' if starting else 'saved'} {fixture_id}", file=sys.stderr, flush=True)
+
+    try:
+        _evaluate("no-skill-baseline", "", fixtures, catalog_json, route_ids, timeout, checkpoint=checkpoint)
+        _evaluate("curated", curated_text, fixtures, catalog_json, route_ids, timeout, checkpoint=checkpoint)
+        stop_reason = "budget_reached"
+        for iteration in range(max_reflections):
+            if report["evaluations_consumed"] >= max_evaluations:
+                break
+            frontier = pareto_frontier([
+                CandidateScore(row["id"], row["pass_rates"], row["invalid_counts"]) for row in candidates
+            ])
+            eligible = [score for score in frontier if any(not row["passed"] for row in candidate_by_id[score.id]["outcomes"])]
+            if not eligible:
+                stop_reason = "all_frontier_candidates_passed"
+                break
+            parent_id = eligible[iteration % len(eligible)].id
+            parent = candidate_by_id[parent_id]
+            proposal_id = f"proposal-{iteration + 1}"
+            reflection = {"parent_id": parent_id, "proposal_id": proposal_id}
+            report["reflections"].append(reflection)
+
+            def save_reflection(data, starting):
+                reflection.update(data)
+                report["location"] = {"stage": "reflection", "parent_id": parent_id, "proposal_id": proposal_id}
+                if starting:
+                    report["logical_calls_started"] += 1
+                else:
+                    report["reflections_consumed"] += 1
+                _write_report(output_dir, report)
+                print(f"[evolve] reflection {iteration + 1}/{max_reflections}: {'calling' if starting else 'response saved'}", file=sys.stderr, flush=True)
+
+            reflection.update(_reflect(parent["candidate_text"], parent["outcomes"], catalog, timeout, checkpoint=save_reflection))
+            proposal_text = reflection["candidate_text"]
+            _preflight_candidate(proposal_text, timeout)
+            failed_ids = [row["fixture_id"] for row in parent["outcomes"] if not row["passed"]]
+            meta = {"parent_id": parent_id, "mutation_hypothesis": f"Targeted reflection on failed fixtures: {', '.join(failed_ids)}"}
+            _evaluate(proposal_id, proposal_text, fixtures, catalog_json, route_ids, timeout, checkpoint=checkpoint)
+        report["pareto_frontier"] = [score.id for score in pareto_frontier([
+            CandidateScore(row["id"], row["pass_rates"], row["invalid_counts"]) for row in candidates
+        ])]
+        report.update(status="complete", termination_reason=stop_reason)
+        _write_report(output_dir, report)
+    except (Exception, KeyboardInterrupt) as exc:
+        report.update(status="incomplete", pareto_frontier=[], termination_reason="interrupted" if isinstance(exc, KeyboardInterrupt) else "failed")
+        report["failure"] = {"type": type(exc).__name__, "message": str(exc), "location": report.get("location")}
+        if hasattr(exc, "process_output"):
+            report["failure"]["process_output"] = {
+                key: value.decode("utf-8", errors="replace") if isinstance(value, bytes) else value
+                for key, value in exc.process_output.items()
+            }
+        archive_error = None
+        try:
+            _write_report(output_dir, report)
+        except OSError as io_error:
+            archive_error = str(io_error)
+        detail = f"; incomplete archive: {output_dir}" + (f"; archive also failed: {archive_error}" if archive_error else "")
+        print(f"[evolve] Failed at {report.get('location')}: {exc}{detail}", file=sys.stderr, flush=True)
+        if isinstance(exc, KeyboardInterrupt):
+            raise ToolOperationError(f"Evolution interrupted{detail}") from exc
+        exc.args = (str(exc) + detail,)
+        raise
+    print(f"[evolve] Complete: {report['evaluations_consumed']} evaluations, {report['reflections_consumed']} reflections; {stop_reason}; not_promoted", file=sys.stderr, flush=True)
     return report

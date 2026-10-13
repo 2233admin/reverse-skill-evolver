@@ -222,6 +222,33 @@ def test_doctor_preserves_stages_and_actions_with_compatible_errors(monkeypatch,
         assert bool(captured.err) == failed
 
 
+@pytest.mark.parametrize("fail", [False, True])
+def test_evolve_real_runner_keeps_progress_on_stderr_and_one_final_json(tmp_path, monkeypatch, capsys, fail):
+    from reverse_skill import evolution
+    from reverse_skill.errors import ToolOperationError
+    candidate, catalog, fixtures = [tmp_path / name for name in ("candidate.md", "catalog.json", "fixtures.json")]
+    candidate.write_text("Select routes", encoding="utf-8")
+    catalog.write_text(json.dumps({"macro_routes": [{"id": "east"}]}), encoding="utf-8")
+    fixtures.write_text(json.dumps({"fixtures": [{"id": str(i), "track": "routing", "task": "east", "expected_route": "east"} for i in range(2)]}), encoding="utf-8")
+    calls = 0
+    def omp(*args):
+        nonlocal calls
+        calls += 1
+        if fail and calls == 3:
+            raise ToolOperationError("provider timed out")
+        return '{"route_id":"east"}'
+    monkeypatch.setattr(evolution, "_omp", omp)
+    code = cli_module.main(["--json", "evolve", "--candidate", str(candidate), "--catalog", str(catalog), "--fixtures", str(fixtures), "--output", str(tmp_path / "run")])
+    captured = capsys.readouterr()
+    value = json.loads(captured.out)
+    assert "at most 7 logical OMP calls" in captured.err
+    assert "no-skill-baseline: 2/2 complete" in captured.err
+    assert code == (5 if fail else 0) and value["ok"] is not fail
+    assert ("[evolve] Complete:" in captured.err) is not fail
+    report = json.loads((tmp_path / "run/results.json").read_text(encoding="utf-8"))
+    assert report["status"] == ("incomplete" if fail else "complete")
+
+
 @pytest.fixture
 def evolve_args(tmp_path: Path) -> list[str]:
     input_path = tmp_path / "input.json"

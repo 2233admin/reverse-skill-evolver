@@ -328,8 +328,8 @@ def integrations(state: State) -> None:
 @click.option("--catalog", required=True, type=click.Path(exists=True, dir_okay=False, resolve_path=True, path_type=Path))
 @click.option("--fixtures", required=True, type=click.Path(exists=True, dir_okay=False, resolve_path=True, path_type=Path))
 @click.option("--output", required=True, type=click.Path(file_okay=False, path_type=Path))
-@click.option("--max-evaluations", type=click.IntRange(min=3), default=3, show_default=True)
-@click.option("--max-reflections", type=click.IntRange(min=1), default=1, show_default=True)
+@click.option("--max-evaluations", type=click.IntRange(min=3), default=3, show_default=True, help="Full fixture-suite evaluations, including baseline and curated; calls scale with fixture count.")
+@click.option("--max-reflections", type=click.IntRange(min=1), default=1, show_default=True, help="Separate reflection call budget; maximum logical calls = evaluations x fixtures + reflections (provider retries may add requests).")
 @click.option("--model-timeout", type=click.IntRange(min=1, max=3600), default=120, show_default=True)
 @click.pass_obj
 def evolve(

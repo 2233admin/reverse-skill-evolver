@@ -1,4 +1,4 @@
-关联 #40、#33、#34、#35；总览关联 #32。
+关联 #40、#33、#34、#35、#36；总览关联 #32。
 
 Windows 上 `start --replace-stale` 原先按进程名清理所有 IDA MCP 服务，会打断其他端口。现在仅检查所选端口的监听者，持有进程 handle 后核实 executable 再停止；未知归属保留并返回检查命令，健康服务继续复用。
 
@@ -15,3 +15,5 @@ Windows 上 `start --replace-stale` 原先按进程名清理所有 IDA MCP 服�
 `doctor/status` 在离线时保留本地信息并给出三个阶段的恢复动作。失败 JSON 保持 v1 envelope、`data:null` 和原 error code，在 `error.message` 的 `Diagnostics: ` 后包含诊断 JSON；人工输出与 integrations 改为摘要及下一步。`python -m pytest tests/test_cli.py tests/test_contract.py -q`：64 passed；另以真实离线端口运行 doctor 检查本机发现、失败提示与退出码。未修改宿主配置或运行 IDA 分析。
 
 Burp bridge 支持未加载工具时单次有界重取（并发共用、成功缓存），并准确传递操作 `isError:true`。连接、HTTP/JSON/形状错误保持协议错误和请求 ID。真实 Node stdio/loopback 后端检查 6 passed；已接入 Python 测试入口。未运行 Burp GUI，未改 Java/攻击语义。
+
+evolve 明确完整用例集评估/反思预算及实际 fixture 数对应的逻辑调用上限；stderr 输出阶段进度。模型调用前冻结归档输入，逐次 checkpoint 原始响应；异常/中断保留 incomplete 归档、失败位置和已完成结果，保留 not_promoted，不将部分 suite 作为比较/晋级依据；错误归档失败也不掩盖原评估错误。相关 evolution/CLI/合同测试 160 passed。此项为模拟 OMP 检查，真实模型验证另归 #21。
