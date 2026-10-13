@@ -1,5 +1,13 @@
 # Changelog
 
+## reverse-skill-evolver-cli 1.2.0b1 — 2026-10-14
+
+- Add the bounded `reverse-skill-swarm` coordinator/analyst/summarizer workflow with evidence snapshots and interrupted-queue cancellation.
+- Fix explicit IDA timeouts, offline diagnostics, Windows launcher ownership, and readiness deadlines.
+- Preserve routing-evolution budgets, progress, partial checkpoints, and `not_promoted`.
+- Restore Burp bridge recovery and operation-error reporting; align PowerShell alias and capability discovery.
+- Ship the source-distributed OMP workflows and a beta testing guide. Model analysis remains advisory; automatic OMP skill discovery and real swarm quality are not certified.
+
 ## reverse-skill-evolver-cli 1.1.2
 
 - Bound Codex MCP registration subprocesses with explicit timeouts.
