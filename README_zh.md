@@ -2,9 +2,30 @@
   <img src="assets/reverse-skill-evolver-cover.png" alt="Reverse Skill Evolver tactical cover" width="100%" />
 </p>
 
-AI社区：https://linux.do
+# Reverse Skill Evolver
 
- # Cybersecurity Skills Router / 逆向技能路由包
+[English](README.md) · 中文 · [AI 社区](https://linux.do)
+
+Reverse Skill Evolver 把逆向分析中常用的技能、工具接入和操作流程放在一起，供 Claude Code、Codex、OMP 等 AI 编码代理使用。给出目标和任务后，代理先选择对应的 skill，再调用本机可用的工具，按流程分析并保留结果。
+
+分析 APK，可以从解包和反编译开始，再接 Frida 观察运行时行为。处理 PE/ELF，可以通过 IDA 取得二进制概览、反编译和交叉引用。遇到 JavaScript 签名，则沿着浏览器采样、函数定位和本地复现继续。这些任务各有独立的 [skill 入口](skills/SKILL.md)，工具按任务需要接入。
+
+项目的路由说明可以随任务经验改进。`reverse-skill evolve` 用固定用例评估路由选择，在指定预算内尝试候选改动，并保存每轮结果。候选经过人工审查和独立验证后，再决定是否采用。
+
+**Agent 蜂群**用于分析已经收集的证据。`reverse-skill-swarm` 先拆分任务，让分析代理并行处理，再汇总结论、分歧和未知项。每次运行都要指定逻辑调用预算，输入快照、各代理记录和 `run.json` 会写入新目录。当前蜂群只分析提供的材料，输出标记为 `advisory`，结论还需用目标观察或测试核对。
+
+## 从这里开始
+
+本轮测试版为 [v1.2.0-beta.1](https://github.com/2233admin/reverse-skill-evolver/releases/tag/v1.2.0-beta.1)。下载 Release 中的完整 ZIP，可以一起取得 skills、Python 安装包和 Burp JAR。安装和蜂群测试步骤见 [测试指南](https://github.com/2233admin/reverse-skill-evolver/blob/v1.2.0-beta.1/BETA-TEST.md)。
+
+| 先做什么 | 从哪里进入 | 需要准备什么 |
+|---|---|---|
+| 试一次蜂群分析 | [测试指南](https://github.com/2233admin/reverse-skill-evolver/blob/v1.2.0-beta.1/BETA-TEST.md)中的三次调用示例 | 已配置模型的 OMP CLI，以及允许发送给该模型的 UTF-8 证据 |
+| 完成一条本地二进制任务 | [本地 IDA 示例](#0-先完成一条本地-ida-任务) | Python 3.10+、已许可的 IDA/idalib、`idalib-mcp` 和自己的样本 |
+| 把技能接入现有客户端 | [客户端接入说明](#7-claude-code--codex-cli--其他-ai-客户端如何接入) | 可用的 AI 客户端，以及任务所需工具 |
+| 查看具体技能和路由 | [技能入口](skills/SKILL.md)与[路由表](skills/routing.md) | 按目标选定的任务 |
+
+测试版的真实模型协作质量和 OMP skill 自动发现仍待核对，已运行的检查及边界见 [验证记录](https://github.com/2233admin/reverse-skill-evolver/blob/v1.2.0-beta.1/BETA-VALIDATION.md)。
 
 > 本包放在哪个目录都行，AI 会自动检测实际路径。以下用 `<SKILL_ROOT>` 代指你的实际安装位置。
 

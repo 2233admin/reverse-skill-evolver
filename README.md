@@ -1,10 +1,31 @@
-> **[Chinese Version / 中文版](README_zh.md)**
-
 <p align="center">
   <img src="assets/reverse-skill-evolver-cover.png" alt="Reverse Skill Evolver tactical cover" width="100%" />
 </p>
 
-# Cybersecurity Skills Router / Reverse-Engineering Skill Routing Pack
+# Reverse Skill Evolver
+
+English · [中文](README_zh.md) · [AI community](https://linux.do)
+
+Reverse Skill Evolver brings reverse-engineering skills, tool integrations, and working procedures into one package for AI coding agents such as Claude Code, Codex, and OMP. Given a target and a task, the agent selects the relevant skill, uses available local tools, and follows the workflow while keeping the results.
+
+For an APK, start with unpacking and decompilation, then use Frida to observe runtime behavior. For a PE/ELF binary, use IDA to collect an overview, decompile functions, and inspect cross-references. JavaScript signing tasks follow browser sampling, function tracing, and local replay. Each task has a separate [skill entry](skills/SKILL.md); connect the tools needed for the task.
+
+Routing instructions can be revised based on task experience. `reverse-skill evolve` evaluates route selection against fixed fixtures, tries candidate changes within an explicit budget, and saves each round's results. Candidates require human review and independent verification before a decision to adopt them.
+
+The **agent swarm** analyzes evidence you have already collected. `reverse-skill-swarm` splits the work, runs analysts in parallel, and summarizes their findings, disagreements, and unknowns. Each run requires an explicit logical-call budget and saves the input snapshot, agent records, and `run.json` in a fresh directory. The current swarm analyzes supplied material; its output is marked `advisory` and needs checking against target observations or tests.
+
+## Start here
+
+The testing release for this round is [v1.2.0-beta.1](https://github.com/2233admin/reverse-skill-evolver/releases/tag/v1.2.0-beta.1). Download the full ZIP from the Release to get the skills, Python packages, and Burp JAR together. Follow the [testing guide](https://github.com/2233admin/reverse-skill-evolver/blob/v1.2.0-beta.1/BETA-TEST.md) for installation and swarm examples.
+
+| First task | Entry | Prerequisites |
+|---|---|---|
+| Try a swarm analysis | The three-call example in the [testing guide](https://github.com/2233admin/reverse-skill-evolver/blob/v1.2.0-beta.1/BETA-TEST.md) | OMP CLI with a configured model, and UTF-8 evidence you permit that model to receive |
+| Complete one local binary task | [Local IDA example](#0-start-with-one-local-ida-task) | Python 3.10+, licensed IDA/idalib, `idalib-mcp`, and your sample |
+| Connect skills to an existing client | [Client integration](#7-how-to-integrate-with-claude-code--codex-cli--other-ai-clients) | A working AI client and the tools needed for your task |
+| Browse skills and routes | [Skill entry](skills/SKILL.md) and [routing table](skills/routing.md) | A task selected for your target |
+
+Real-model swarm quality and automatic OMP skill discovery still need testing. See the [validation record](https://github.com/2233admin/reverse-skill-evolver/blob/v1.2.0-beta.1/BETA-VALIDATION.md) for completed checks and their limits.
 
 > This package can be placed in any directory. The AI will automatically detect its actual path. In the following text, `<SKILL_ROOT>` refers to your real installation path.
 
