@@ -1,6 +1,6 @@
 # Native IDA snapshot and triage
 
-Development status: implemented from the pinned OMP worker contract; runtime behavior is **untested**. No IDA session, target binary, or model was executed during development.
+Snapshot/triage were verified on self-authored x64 PE fixtures in the pinned OMP 18.8.9 production worker with real IDA/idalib: strings/imports/functions, no matches, bounded captures and non-function references. See [scoped evidence](https://github.com/2233admin/reverse-skill-evolver/blob/2233admin/repair-open-issues-15/reports/omp-workflow-verification-2026-10-13/README.md). Other architectures, arbitrary inputs and host registry integration remain separate checks. No model is required by these collectors.
 
 Use `scripts/ida_analysis.py` inside an existing OMP native `ida` worker. It defines `collect_snapshot(namespace, database_id, ...)` and `triage(namespace, database_id, ...)`; loading it performs no analysis. Both functions call the real worker helpers passed in `namespace`. They do not start a service or use an MCP adapter, and they do not call database-edit helpers.
 
@@ -18,6 +18,8 @@ print(__import__("json").dumps(task_analysis_result, ensure_ascii=False))
 ```
 
 The separate dictionary holds the script's imports and definitions; the worker's `func`, `functions`, `strings`, and other helpers retain their original bindings. Use task-specific variable names because the worker namespace is shared. The caller supplies the ID returned by native `ida`; this collector cannot independently verify that string against the host registry. Each database has a separate worker namespace.
+
+Missing native db/enumeration/function helpers fail with an explicit native exec requirement. Invalid or empty source identity fields fail before an artifact can be exported. Worker warnings can appear alongside printed text; the exclusive full-file save below was exercised on real fixtures and is the artifact boundary.
 
 Use a finite native `ida` exec timeout. Native `functions()`, `strings()`, and `imports()` enumerate their whole underlying collections before the script can apply limits. `callees()`, `xrefs_to()`, and optional `pseudocode()` also finish their native work before results can be shortened. These limits bound captured output and subsequent queries, not the complete native scan or decompiler cost. OMP may save a database as part of its normal exec/lifecycle handling.
 

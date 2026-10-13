@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "source": {
+    "sha256": "2634d5d1e513b3b734af170d81ddbb0bf86428e7b41b26759d648da3a2c8f9c5",
+    "module": "toy-v2.dll",
+    "format": "Portable executable for AMD64 (PE)",
+    "architecture": "metapc",
+    "bitness": 64,
+    "image_base": "0x180000000",
+    "database_id": "owned-native-v2-2634d5d1e513"
+  },
+  "coverage": {
+    "native_enumeration": "full_helper_scan",
+    "functions_total": 3,
+    "functions_truncated": false,
+    "strings_truncated": false,
+    "imports_truncated": false,
+    "source_scans": {
+      "functions": {
+        "total": 3,
+        "scanned": 3,
+        "scan_truncated": false,
+        "matches": 0,
+        "text_truncated": false
+      },
+      "strings": {
+        "total": 8,
+        "scanned": 8,
+        "scan_truncated": false,
+        "matches": 0,
+        "text_truncated": false
+      },
+      "imports": {
+        "total": 1,
+        "scanned": 1,
+        "scan_truncated": false,
+        "matches": 0,
+        "text_truncated": false
+      }
+    },
+    "xref_queries": 0,
+    "xref_rows_total": 0,
+    "xref_rows_truncated": false,
+    "non_function_xrefs_skipped": 0,
+    "evidence_truncated": false,
+    "patterns": {
+      "functions": "^NO_MATCH$",
+      "strings": "^NO_MATCH$",
+      "imports": "^NO_MATCH$"
+    },
+    "limits": {
+      "max_candidates": 50,
+      "max_matches_per_source": 100,
+      "max_xref_queries": 100,
+      "max_xrefs_per_source": 100,
+      "max_evidence_per_candidate": 20,
+      "max_scan_per_source": 10000,
+      "max_subject_chars": 4096,
+      "max_pattern_chars": 256
+    },
+    "xref_queries_truncated": false,
+    "candidates_total": 0,
+    "candidates_truncated": false
+  },
+  "candidates": []
+}

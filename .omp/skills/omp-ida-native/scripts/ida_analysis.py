@@ -2,6 +2,7 @@
 
 import hashlib
 import re
+from collections.abc import Mapping
 
 
 def _limit(value, name, maximum, minimum=0):
@@ -11,6 +12,14 @@ def _limit(value, name, maximum, minimum=0):
 
 
 def _source(namespace, database_id):
+    required = ("db", "functions", "strings", "imports", "func")
+    if not isinstance(namespace, Mapping) or any(name not in namespace for name in required):
+        raise RuntimeError(
+            "OMP native IDA exec namespace required (db/functions/strings/imports/func); "
+            "open an owned native database and pass its exec globals"
+        )
+    if not all(callable(namespace[name]) for name in required[1:]):
+        raise RuntimeError("OMP native IDA enumeration and function helpers must be callable")
     if not isinstance(database_id, str) or not database_id.strip():
         raise ValueError("database_id must be the explicit native database ID")
     db = namespace["db"]
@@ -22,11 +31,14 @@ def _source(namespace, database_id):
     base = db.base_address
     if isinstance(base, bool) or not isinstance(base, int) or not 0 <= base < 1 << db.bitness:
         raise ValueError("db.base_address is outside the input address space")
+    for name in ("module", "format", "architecture"):
+        if not isinstance(getattr(db, name, None), str) or not getattr(db, name).strip():
+            raise ValueError(f"db.{name} must identify the native input")
     return {
         "sha256": digest,
-        "module": str(db.module),
-        "format": str(db.format),
-        "architecture": str(db.architecture),
+        "module": db.module,
+        "format": db.format,
+        "architecture": db.architecture,
         "bitness": db.bitness,
         "image_base": hex(base),
         "database_id": database_id,

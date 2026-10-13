@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "source": {
+    "sha256": "2634d5d1e513b3b734af170d81ddbb0bf86428e7b41b26759d648da3a2c8f9c5",
+    "module": "toy-v2.dll",
+    "format": "Portable executable for AMD64 (PE)",
+    "architecture": "metapc",
+    "bitness": 64,
+    "image_base": "0x180000000",
+    "database_id": "owned-native-v2-2634d5d1e513"
+  },
+  "coverage": {
+    "native_enumeration": "full_helper_scan",
+    "functions_total": 3,
+    "functions_truncated": false,
+    "strings_truncated": false,
+    "imports_truncated": false,
+    "source_scans": {
+      "functions": {
+        "total": 3,
+        "scanned": 3,
+        "scan_truncated": false,
+        "matches": 2,
+        "text_truncated": false
+      },
+      "strings": {
+        "total": 8,
+        "scanned": 8,
+        "scan_truncated": false,
+        "matches": 2,
+        "text_truncated": false
+      },
+      "imports": {
+        "total": 1,
+        "scanned": 1,
+        "scan_truncated": false,
+        "matches": 0,
+        "text_truncated": false
+      }
+    },
+    "xref_queries": 1,
+    "xref_rows_total": 1,
+    "xref_rows_truncated": false,
+    "non_function_xrefs_skipped": 1,
+    "evidence_truncated": false,
+    "patterns": {
+      "functions": "parse|decode|decrypt|auth|login|check|verify|password|token|key|exec|system|shell|memcpy|strcpy",
+      "strings": "password|token|secret|license|invalid|unauthorized|https?://",
+      "imports": "memcpy|strcpy|sprintf|system|exec|crypt|socket|connect|recv|send|read|write"
+    },
+    "limits": {
+      "max_candidates": 1,
+      "max_matches_per_source": 100,
+      "max_xref_queries": 1,
+      "max_xrefs_per_source": 1,
+      "max_evidence_per_candidate": 1,
+      "max_scan_per_source": 10000,
+      "max_subject_chars": 4096,
+      "max_pattern_chars": 256
+    },
+    "xref_queries_truncated": true,
+    "candidates_total": 2,
+    "candidates_truncated": true
+  },
+  "candidates": [
+    {
+      "ea": "0x180001050",
+      "rva": "0x1050",
+      "name": "check_license",
+      "score": 3,
+      "evidence": [
+        {
+          "kind": "function_name",
+          "source_ea": "0x180001050",
+          "value": "check_license"
+        }
+      ],
+      "next_action": "Inspect this function's pseudocode or assembly and verify the cited xref sites."
+    }
+  ]
+}

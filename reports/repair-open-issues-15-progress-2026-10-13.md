@@ -16,7 +16,10 @@
 | #39 | 已推送 d59699c，Draft PR #42 | [交付回执](https://github.com/2233admin/reverse-skill-evolver/issues/39#issuecomment-6145103261) |
 | #32 | 总览，待逐项回收 | 不视为独立代码修复，不提前关闭 |
 | #41 | 原 632cf1a 已复验，Draft PR #44 | [PR](https://github.com/2233admin/reverse-skill-evolver/pull/44)；新复验 39 passed，67.75 秒；未重写 |
-| #27–#30 | 已有 Draft PR #31，待功能验证 | 依赖 Draft PR #26；复用实现 |
+| #27 | 修复并通过真实 native fixture 与 22 项检查 | 复用 PR #26/#31 lineage，交付 PR #42；见 scoped report |
+| #28 | 待功能验证 | 消费两个真实 native 快照，复用既有 comparator |
+| #29 | 待功能验证 | 用自制目标核对 Frida 计划/脚本 |
+| #30 | 待功能验证 | 执行 signer fixtures / eval 入口 |
 | #21 | 真实 suite/反思/失败路径已验证，交付 PR #42 | 31/37 逻辑调用，单次 60 秒；候选不晋级，见真实记录 |
 
 ## #40 验证
@@ -100,3 +103,11 @@
 原提交全套 256 passed/5 skipped 与性能测量仍属于旧证据，本次不冒充重测。真实安装、设备、Frida 注入、远端同步未测。接续创建原 head 的 Draft PR，待审阅/明确合并授权。
 
 Draft PR #44 已创建，head 精确为原 632cf1a，base main；既有实现/提交未重写。下一责任人：审阅者。OMP #27–#30 将在当前专属分支复用 PR #26/#31 的 Git lineage，再串行修补和验证，不写其原分支、不合入 main。
+
+## #27 功能验证
+
+本地 merge 2362964 复用原 PR #26/#31 Git lineage；解决四个文档冲突，保留本轮首页/授权范围与既有 OMP 后端选择；原分支不变。合并后常规 Python 检查 **266 passed, 5 skipped**。
+
+真实自制 x64 PE DLL 的 pinned 生产 worker open/exec 已验证字符串、导入、函数、无匹配、截断预算及非函数 xref；最新 collector 源码后重跑，输入 SHA 与保存 DLL 一致。补充回归 **22 passed**；修复 missing namespace 的明确诊断、拒绝空/错误 metadata。例子真实保存完整 JSON，避免 helper warning 混进打印输出；portable skill 的证据链接使用 HTTPS，复制技能目录仍可用。全部细节见 [scoped record](omp-workflow-verification-2026-10-13/README.md)。
+
+没有改他人数据库/服务或宿主配置；worker 的 database_id 为调用方绑定的本地测试标识，不冒充 OMP host registry 验证。OMP 模型调用 0，#21 的 31 次保持独立。下一责任人：PR 审阅者；本 Session 继续 #28。

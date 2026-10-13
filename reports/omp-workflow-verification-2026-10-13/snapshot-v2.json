@@ -1,0 +1,141 @@
+{
+  "schema_version": 1,
+  "source": {
+    "sha256": "2634d5d1e513b3b734af170d81ddbb0bf86428e7b41b26759d648da3a2c8f9c5",
+    "module": "toy-v2.dll",
+    "format": "Portable executable for AMD64 (PE)",
+    "architecture": "metapc",
+    "bitness": 64,
+    "image_base": "0x180000000",
+    "database_id": "owned-native-v2-2634d5d1e513"
+  },
+  "coverage": {
+    "native_enumeration": "full_helper_scan",
+    "functions_total": 3,
+    "functions_truncated": false,
+    "strings_total": 8,
+    "strings_truncated": false,
+    "imports_total": 1,
+    "imports_truncated": false,
+    "callees_truncated": false,
+    "bytes_truncated": false,
+    "strings_text_truncated": false,
+    "pseudocode_requested": false,
+    "pseudocode_functions_collected": 0,
+    "pseudocode_functions_truncated": false,
+    "pseudocode_text_truncated": false,
+    "limits": {
+      "max_functions": 20,
+      "max_strings": 20,
+      "max_imports": 20,
+      "max_callees": 25,
+      "max_bytes_per_function": 256,
+      "max_pseudocode_functions": 10,
+      "max_pseudocode_chars": 8000,
+      "max_text_chars": 4096
+    }
+  },
+  "functions": [
+    {
+      "ea": "0x180001000",
+      "rva": "0x1000",
+      "name": "padding_function",
+      "size": 72,
+      "callees": [],
+      "callees_truncated": false,
+      "bytes_sha256": "dcd96b7a1f1cac744e5a7da41aa62b19b7a6bd87d79ff97022a9a5950364c672",
+      "bytes_hashed": 72,
+      "bytes_truncated": false,
+      "bytes_start_ea": "0x180001000",
+      "bytes_end_ea": "0x180001048",
+      "pseudocode": null,
+      "pseudocode_kind": "not_collected",
+      "pseudocode_truncated": false
+    },
+    {
+      "ea": "0x180001050",
+      "rva": "0x1050",
+      "name": "check_license",
+      "size": 52,
+      "callees": [
+        "GetCurrentProcessId"
+      ],
+      "callees_truncated": false,
+      "bytes_sha256": "ebec6a2a86354a7731bed6c9b84c8f35a9f46c5f8dd7a0cef790f3d061f0fa89",
+      "bytes_hashed": 52,
+      "bytes_truncated": false,
+      "bytes_start_ea": "0x180001050",
+      "bytes_end_ea": "0x180001084",
+      "pseudocode": null,
+      "pseudocode_kind": "not_collected",
+      "pseudocode_truncated": false
+    },
+    {
+      "ea": "0x180001090",
+      "rva": "0x1090",
+      "name": "decode_payload",
+      "size": 25,
+      "callees": [
+        "check_license"
+      ],
+      "callees_truncated": false,
+      "bytes_sha256": "dab2a47c9181ee319a68adcaae26cf8537988ded90c8eb5437ee8faf89c6e410",
+      "bytes_hashed": 25,
+      "bytes_truncated": false,
+      "bytes_start_ea": "0x180001090",
+      "bytes_end_ea": "0x1800010a9",
+      "pseudocode": null,
+      "pseudocode_kind": "not_collected",
+      "pseudocode_truncated": false
+    }
+  ],
+  "strings": [
+    {
+      "ea": "0x180002028",
+      "value": "toy-v2.dll",
+      "value_truncated": false
+    },
+    {
+      "ea": "0x18000205b",
+      "value": "check_license",
+      "value_truncated": false
+    },
+    {
+      "ea": "0x180002069",
+      "value": "decode_payload",
+      "value_truncated": false
+    },
+    {
+      "ea": "0x180002078",
+      "value": "marker_reference",
+      "value_truncated": false
+    },
+    {
+      "ea": "0x180002089",
+      "value": "padding_function",
+      "value_truncated": false
+    },
+    {
+      "ea": "0x1800020ea",
+      "value": "GetCurrentProcessId",
+      "value_truncated": false
+    },
+    {
+      "ea": "0x1800020fe",
+      "value": "KERNEL32.dll",
+      "value_truncated": false
+    },
+    {
+      "ea": "0x180003000",
+      "value": "license-invalid-omp-owned-fixture-v2",
+      "value_truncated": false
+    }
+  ],
+  "imports": [
+    {
+      "ea": "0x1800020d8",
+      "module": "KERNEL32",
+      "name": "GetCurrentProcessId"
+    }
+  ]
+}
