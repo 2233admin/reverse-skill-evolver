@@ -473,8 +473,7 @@ def parse_markdown(relpath: str, lines: List[str]) -> List[NodeSpec]:
         indent = len(line) - len(stripped)
         if in_fence:
             if indent <= 3 and stripped.startswith(fence_char * fence_len):
-                rest = stripped[fence_len:]
-                if rest.strip() == "" or rest.startswith(fence_char * fence_len):
+                if re.fullmatch(re.escape(fence_char) + "{" + str(fence_len) + ",}[ \t]*", stripped):
                     in_fence = False
             continue
         opener = _FENCE_OPEN_RE.match(stripped)

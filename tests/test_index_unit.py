@@ -649,3 +649,10 @@ def _write_workspace(tmp_path: Path) -> None:
             target = tmp_path / relative
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(source.read_bytes())
+
+
+@pytest.mark.parametrize("char,length", [("`", 4), ("`", 5), ("~", 4), ("~", 5)])
+def test_markdown_longer_fence_closes_block(char, length):
+    nodes = parse_markdown("fences.md", ["# Root", char * 3, "# hidden", char * length, "## Visible"])
+    headings = [(n.title, n.start) for n in nodes if n.kind == "heading"]
+    assert headings == [("Root", 1), ("Visible", 5)]
