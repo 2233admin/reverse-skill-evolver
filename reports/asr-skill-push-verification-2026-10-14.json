@@ -36,12 +36,15 @@
     "exit_code": 0,
     "passed": 460,
     "skipped": 5,
-    "duration_seconds": 147.31
+    "duration_seconds": 147.31,
+    "scope": "Full integration regression before final pip-isolation guard; final scoped rerun covers that guard"
   },
   "focused_tests": {
     "command": "python -m pytest -q tests/test_asr.py tests/test_skill_distribution.py tests/test_contract.py tests/test_routing_contract.py tests/test_omp_skill_contract.py",
     "exit_code": 0,
-    "passed": 70
+    "passed": 71,
+    "duration_seconds": 17.56,
+    "scope": "Final scoped rerun after isolating the dependency-install subprocess from caller Python modules"
   },
   "lint": {
     "command": "ruff check scripts/run.py reverse_skill/asr.py reverse_skill/asr_cli.py tests/test_asr.py tests/test_skill_distribution.py",

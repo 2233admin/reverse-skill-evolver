@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -136,3 +137,25 @@ def test_runtime_cache_distinguishes_installed_packages(tmp_path, monkeypatch):
     first = launcher.runtime_directory(tmp_path / "first")
     second = launcher.runtime_directory(tmp_path / "second")
     assert first != second and first.is_relative_to(tmp_path) and second.is_relative_to(tmp_path)
+
+
+def test_first_setup_ignores_a_caller_pip_module(installed_pack, tmp_path, monkeypatch, capfd):
+    launcher = load_launcher(installed_pack / "scripts/run.py")
+    workspace = tmp_path / "caller workspace"
+    workspace.mkdir()
+    sentinel = workspace / "unsafe-import-ran"
+    (workspace / "pip.py").write_text(
+        "from pathlib import Path\nPath('unsafe-import-ran').write_text('bad')\n"
+        "raise RuntimeError('caller pip module was imported')\n", encoding="utf-8",
+    )
+    monkeypatch.chdir(workspace)
+    monkeypatch.setenv("PYTHONPATH", str(workspace))
+    monkeypatch.setenv("REVERSE_SKILL_RUNTIME", str(tmp_path / "fresh runtime"))
+    monkeypatch.setenv("PIP_NO_INDEX", "1")
+    monkeypatch.setenv("PIP_CONFIG_FILE", os.devnull)
+    monkeypatch.setenv("PIP_CACHE_DIR", str(tmp_path / "empty pip cache"))
+    monkeypatch.delenv("PIP_FIND_LINKS", raising=False)
+    assert launcher.main(["--json", "asr", "list"]) == 3
+    assert not sentinel.exists()
+    envelope = json.loads(capfd.readouterr().out)
+    assert "dependency installation failed" in envelope["error"]["message"]

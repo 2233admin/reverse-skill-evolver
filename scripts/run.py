@@ -38,7 +38,7 @@ def runtime_python(package: Path, runtime: Path) -> Path:
     if state.get("signature") != signature or ready.returncode:
         print("Preparing reverse-skill's private Python runtime...", file=sys.stderr)
         completed = subprocess.run(
-            [str(interpreter), "-m", "pip", "install", "--disable-pip-version-check", "--quiet",
+            [str(interpreter), "-I", "-X", "utf8", "-m", "pip", "install", "--disable-pip-version-check", "--quiet",
              "--editable", source], stdout=sys.stderr, check=False,
         )
         if completed.returncode:
