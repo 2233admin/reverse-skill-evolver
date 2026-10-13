@@ -1,2 +1,2 @@
 burp-mcp-full/build.sh text eol=lf
-reports/omp-live-2026-10-13/** -text
+reports/omp-live-2026-10-13/** -text whitespace=cr-at-eol
