@@ -167,6 +167,61 @@ def test_open_preserves_root_timeout_and_does_not_retry(tmp_path, monkeypatch, c
         assert code == 0 and value["data"]["session_id"] == "fixture"
 
 
+@pytest.mark.parametrize("json_mode", [False, True])
+@pytest.mark.parametrize("scenario", ["healthy", "missing", "timeout", "protocol", "registration_timeout"])
+def test_doctor_preserves_stages_and_actions_with_compatible_errors(monkeypatch, capsys, json_mode, scenario):
+    from types import SimpleNamespace
+    import jsonschema
+    from reverse_skill.errors import EnvironmentUnavailable, McpProtocolError, McpTransportError
+    installation = SimpleNamespace(version="9.4", install_dir="fixture/IDA", public=lambda: {"version": "9.4"})
+    monkeypatch.setattr(cli_module, "find_latest_ida", lambda: None if scenario == "missing" else installation)
+    def registration(*args, **kwargs):
+        assert kwargs["timeout"] == 0.5
+        if scenario == "registration_timeout":
+            raise EnvironmentUnavailable("registration timed out")
+        return None if scenario == "missing" else {"enabled": True, "transport": {"url": "http://fixture/mcp"}}
+    monkeypatch.setattr(cli_module, "codex_registration", registration)
+    class Client:
+        era = "fixture"
+        protocol_version = "fixture"
+        server_info = {"name": "fixture"}
+        session_id = "fixture"
+        def __init__(self, url, timeout):
+            assert timeout == 0.5
+        def __enter__(self):
+            if scenario == "timeout":
+                raise McpTransportError("connection timed out")
+            if scenario == "protocol":
+                raise McpProtocolError("invalid MCP response")
+            return self
+        def __exit__(self, *args):
+            pass
+        def request(self, name):
+            return {"tools": [{"name": "fixture"}]}
+    monkeypatch.setattr(cli_module, "McpClient", Client)
+    result = cli_module.main([*(["--json"] if json_mode else []), "--timeout", "0.5", "--url", "http://fixture/mcp", "doctor"])
+    captured = capsys.readouterr()
+    failed = scenario in {"timeout", "protocol", "registration_timeout"}
+    assert result == (3 if scenario == "registration_timeout" else 4 if failed else 0)
+    if json_mode:
+        value = json.loads(captured.out)
+        jsonschema.validate(value, json.loads(Path("reverse-skill-output.schema.json").read_text()))
+        assert value["ok"] is not failed and captured.err == ""
+        if failed:
+            assert value["data"] is None
+            data = json.loads(value["error"]["message"].split("\nDiagnostics: ")[1])
+        else:
+            data = value["data"]
+        assert len(data["stages"]) == 3
+        assert all(stage["action"] for stage in data["stages"])
+        assert data["mcp"]["online"] == (scenario not in {"timeout", "protocol"})
+        assert (data["ida"] is None) == (scenario == "missing")
+    else:
+        assert all(name in captured.out for name in ("IDA:", "Codex:", "MCP:", "Next:"))
+        assert "reverse-skill" in captured.out
+        assert bool(captured.err) == failed
+
+
 @pytest.fixture
 def evolve_args(tmp_path: Path) -> list[str]:
     input_path = tmp_path / "input.json"

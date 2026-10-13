@@ -7,8 +7,8 @@
 | Issue | 本轮状态 | 证据 / 下一步 |
 | --- | --- | --- |
 | #40 | 已推送 b0d78e9，Draft PR #42 | [交付回执](https://github.com/2233admin/reverse-skill-evolver/issues/40#issuecomment-6144184603)，未合并 |
-| #33 | 修复并验证，交付同一 Draft PR #42 | 显式 open 超时，见下方；接续 #34 |
-| #34 | 待实施 | 离线 doctor 诊断 |
+| #33 | 已推送 af900b4，Draft PR #42 | [交付回执](https://github.com/2233admin/reverse-skill-evolver/issues/33#issuecomment-6144196773) |
+| #34 | 修复并验证，交付同一 Draft PR #42 | 离线 doctor 诊断，见下方；接续 #35 |
 | #35 | 待实施 | Burp bridge 和工具失败 |
 | #36 | 待实施 | evolve 预算、进度、中断 |
 | #37 | 待实施 | start 端口与根 URL |
@@ -38,3 +38,11 @@
 实际运行：`python -m pytest tests/test_cli.py -q` → **50 passed**；`git diff --check` 通过。参数化检查默认 120、显式 600、短值 0.5，均通过公开 CLI 到达 MCP client；同一路径的超时仍返回退出码 4、单 JSON 错误、无成功会话且只调用一次。
 
 未运行：真实复杂 IDA 样本的 600 秒分析。此项证明参数与错误合同，不证明真实分析完成。下一责任人：审阅者审阅 Draft PR #42；本 Session 接续 #34。
+
+## #34 验证
+
+修复：收集 IDA、Codex 注册、MCP 三阶段诊断和动作；注册超时仍收集 MCP 结果；MCP 错误不抹掉本地信息。失败保留原 error code/退出码、单 JSON envelope 与 `data:null`；`error.message` 的 `Diagnostics: ` 后附诊断 JSON。人工 doctor/status 提供简明阶段与动作，integrations 给出 availability/support 和下一步。
+
+实际运行：`python -m pytest tests/test_cli.py tests/test_contract.py -q` → **64 passed**；涵盖缺少安装/注册、健康、注册超时、连接超时、协议错误，人工与 JSON 双模式，schema v1 验证和现有调用方兼容检查。`python -m reverse_skill --timeout 0.5 --url http://127.0.0.1:1/mcp doctor` 实际显示本机 IDA 9.4 和已取得的注册地址，MCP 失败有检查 endpoint、服务 PID/log 和重跑 doctor 的动作；stderr 保留错误，命令退出码 4（单独复核）。
+
+未运行：对真实 IDA 服务的启动/分析；未写宿主注册配置。下一责任人：PR 审阅者；本 Session 接续 #35。

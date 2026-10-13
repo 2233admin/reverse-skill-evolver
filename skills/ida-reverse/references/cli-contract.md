@@ -26,6 +26,8 @@ New starts return `server.pid` and `server.logPath`. Early exit and readiness ti
 
 Exit codes are stable: `0` success, `1` internal failure, `2` usage, `3` unavailable local environment, `4` MCP transport/protocol failure, and `5` tool operation failure.
 
+`doctor` and `status` print IDA discovery, Codex registration and MCP health with next actions in human mode. In JSON mode successful `data` keeps the existing fields and adds `stages`. On failure `ok:false`, `data:null` and the original error code remain unchanged; `error.message` includes a `Diagnostics: ` JSON snapshot after the error text, preserving local discovery and stage actions without changing schema v1. A local discovery/registration warning does not by itself turn a healthy remote MCP connection into a transport failure.
+
 ## Examples
 
 ```text

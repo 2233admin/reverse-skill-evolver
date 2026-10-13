@@ -1,4 +1,4 @@
-关联 #40、#33；总览关联 #32。
+关联 #40、#33、#34；总览关联 #32。
 
 Windows 上 `start --replace-stale` 原先按进程名清理所有 IDA MCP 服务，会打断其他端口。现在仅检查所选端口的监听者，持有进程 handle 后核实 executable 再停止；未知归属保留并返回检查命令，健康服务继续复用。
 
@@ -11,3 +11,5 @@ Windows 上 `start --replace-stale` 原先按进程名清理所有 IDA MCP 服�
 接续进度与验证边界见 [修复记录](reports/repair-open-issues-15-progress-2026-10-13.md)。本批单 Session 在专属 worktree/分支串行交付，每项独立提交。
 
 `open` 现在直接传递根 `--timeout`，默认 120 秒、显式 600 秒和短值 0.5 均经公开 CLI 验证。超时维持退出码 4、单 JSON 错误，不自动重试或产生成功会话。`python -m pytest tests/test_cli.py -q`：50 passed；未运行真实复杂样本分析。
+
+`doctor/status` 在离线时保留本地信息并给出三个阶段的恢复动作。失败 JSON 保持 v1 envelope、`data:null` 和原 error code，在 `error.message` 的 `Diagnostics: ` 后包含诊断 JSON；人工输出与 integrations 改为摘要及下一步。`python -m pytest tests/test_cli.py tests/test_contract.py -q`：64 passed；另以真实离线端口运行 doctor 检查本机发现、失败提示与退出码。未修改宿主配置或运行 IDA 分析。
