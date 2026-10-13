@@ -39,7 +39,7 @@ python -m reverse_skill.swarm_cli --help
 
 输出目录必须是新目录，已有目录会拒绝覆盖。每次运行保存：
 
-- `context.txt`：提供给各执行 Agent 的同一份证据快照，SHA-256 记录在运行报告中。
+- `context.txt`：按 UTF-8 原始字节保存的同一份证据快照，保留换行；文件的 SHA-256 记录在运行报告中。
 - `agents/coordinator.json`、`agents/worker-*.json`、`agents/summarizer.json`：每次调用的提示词、原始返回和调用错误。
 - `run.json`：实际逻辑调用尝试数、各任务结果/失败、汇总和执行状态。结果按协调者的任务顺序保存。
 
@@ -47,11 +47,11 @@ python -m reverse_skill.swarm_cli --help
 
 `execution_status=succeeded` 表示这轮调用和输出格式检查成功，`analysis_status` 始终为 `advisory`。模型分析和引用尚需核对原始证据；该状态不代表已完成真实目标验证、发现漏洞、运行 Frida 或修改 IDA 数据库。
 
-首版没有接入自动 IDA/Frida 工具执行、跨 Agent 数据库写操作、在线扩展任务、失败重试或断点恢复。Ctrl+C 会保留运行记录；已启动的调用仍受现有逐次超时约束。
+首版没有接入自动 IDA/Frida 工具执行、跨 Agent 数据库写操作、在线扩展任务、失败重试或断点恢复。Ctrl+C 会取消尚未启动的任务，等待已启动调用结束并保留结果和取消状态；已启动的调用仍受现有逐次超时约束。
 
 ## 开发验证
 
-`python -m pytest tests/test_swarm.py -q` 覆盖实际线程并发、调用预算、坏计划、部分失败、原始记录、已有输出保护、中断，以及通过真实替身子进程的 CLI/标准输入路径。测试不连接模型服务。
+`python -m pytest tests/test_swarm.py -q` 覆盖实际线程并发、调用预算、坏计划、部分失败、原始记录、已有输出保护、UTF-8 混合换行快照、中断时取消排队任务并保存已运行结果，以及通过真实替身子进程的 CLI/标准输入路径。测试不连接模型服务。
 
 本分支的首次验证记录：
 
@@ -61,3 +61,5 @@ python -m reverse_skill.swarm_cli --help
 | 安装后的入口可用 | 临时隔离 venv 中执行 `pip install --no-deps --no-build-isolation -e .`，再执行安装生成的 `reverse-skill-swarm --help` | 构建、安装及命令执行退出码均为 0；未替换宿主的 Python 包或模型配置。 |
 | 代码语法与 diff 检查通过 | `python -m compileall -q reverse_skill/swarm.py reverse_skill/swarm_cli.py`、`git diff --check` | 退出码均为 0。 |
 | 真实模型和真实目标未验证 | 本次验证使用内存替身及 Python 替身进程 | 没有通过此蜂群发送真实模型请求，没有操作真实 IDA/Frida 目标。 |
+
+独立复核后修正了 Windows 换行导致证据文件与哈希不一致、中断后继续调用排队任务两项问题。初始新增回归在修正前均失败（3 failed）；最终聚焦测试 29 passed（4.42 秒），完整回归 255 passed、5 skipped（22.69 秒），退出码 0。中断回归覆盖已运行调用成功/失败、提交前取消、已入队但尚未返回 future 时中断；未参与实现的 Agent 只读复核并复跑 29 项测试通过。该验证仍未连接真实模型或目标。

@@ -118,7 +118,7 @@ def run_swarm(
         raise ToolOperationError(f"Cannot create a fresh swarm output directory: {exc}") from exc
     try:
         (output_dir / "agents").mkdir()
-        (output_dir / "context.txt").write_text(context, encoding="utf-8")
+        (output_dir / "context.txt").write_bytes(context.encode("utf-8"))
     except OSError as exc:
         raise ToolOperationError(f"Cannot save swarm evidence: {exc}") from exc
     invoke = invoke or evolution._omp
@@ -142,10 +142,11 @@ def run_swarm(
     def save() -> None:
         temporary = output_dir / "run.json.tmp"
         try:
-            temporary.write_text(
-                json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-            )
-            temporary.replace(output_dir / "run.json")
+            with lock:
+                temporary.write_text(
+                    json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+                )
+                temporary.replace(output_dir / "run.json")
         except OSError as exc:
             raise ToolOperationError(f"Cannot save swarm report: {exc}") from exc
 
@@ -184,25 +185,41 @@ def run_swarm(
         report["tasks"] = [{**task, "status": "pending", "result": None, "error": None} for task in tasks]
         save()
 
-        def analyze(task: dict[str, str]) -> dict[str, Any]:
-            return _analysis(call(
-                "worker-" + task["id"],
-                "Analyze your assigned task using only the supplied evidence. Return exactly "
-                '{"summary":"analysis","evidence":["supporting references"],"limitations":["unknowns"]}.',
-                {"goal": goal, "task": task, "context": context},
-            ))
+        def analyze(index: int, task: dict[str, str]) -> None:
+            row = report["tasks"][index]
+            try:
+                result = _analysis(call(
+                    "worker-" + task["id"],
+                    "Analyze your assigned task using only the supplied evidence. Return exactly "
+                    '{"summary":"analysis","evidence":["supporting references"],"limitations":["unknowns"]}.',
+                    {"goal": goal, "task": task, "context": context},
+                ))
+            except (Exception, KeyboardInterrupt) as exc:
+                with lock:
+                    row["status"] = "interrupted" if isinstance(exc, KeyboardInterrupt) else "failed"
+                    row["error"] = "Agent interrupted" if isinstance(exc, KeyboardInterrupt) else str(exc)
+                if isinstance(exc, KeyboardInterrupt):
+                    raise
+            else:
+                with lock:
+                    row["result"] = result
+                    row["status"] = "succeeded"
 
         with ThreadPoolExecutor(max_workers=max_parallel) as pool:
-            futures = {pool.submit(analyze, task): index for index, task in enumerate(tasks)}
-            for future in as_completed(futures):
-                row = report["tasks"][futures[future]]
-                try:
-                    row["result"] = future.result()
-                    row["status"] = "succeeded"
-                except Exception as exc:
-                    row["status"] = "failed"
-                    row["error"] = str(exc)
-                save()
+            futures = []
+            try:
+                for index, task in enumerate(tasks):
+                    futures.append(pool.submit(analyze, index, task))
+                for future in as_completed(futures):
+                    future.result()
+                    save()
+            except KeyboardInterrupt:
+                pool.shutdown(wait=True, cancel_futures=True)
+                for row in report["tasks"]:
+                    if row["status"] == "pending":
+                        row["status"] = "cancelled"
+                        row["error"] = "Cancelled before execution"
+                raise
 
         report["summary"] = _analysis(call(
             "summarizer",
