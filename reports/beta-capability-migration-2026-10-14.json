@@ -74,5 +74,22 @@
     "IDA ingestion tests use supplied synthetic export data",
     "Optional syntax parsers and beta MCP adapter are outside this migration",
     "Deferred AIGX policy and removal of existing PowerShell workflows remain on beta"
-  ]
+  ],
+  "review_repairs": {
+    "source_review_head": "abdfe2d4e34aa9b83aeb0c15a86733100ee4dd6a",
+    "fixed": [
+      "authorization basis and evidence required",
+      "long Markdown closing fences",
+      "indented Markdown code excluded from headings",
+      "tree matches deduplicated before limiting"
+    ],
+    "regression_red_cases": 13,
+    "case_and_gate_checks_passed": 40,
+    "index_checks_passed": 75,
+    "installed_package_reverified": {
+      "missing_auth_evidence_exit": 5,
+      "valid_auth_hash_review": "PASS",
+      "long_fence_heading_indexed": true
+    }
+  }
 }
