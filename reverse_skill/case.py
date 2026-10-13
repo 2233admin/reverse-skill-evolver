@@ -636,6 +636,40 @@ def render_markdown(report: Dict[str, Any]) -> str:
 # --- Init -----------------------------------------------------------------
 
 
+def _write_case(root: Path, contents: Dict[str, str]) -> None:
+    try:
+        root.mkdir(parents=True, exist_ok=False)
+    except OSError as exc:
+        raise CasePackageError("cannot create case directory: " + str(root) + ": " + str(exc)) from exc
+    owner = root.lstat()
+    directories = []
+    files = []
+    try:
+        for name in ("evidence", "notes", "report"):
+            path = root / name
+            path.mkdir()
+            directories.append(path)
+        for name, content in contents.items():
+            path = root / name
+            files.append(path)
+            path.write_text(content, encoding="utf-8")
+    except BaseException as exc:
+        # Remove only our files and empty directories, preserving other cases.
+        try:
+            current = root.lstat()
+            if not root.is_symlink() and (current.st_dev, current.st_ino) == (owner.st_dev, owner.st_ino):
+                for path in reversed(files):
+                    path.unlink(missing_ok=True)
+                for path in reversed(directories):
+                    path.rmdir()
+                root.rmdir()
+        except OSError:
+            pass
+        if isinstance(exc, Exception):
+            raise CasePackageError("failed to write case: " + str(exc)) from exc
+        raise
+
+
 def _route_primary(hint: str) -> Dict[str, Any]:
     """Resolve the primary skill through the packaged Python router."""
     try:
@@ -742,12 +776,6 @@ def init_case(
     if not (root_dir / "work").resolve().is_relative_to(root_dir):
         raise CasePackageError("work directory resolves outside the selected workspace")
     case_root = root_dir / "work" / name
-    try:
-        case_root.mkdir(parents=True, exist_ok=False)
-    except FileExistsError as exc:
-        raise CasePackageError("case already exists: " + str(case_root)) from exc
-    for directory in ("evidence", "notes", "report"):
-        (case_root / directory).mkdir(parents=True, exist_ok=True)
 
     primary = _route_primary(hint)
     created = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
@@ -873,10 +901,8 @@ def init_case(
 - skills/ops/evidence-finding-path.md
 """
 
-    (case_root / "scope.md").write_text(scope_md, encoding="utf-8")
-    (case_root / "timeline.md").write_text(timeline_md, encoding="utf-8")
-    (case_root / "workitems.md").write_text(workitems_md, encoding="utf-8")
-    (case_root / "README.md").write_text("# Case " + name + "\n\n" + readme_body, encoding="utf-8")
+    _write_case(case_root, {"scope.md": scope_md, "timeline.md": timeline_md,
+                           "workitems.md": workitems_md, "README.md": "# Case " + name + "\n\n" + readme_body})
 
     return {
         "status": "created",

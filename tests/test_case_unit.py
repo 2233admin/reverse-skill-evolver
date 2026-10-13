@@ -195,3 +195,22 @@ def test_init_does_not_create_granted_case_without_authorization_record(tmp_path
     with pytest.raises(CaseContractError):
         init_case("sample", "invalid", auth_status="granted", sample="sample.exe", package_root=str(tmp_path))
     assert not (tmp_path / "work").exists()
+
+
+def test_failed_case_write_is_retryable_and_preserves_other_cases(tmp_path, monkeypatch):
+    parent = tmp_path / "work"
+    parent.mkdir()
+    sentinel = parent / "keep.txt"
+    sentinel.write_text("user data")
+    original = Path.write_text
+    def fail_timeline(path, *args, **kwargs):
+        if path.name == "timeline.md":
+            raise OSError("simulated full disk")
+        return original(path, *args, **kwargs)
+    monkeypatch.setattr(Path, "write_text", fail_timeline)
+    with pytest.raises(CasePackageError):
+        init_case("APK", "retry", package_root=str(tmp_path))
+    assert not (parent / "retry").exists()
+    assert sentinel.read_text() == "user data"
+    monkeypatch.setattr(Path, "write_text", original)
+    assert init_case("APK", "retry", package_root=str(tmp_path))["status"] == "created"
