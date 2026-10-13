@@ -400,7 +400,7 @@ def open(
     }
     if preferred_session_id:
         arguments["preferred_session_id"] = preferred_session_id
-    with McpClient(state.url, timeout=min(state.timeout, 30.0)) as client:
+    with McpClient(state.url, timeout=state.timeout) as client:
         output = structured_content(client.call_tool("idb_open", arguments))
     if output.get("success") is not True:
         raise ToolOperationError(f"idb_open failed: {output.get('error') or output.get('message')}")

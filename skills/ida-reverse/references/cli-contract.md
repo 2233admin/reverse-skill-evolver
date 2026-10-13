@@ -17,6 +17,7 @@ New starts return `server.pid` and `server.logPath`. Early exit and readiness ti
 ## Machine interface
 
 - Put root options before the command: `reverse-skill --json --timeout 30 status`.
+- `open` uses the root `--timeout` unchanged (default 120 seconds); for complex samples use `reverse-skill --timeout 600 open sample.exe`. Timeout is an error and does not automatically reopen the sample.
 - `--json` writes exactly one JSON object to stdout.
 - `install` is interactive and rejects `--json`; login or installer prompts remain attached to the terminal.
 - [`reverse-skill-output.schema.json`](../../../reverse-skill-output.schema.json) is the output contract; `schemaVersion` changes only for a breaking envelope change.

@@ -135,6 +135,38 @@ def test_transport_failure_has_stable_exit_code_and_command_name() -> None:
     assert value["error"]["code"] == "McpTransportError"
 
 
+@pytest.mark.parametrize("timeout_args,expected", [((), 120.0), (("--timeout", "600"), 600.0), (("--timeout", "0.5"), 0.5)])
+@pytest.mark.parametrize("fail", [False, True])
+def test_open_preserves_root_timeout_and_does_not_retry(tmp_path, monkeypatch, capsys, timeout_args, expected, fail):
+    from reverse_skill.errors import McpTransportError
+    target = tmp_path / "sample.exe"
+    target.touch()
+    calls = []
+    class Client:
+        def __init__(self, url, timeout):
+            calls.append((url, timeout))
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            pass
+        def call_tool(self, name, args):
+            calls.append(name)
+            if fail:
+                raise McpTransportError("request timed out")
+            return {"structuredContent": {"success": True, "session_id": "fixture"}}
+    monkeypatch.setattr(cli_module, "McpClient", Client)
+    code = cli_module.main(["--json", *timeout_args, "open", str(target)])
+    captured = capsys.readouterr()
+    value = json.loads(captured.out)
+    assert calls == [("http://127.0.0.1:13337/mcp", expected), "idb_open"]
+    assert captured.err == "" and value["command"] == "open"
+    if fail:
+        assert code == 4 and value["data"] is None
+        assert value["error"]["code"] == "McpTransportError"
+    else:
+        assert code == 0 and value["data"]["session_id"] == "fixture"
+
+
 @pytest.fixture
 def evolve_args(tmp_path: Path) -> list[str]:
     input_path = tmp_path / "input.json"
