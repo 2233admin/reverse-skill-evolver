@@ -25,3 +25,18 @@
 复用 comparator 源码，未发现需要重写的运行缺陷。新增 17 项有意义回归，连同 collector **31 passed**：重命名/布局、重复名字、自动名称、相同 RVA、部分字节 hash/截断 coverage、assembly fallback 与未采集、架构/位数/格式/来源/RVA 错误、映射冲突、重复 JSON 字段/NaN、CLI 新建输出/拒绝覆盖/拒绝输入 alias。输入对象/文件内容保持不变。`git diff --check` 通过。
 
 边界：真实 native 输入来自上述自制 x64 PE；人工构造错误 snapshot 属隔离负例，不冒充真实损坏数据库。函数对应/哈希差异是观察，非语义等价/漏洞证明。模型调用 0。下一项为 #29。
+
+## #29 Frida 动态计划
+
+修复模块名校验未拒绝 DEL (0x7f) 控制字符的缺口。`python -m pytest tests/test_omp_hook_plan.py tests/test_omp_skill_contract.py -q --tb=short` → **24 passed**；含 source/EA/RVA/ISA、模块名/重复目标、参数/事件/时限预算、计划 status/preconditions 保留与输入不变。
+
+实际执行生成脚本：Frida **17.9.3**，只附加 `run-frida.py` 自己创建、载入已冻结 toy-v1.dll 的 Python 子进程。**7 cases PASS**，原 plan 和事件在 hook-plan-*.json、frida-verification.json：
+
+- 正常运行验证真实 runtime module base 不等于静态 image_base，enter address 精确为 `module.base + RVA`，事件上限 2 后停止。
+- 另一张独立伴随监听器在计划停止后仍收到调用，验证只 detach 自己的 listener。
+- 未触发时限到期 events=0，保持未命中，不报告已验证假设。
+- 错模块、错误位数、错误架构、超出模块范围、非可执行地址均在 setup_failed 时停止，events=0。后四类 artifact 为刻意故障注入，未冒充实际采集到的错误架构。
+
+环境失败：第一次真实 attach 因默认 C 盘临时区域不足报 No space left on device；读数 C 剩余约 10 MB。只把本轮 driver 的 TEMP/TMP/TMPDIR 指向本 worktree `.verification/frida-temp` 后成功；未清理 C 盘、他人文件或修改宿主环境变量。异步伴随消息使用有界 Event 等待，避免消息尚未送达时误判 listener 已被清理。
+
+生成的 plan 仍是 planned_not_run、identity/trigger preconditions 仍 unverified；本次运行事实单独记录，不改变生成器产品边界或宣称一般目标/假设已验证。实际 runtime 文件 SHA 与静态源匹配由 driver 独立核对；脚本不自动读指针内存。进程由创建者 stdin EOF 退出，session 只属于本任务，没有附加/关闭其他目标。模型调用 0。下一项为 #30。

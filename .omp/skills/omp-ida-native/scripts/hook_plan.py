@@ -14,7 +14,7 @@ def generate_hook_plan(artifact, module_name, rvas=None, *, max_targets=10,
         raise ValueError("Expected an IDA artifact with schema_version=1")
     if not isinstance(module_name, str) or not module_name.strip():
         raise ValueError("An explicit runtime module name is required")
-    if module_name != module_name.strip() or any(ord(char) < 32 or char in "/\\" for char in module_name):
+    if module_name != module_name.strip() or any(ord(char) < 32 or ord(char) == 127 or char in "/\\" for char in module_name):
         raise ValueError("Use a module basename without control characters")
     for name, value, lower, upper in (
         ("max_targets", max_targets, 1, 100),

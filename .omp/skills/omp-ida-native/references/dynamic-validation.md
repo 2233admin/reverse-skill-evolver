@@ -1,6 +1,6 @@
 # Static evidence to a dynamic observation plan
 
-Implementation status: developed, not functionally tested. This workflow generates a plan and script; running the script is a separate action in the task's authorized target environment.
+The generator and emitted script were verified against self-authored x64 PE fixtures in owned Python processes with Frida 17.9.3: ASLR, hit/not-hit, wrong module/bitness/architecture, range/executable guards and event limits. See [scoped evidence](https://github.com/2233admin/reverse-skill-evolver/blob/2233admin/repair-open-issues-15/reports/omp-workflow-verification-2026-10-13/README.md). The workflow still only generates a plan/script; running it is a separate authorized action, and output stays planned_not_run until observations are recorded separately.
 
 ## Generate the plan
 

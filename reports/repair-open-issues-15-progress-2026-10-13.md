@@ -17,8 +17,8 @@
 | #32 | 总览，待逐项回收 | 不视为独立代码修复，不提前关闭 |
 | #41 | 原 632cf1a 已复验，Draft PR #44 | [PR](https://github.com/2233admin/reverse-skill-evolver/pull/44)；新复验 39 passed，67.75 秒；未重写 |
 | #27 | 已推送 11d8e8e，Draft PR #42 | [回执](https://github.com/2233admin/reverse-skill-evolver/issues/27#issuecomment-6145599636)；真实 native + 22 项检查 |
-| #28 | 实际 comparator/CLI 与回归已验证，交付 PR #42 | 复用既有源码，新增证据和 17 项检查；连同 collector 31 passed |
-| #29 | 待功能验证 | 用自制目标核对 Frida 计划/脚本 |
+| #28 | 已推送 0b63096，Draft PR #42 | 实际两版 native 输入 + 39 项检查，源码复用 |
+| #29 | 已修复并通过真实 Frida/输入检查，交付 PR #42 | 7 个真实自制目标 case；相关检查 24 passed |
 | #30 | 待功能验证 | 执行 signer fixtures / eval 入口 |
 | #21 | 真实 suite/反思/失败路径已验证，交付 PR #42 | 31/37 逻辑调用，单次 60 秒；候选不晋级，见真实记录 |
 
@@ -117,3 +117,9 @@ Draft PR #44 已创建，head 精确为原 632cf1a，base main；既有实现/�
 真实 snapshot-v1/v2 经 CLI 对照，显式 mapping 将变名/变 RVA 的 verify_license → check_license 对应；唯一 decode_payload 符号名自动对应，padding_function 仅保留 unmatched observation。输出 comparison-v1-v2.json、mapping-v1-v2.json 可复核来源/布局/字段变化。
 
 comparator 复用未重写，新增 17 项回归；`python -m pytest tests/test_omp_binary_diff.py tests/test_omp_analysis.py -q --tb=short` → **31 passed**。覆盖重命名、重复名字、相同 RVA 不自动对应、截断/partial bytes、错误来源/架构/位数/格式、映射冲突、fallback 与未采集、新建输出及拒绝覆盖/输入 alias/重复 JSON/NaN。`git diff --check` 通过。无模型、无 IDB 写入；不宣称结构匹配、语义等价或符号迁移。下一责任人：审阅者；本 Session 继续 #29。
+
+## #29 功能验证
+
+模块名校验补拒绝 DEL 控制字符，相关检查 **24 passed**。真实 Frida 17.9.3 只附加自创 Python/DLL 进程，7 cases 全通过：ASLR+正确换算/命中、事件上限、伴随 listener 不被清理、未命中时间停止、错模块、错位数、错架构、地址越界、非执行区（7 个组合场景）。plan/事件/来源 hash 见 scoped record；负例 artifact 是有标记的故障注入。
+
+首次 attach 因 C 盘仅剩约 10 MB 失败；改本 driver 的 TEMP/TMP/TMPDIR 到自己 worktree 后成功，没有宿主配置修改/清理。plan 仍 planned_not_run/preconditions unverified，运行观察单独归档，不把通用假设晋级成真。进程按自身 EOF 退出、session 只管理自己目标/监听器，模型调用 0。下一责任人审阅者；本 Session 继续 #30。
