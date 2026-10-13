@@ -268,6 +268,15 @@ def _status_data(state: State) -> dict[str, Any]:
         "detail": str(failures[0]) if failures else (f"Registration {state.name}: {transport.get('url') or 'not found'}"),
         "action": "Create a new Codex task to reload tools" if registered else f"Install/check Codex CLI; run reverse-skill --url {state.url} --name {state.name} register",
     })
+    if failures and isinstance(failures[0], (OSError, UnicodeError)):
+        data["mcp"].update({"online": None, "checked": False})
+        data["stages"].append({
+            "name": "MCP", "status": "unknown",
+            "detail": "Check not executed because the Codex query failed",
+            "action": "Fix the Codex CLI startup/decoding error, then rerun reverse-skill doctor",
+        })
+        failures[0].diagnostics = data
+        raise failures[0]
     try:
         with McpClient(state.url, timeout=state.timeout) as client:
             tools = client.request("tools/list")

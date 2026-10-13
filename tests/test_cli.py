@@ -253,7 +253,10 @@ def test_evolve_real_runner_keeps_progress_on_stderr_and_one_final_json(tmp_path
 @pytest.mark.parametrize("json_mode", [False, True])
 @pytest.mark.parametrize("failure", [OSError("cannot start Codex"), UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid")])
 def test_diagnostic_internal_failures_keep_original_exit_code(monkeypatch, capsys, command, json_mode, failure):
-    monkeypatch.setattr(cli_module, "find_latest_ida", lambda: None)
+    from types import SimpleNamespace
+    installation = SimpleNamespace(version="9.4", install_dir="fixture/IDA", public=lambda: {"version": "9.4"})
+    monkeypatch.setattr(cli_module, "find_latest_ida", lambda: installation)
+    mcp_calls = []
     def fail(*args, **kwargs):
         raise failure
     monkeypatch.setattr(cli_module, "codex_registration", fail)
@@ -263,22 +266,31 @@ def test_diagnostic_internal_failures_keep_original_exit_code(monkeypatch, capsy
         server_info = {}
         session_id = None
         def __init__(self, *args, **kwargs):
-            pass
+            mcp_calls.append("construct")
         def __enter__(self):
             return self
         def __exit__(self, *args):
             pass
         def request(self, *args):
+            mcp_calls.append("request")
             return {"tools": [{"name": "fixture"}]}
     monkeypatch.setattr(cli_module, "McpClient", Client)
     assert cli_module.main([*(["--json"] if json_mode else []), command]) == 1
+    assert mcp_calls == []
     output = capsys.readouterr()
     if json_mode:
         value = json.loads(output.out)
         assert value["data"] is None and value["error"]["code"] == "internal"
         assert "Diagnostics: " in value["error"]["message"] and output.err == ""
+        data = json.loads(value["error"]["message"].split("\nDiagnostics: ", 1)[1])
+        assert data["ida"] == {"version": "9.4"}
+        assert data["mcp"]["online"] is None and data["mcp"]["checked"] is False
+        assert data["stages"][-1]["name"] == "MCP"
+        assert data["stages"][-1]["status"] == "unknown"
     else:
         assert all(stage in output.out for stage in ("IDA:", "Codex:", "MCP:"))
+        assert "MCP: unknown" in output.out and "not executed" in output.out
+        assert "IDA 9.4" in output.out
         assert "Error:" in output.err
 
 
