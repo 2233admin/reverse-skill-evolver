@@ -38,7 +38,7 @@ Persistent variables are a convenience during analysis. Save durable evidence in
 | Two-version observations | [Version comparison](references/version-diff.md) | Explicit/unique-name correspondences, changed fields and unmatched items |
 | Runtime verification plan | [Dynamic observation plan](references/dynamic-validation.md) | Bounded Frida script with unresolved identity/trigger preconditions |
 
-These helpers are newly developed and **not functionally tested**. Preserve complete JSON artifacts before passing them between workflows. Their scripts stay within this portable skill directory. Generating a dynamic plan does not execute it or establish that its hypothesis is true.
+These helpers have scoped checks on self-authored x64 PE fixtures: real native snapshot/triage, captured-version comparison and generated Frida-script observations. See each workflow's evidence link for limits; other inputs/architectures remain unverified. Preserve complete JSON artifacts before passing them between workflows. Scripts stay within this portable directory. Generating a dynamic plan does not execute it or establish that its hypothesis is true.
 
 ### Edit and save
 

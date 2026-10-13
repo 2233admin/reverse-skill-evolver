@@ -4,6 +4,8 @@ Import the sibling [module](../scripts/signature-replay.mjs) through the actual 
 
 The export is `compareSignatures(fixtures, replay, { maxCases = 100 } = {})`. Each fixture has a unique nonblank string `id`, strict JSON `input`, and string `expected`. Inputs allow null, finite numbers, strings, booleans, dense arrays and plain objects; cycles, undefined, nonfinite numbers, accessors, symbols, hidden properties and nesting beyond 64 levels are rejected before any replay. No code is evaluated from fixtures.
 
+Arrays must have the standard Array prototype; Proxy objects are rejected before property access. This prevents fixture-controlled iterator/proxy traps from executing during validation. Sync/async callbacks, mismatch/failure, baseline isolation and partial coverage were checked in Node/Bun; actual OMP 18.8.9 eval imported this module and retained definitions across separate cells. See [scoped evidence](https://github.com/2233admin/reverse-skill-evolver/blob/2233admin/repair-open-issues-15/reports/omp-workflow-verification-2026-10-13/README.md). These self-authored cases do not establish fresh server acceptance or production signing compatibility.
+
 Resolve the absolute script path from the discovered skill's location, then import it in the JS runtime. For example, replace the local path before evaluating:
 
 ```js

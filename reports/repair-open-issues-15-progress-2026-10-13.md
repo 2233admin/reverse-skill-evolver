@@ -18,8 +18,8 @@
 | #41 | 原 632cf1a 已复验，Draft PR #44 | [PR](https://github.com/2233admin/reverse-skill-evolver/pull/44)；新复验 39 passed，67.75 秒；未重写 |
 | #27 | 已推送 11d8e8e，Draft PR #42 | [回执](https://github.com/2233admin/reverse-skill-evolver/issues/27#issuecomment-6145599636)；真实 native + 22 项检查 |
 | #28 | 已推送 0b63096，Draft PR #42 | 实际两版 native 输入 + 39 项检查，源码复用 |
-| #29 | 已修复并通过真实 Frida/输入检查，交付 PR #42 | 7 个真实自制目标 case；相关检查 24 passed |
-| #30 | 待功能验证 | 执行 signer fixtures / eval 入口 |
+| #29 | 已推送 9dd2079，Draft PR #42 | [回执](https://github.com/2233admin/reverse-skill-evolver/issues/29#issuecomment-6145923141)；7 个真实 Frida case + 24 检查 |
+| #30 | 已修复、Node/Bun与真实OMP持久eval通过，交付 PR #42 | 数组子类/Proxy 拒绝；真实3个eval调用，累计模型32/37 |
 | #21 | 真实 suite/反思/失败路径已验证，交付 PR #42 | 31/37 逻辑调用，单次 60 秒；候选不晋级，见真实记录 |
 
 ## #40 验证
@@ -123,3 +123,11 @@ comparator 复用未重写，新增 17 项回归；`python -m pytest tests/test_
 模块名校验补拒绝 DEL 控制字符，相关检查 **24 passed**。真实 Frida 17.9.3 只附加自创 Python/DLL 进程，7 cases 全通过：ASLR+正确换算/命中、事件上限、伴随 listener 不被清理、未命中时间停止、错模块、错位数、错架构、地址越界、非执行区（7 个组合场景）。plan/事件/来源 hash 见 scoped record；负例 artifact 是有标记的故障注入。
 
 首次 attach 因 C 盘仅剩约 10 MB 失败；改本 driver 的 TEMP/TMP/TMPDIR 到自己 worktree 后成功，没有宿主配置修改/清理。plan 仍 planned_not_run/preconditions unverified，运行观察单独归档，不把通用假设晋级成真。进程按自身 EOF 退出、session 只管理自己目标/监听器，模型调用 0。下一责任人审阅者；本 Session 继续 #30。
+
+## #30 功能验证
+
+修复 Array 子类迭代器及 Proxy trap 在 fixture 校验阶段可能执行代码的问题，保持普通 JSON 和实际 callback 合同。Node/Bun 各 9 passed/0 failed，Python+portable skill入口 9 passed。
+
+真实 OMP 18.8.9 已发现skill；一轮仅 eval 的 MiniMax 会话实际执行3个持久js cells，导入模块/定义状态/复用状态并跑全套及部分 compareSignatures。保存JSON由Python独立HMAC oracle和原工具frames核查：完整2/2，partial remaining=1且不通过。9.501秒，一次逻辑OMP调用，全批累计32/37，物理请求/账单unknown。输入为自制固定HMAC用例，不冒充第三方capture或服务器验收。C盘空间导致native缓存失败后，按正式PI_NATIVES_DIR/私有agentdir/进程TEMP在本worktree成功，未清理宿主缓存或改配置。原响应/metadata/完整报告/driver见scoped record，凭据扫描通过。
+
+本批15项均已有代码或既有代码复用、逐项验证和可审查交付；下一步做最终回归、远端head/CI回读及总结。PR未合并，不据此关闭Issue或宣称真实用户/任意目标验收。

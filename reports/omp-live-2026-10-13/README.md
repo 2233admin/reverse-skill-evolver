@@ -24,6 +24,8 @@
 
 全批累计 **31/37** 次转发逻辑 OMP 调用：默认 provider 失败 1、cleanup 失败的 MiniMax 首轮 2、完整套件 24、受控反思 4。budget.json 中 blocked_calls=0。物理请求、tokens、费用无法从当前 print 响应可靠取得，保持 unknown，不按模型价目推算账单；默认 provider 的实际身份未从失败响应独立确认。GLM/DeepSeek 备用本轮未调用。
 
+后续 #30 在同一总预算内增加1次真实OMP工具型会话验证持久eval，当前全批累计 **32/37**；本 #21 路由验证的31次不变。#30原frames/输出/模型响应边界单独记录在[工作流验证](../omp-workflow-verification-2026-10-13/README.md)，没有把工具型进程计数当作物理请求数。
+
 验证：逐个核对两个成功 envelope 与 results.json 相等；每个输入及 candidate artifact 的 SHA-256 与报告相符；每个完整 candidate 均覆盖该次 suite 的全部 fixture；每个实际原始响应重新经严格 parser 得到同一 route/invalid；partial run 不含虚假评分；全部保持 not_promoted。凭据扫描通过，日志和报告不含提供的 API key。失败的真实默认 provider 请求及 Windows cleanup 中断证明 incomplete 路径，没有伪造完整结果。
 
 Git 字节保真：此目录在 .gitattributes 设为 `-text`，冻结 artifact 不经过自动换行转换。重新加入后，直接取当前 Git index/blob 中的输入与候选字节核对报告 SHA-256，全部一致；工作区核对不能单独替代该检查。

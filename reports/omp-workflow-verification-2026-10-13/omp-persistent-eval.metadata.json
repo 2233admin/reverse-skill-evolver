@@ -1,0 +1,8 @@
+{
+  "model": "minimax-code-cn/MiniMax-M3.1-Flash-Preview",
+  "logical_omp_invocations": 1,
+  "cumulative_invocations": 32,
+  "exit_code": 0,
+  "elapsed_seconds": 9.501,
+  "module_sha256": "ea4b4c1204c4cf713224e7f739aaa3b68a64bdeea080a49dd954818191b685e9"
+}

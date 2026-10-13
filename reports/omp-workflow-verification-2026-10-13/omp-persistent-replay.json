@@ -1,0 +1,61 @@
+{
+  "cellToken": "owned-persistent-cell-one",
+  "fullReport": {
+    "schema_version": 1,
+    "coverage": {
+      "total": 2,
+      "processed": 2,
+      "remaining": 0,
+      "complete": true
+    },
+    "counts": {
+      "matched": 2,
+      "mismatched": 0,
+      "failed": 0
+    },
+    "passed": true,
+    "cases": [
+      {
+        "id": "7",
+        "input_sha256": "229902d10b7e9d35fa7bd74f134724a09c9cad2c29ef1a5cde0fe8d892a4992d",
+        "matched": true,
+        "expected": "b0d582831b308c5e9ef54786a975ca2d537c0c405dc4e4526c7cf6fac0cd5eb5",
+        "actual": "b0d582831b308c5e9ef54786a975ca2d537c0c405dc4e4526c7cf6fac0cd5eb5",
+        "error": null
+      },
+      {
+        "id": "8",
+        "input_sha256": "90adc032ea0d7a34d79cc549cfdb31c7171aa2babe7985c3b2d8a8302c725a7d",
+        "matched": true,
+        "expected": "973c0c41c449bc12f28a419ca30023d99156c4e975522de7d3ce9758f9f3c0aa",
+        "actual": "973c0c41c449bc12f28a419ca30023d99156c4e975522de7d3ce9758f9f3c0aa",
+        "error": null
+      }
+    ]
+  },
+  "partialReport": {
+    "schema_version": 1,
+    "coverage": {
+      "total": 2,
+      "processed": 1,
+      "remaining": 1,
+      "complete": false
+    },
+    "counts": {
+      "matched": 1,
+      "mismatched": 0,
+      "failed": 0
+    },
+    "passed": false,
+    "cases": [
+      {
+        "id": "7",
+        "input_sha256": "229902d10b7e9d35fa7bd74f134724a09c9cad2c29ef1a5cde0fe8d892a4992d",
+        "matched": true,
+        "expected": "b0d582831b308c5e9ef54786a975ca2d537c0c405dc4e4526c7cf6fac0cd5eb5",
+        "actual": "b0d582831b308c5e9ef54786a975ca2d537c0c405dc4e4526c7cf6fac0cd5eb5",
+        "error": null
+      }
+    ]
+  }
+}

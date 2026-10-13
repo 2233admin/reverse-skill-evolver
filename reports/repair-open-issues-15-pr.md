@@ -1,4 +1,4 @@
-关联 #40、#33、#34、#35、#36、#37、#38、#39、#21、#27、#28、#29；总览关联 #32。
+关联 #40、#33、#34、#35、#36、#37、#38、#39、#21、#27、#28、#29、#30；总览关联 #32。
 
 Windows 上 `start --replace-stale` 原先按进程名清理所有 IDA MCP 服务，会打断其他端口。现在仅检查所选端口的监听者，持有进程 handle 后核实 executable 再停止；未知归属保留并返回检查命令，健康服务继续复用。
 
@@ -33,3 +33,5 @@ OMP 项复用原 Draft PR #26/#31 的原始 Git lineage（本分支本地 merge�
 #28：实际 CLI 消费真实两版 native 快照，验证变名/布局显式对应、唯一符号名与未匹配观察。复用 comparator，新增 17 项回归，连同 collector 31 passed；覆盖重复名字、截断、错误来源/架构、映射冲突和 CLI 拒绝覆盖等。没有 IDB/符号迁移或模型调用，不以匹配结果证明语义等价。
 
 #29：拒绝模块名 DEL 控制字符，输入/portable skill 检查 24 passed；真实 Frida 17.9.3 在自制 Python/DLL 进程通过 7 场景，覆盖 ASLR、命中/未命中、事件上限、伴随 listener 保留、错误模块/架构/位数/地址/执行区。plan 仍 planned_not_run，观察另存。首次受 C 盘空间限制，改 driver 进程临时目录到本 worktree 后成功，未清理或改宿主配置。没有第三方目标/模型调用。
+
+#30：校验前拒绝 Proxy/非标准数组，防止 fixture 自定义陷阱/迭代器执行。Node/Bun 各 9 passed；真实 OMP 18.8.9 的一轮 MiniMax 会话实际调用3个js eval cells并复用持久变量/模块。完整HMAC用例2/2，部分用例remaining=1不通过，独立Python oracle/工具frames核对；9.501秒、1次逻辑OMP调用，全批32/37，物理请求/费用unknown。输入为自制fixtures，不是第三方网络capture。缓存/临时目录限于本worktree进程环境，未清理宿主缓存/改配置。

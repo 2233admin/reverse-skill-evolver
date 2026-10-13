@@ -10,7 +10,7 @@ description: Use in OMP to reproduce a captured JavaScript request signature aga
 1. Establish the owned target and obtain real captured signature examples. Preserve method, canonical path/body, timestamp, nonce and relevant session inputs in private fixtures. Do not invent expected signatures from a model answer.
 2. Inspect OMP's actual `eval` interface and read [replay instructions](references/replay.md). Use its existing persistent JavaScript runtime and module-import support; this skill adds no tool or extension.
 3. Import [signature comparison](scripts/signature-replay.mjs), supply the actual reconstructed signing function, and compare a bounded fixture set. Do not execute code provided inside fixture fields or initiate network requests implicitly.
-4. Report exact observed coverage, signature mismatches and failures. The implementation is currently **untested**; no example below is an execution result.
+4. Report exact observed coverage, signature mismatches and failures. Synthetic signer cases were checked in Node/Bun and a real OMP persistent eval session; see [scoped evidence](https://github.com/2233admin/reverse-skill-evolver/blob/2233admin/repair-open-issues-15/reports/omp-workflow-verification-2026-10-13/README.md). Examples below remain illustrative, not real third-party capture results.
 
 Keep cookies, keys and full captured requests in private task inputs. The default report retains only input digests, fixture IDs and expected/actual signatures; these signatures can themselves be sensitive. Inspect the artifact before sharing it.
 

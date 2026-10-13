@@ -1,11 +1,16 @@
 import { createHash } from 'node:crypto';
+import { types } from 'node:util';
 
 function validateJson(value, ancestors = new Set(), depth = 0) {
   if (value === null || ['string', 'boolean'].includes(typeof value)) return;
   if (typeof value === 'number' && Number.isFinite(value)) return;
   if (typeof value !== 'object' || depth > 64 || ancestors.has(value))
     throw new TypeError('Fixture input must be finite JSON without cycles (maximum depth 64)');
+  if (types.isProxy(value))
+    throw new TypeError('Fixture input cannot contain proxy objects');
   const array = Array.isArray(value);
+  if (array && Object.getPrototypeOf(value) !== Array.prototype)
+    throw new TypeError('Fixture arrays must use the standard Array prototype');
   if (!array && ![Object.prototype, null].includes(Object.getPrototypeOf(value)))
     throw new TypeError('Fixture input must contain only plain JSON objects');
   const keys = Reflect.ownKeys(value);

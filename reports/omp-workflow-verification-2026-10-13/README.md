@@ -40,3 +40,15 @@
 环境失败：第一次真实 attach 因默认 C 盘临时区域不足报 No space left on device；读数 C 剩余约 10 MB。只把本轮 driver 的 TEMP/TMP/TMPDIR 指向本 worktree `.verification/frida-temp` 后成功；未清理 C 盘、他人文件或修改宿主环境变量。异步伴随消息使用有界 Event 等待，避免消息尚未送达时误判 listener 已被清理。
 
 生成的 plan 仍是 planned_not_run、identity/trigger preconditions 仍 unverified；本次运行事实单独记录，不改变生成器产品边界或宣称一般目标/假设已验证。实际 runtime 文件 SHA 与静态源匹配由 driver 独立核对；脚本不自动读指针内存。进程由创建者 stdin EOF 退出，session 只属于本任务，没有附加/关闭其他目标。模型调用 0。下一项为 #30。
+
+## #30 签名复现与真实持久 eval
+
+实际缺陷：自定义 Array 子类迭代器与 Proxy ownKeys trap 原先能在 fixture 校验时执行代码。现使用 Node 标准 types.isProxy 在反射前拒绝 Proxy，并限制数组为标准 Array prototype；原普通 JSON/callback 合同保持。
+
+`node --test tests/omp-signature-replay.test.mjs` 与 `bun test tests/omp-signature-replay.test.mjs` 各 **9 passed, 0 failed**。覆盖同步/异步 HMAC signer、固定输入指纹、匹配/不匹配、异常隐私/非字符串、调用方/输入变更隔离、部分/空覆盖、字符串只作数据、重复 ID/expected/callback/budgets、非有限 JSON/循环/稀疏/符号/隐藏/访问器，以及两项新修复。Python 常规入口也执行 Node suite，与 portable skill 合同检查合计 **9 passed**。
+
+真实 OMP **18.8.9** 已发现该 skill，并通过仅开放 eval 的一轮 MiniMax 会话执行 **3 个真实 js eval 调用**：导入/读取当前模块，定义 signer/fixtures/token，随后在同一持久 kernel 复用这些变量并调用 compareSignatures 两次。实际输出 `omp-persistent-replay.json`，完整固定 HMAC 用例 **2/2、passed=true**；maxCases=1 的部分报告 processed=1/remaining=1/complete=false/passed=false。预期 HMAC 由 driver 的 Python hmac 独立计算，实际签名由 JS signer 计算；原 tool_execution frames 显示模块调用/变量复用，没有靠模型叙述或替换预期构造通过。
+
+这轮 OMP 会话耗时 **9.501 秒**，逻辑 OMP invocation **1**；加 #21 路由 31 次，全批累计 **32/37**。工具型一轮可能包含多个模型响应/重试，物理 provider 请求与账单仍未知，不把一次进程写成一次物理请求。输入是已标明的自制固定 HMAC fixtures，不是第三方真实捕获请求；没有新鲜服务器验收、业务认证/性能结论或模型候选晋级。
+
+运行环境诊断：C 盘空间不足也阻止 OMP native addon 缓存解包；使用上游支持的 `PI_NATIVES_DIR` 指向本 worktree，再用私有 PI_CODING_AGENT_DIR 与进程 TEMP/TMP 运行。没有清理共享缓存/目录或修改宿主变量。API key 只来自进程环境并注入该次 CLI，不进入报告/Git；原始输出凭据扫描通过。
