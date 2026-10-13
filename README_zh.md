@@ -126,7 +126,7 @@ python "<PACK_ROOT>/scripts/run.py" --json asr list
 
 [OMP 工作流案例](reports/omp-workflow-verification-2026-10-13/README.md)保留了自制 x64 PE/native worker、生成的 Frida 观察脚本，以及实际 signer 与固定样本对照的证据。测试版的构建、安装入口和受控蜂群运行见 [验证记录](https://github.com/2233admin/reverse-skill-evolver/blob/v1.2.0-beta.1/BETA-VALIDATION.md)。
 
-这些记录各有明确样本和验证范围。真实模型的蜂群协作质量、OMP skill 自动发现、Burp GUI 和首次用户上手仍待测试；固定用例的路由选择结果不代表下游逆向任务已验证。
+这些记录各有明确样本和验证范围。OMP 18.8.9 已在项目 `.agents/skills/` 和 `.omp/skills/` 两种布局下发现完整包，`omp read skill://reverse-skill-evolver` 及包内路由、ASR、IDA、JS 模块读取均通过。真实模型的蜂群协作质量、模型自动选择 skill、Burp GUI 和首次用户上手仍待测试；固定用例的路由选择结果不代表下游逆向任务已验证。
 
 ## 开始前常见问题
 

@@ -137,7 +137,7 @@ Routing instructions can be revised based on task experience. `reverse-skill evo
 
 The [OMP workflow cases](reports/omp-workflow-verification-2026-10-13/README.md) retain evidence from self-authored x64 PE/native-worker fixtures, generated Frida observation scripts, and supplied signer comparisons against fixed fixtures. The [beta validation record](https://github.com/2233admin/reverse-skill-evolver/blob/v1.2.0-beta.1/BETA-VALIDATION.md) covers builds, installed entry points, and controlled swarm execution.
 
-Each record has a defined sample and scope. Real-model swarm quality, automatic OMP skill discovery, Burp GUI loading, and first-user onboarding still need testing. Route-selection scores on fixed fixtures do not establish downstream reverse-engineering correctness.
+Each record has a defined sample and scope. OMP 18.8.9 discovered the complete package in project `.agents/skills/` and `.omp/skills/`; `omp read skill://reverse-skill-evolver` and reads of the bundled router, ASR, IDA, and JS modules passed in both layouts. Real-model swarm quality, model-driven automatic skill selection, Burp GUI loading, and first-user onboarding still need testing. Route-selection scores on fixed fixtures do not establish downstream reverse-engineering correctness.
 
 ## Before you start
 
