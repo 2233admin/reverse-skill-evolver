@@ -1,4 +1,4 @@
-关联 #40、#33、#34、#35、#36、#37、#21；总览关联 #32。
+关联 #40、#33、#34、#35、#36、#37、#38、#21；总览关联 #32。
 
 Windows 上 `start --replace-stale` 原先按进程名清理所有 IDA MCP 服务，会打断其他端口。现在仅检查所选端口的监听者，持有进程 handle 后核实 executable 再停止；未知归属保留并返回检查命令，健康服务继续复用。
 
@@ -21,3 +21,5 @@ evolve 明确完整用例集评估/反思预算及实际 fixture 数对应的逻
 #21 真实 OMP 验证使用用户的新 MiniMax API：完整 12-case baseline/curated 各 12/12（24 调用、84.473 秒），另以刻意失败的单例候选完成真实 reflection，curated 0/1 → proposal 1/1（4 调用、14.187 秒）。含默认 provider 402 失败和 Windows cwd cleanup 失败累计 31/37 调用，均有原始响应/冻结输入/哈希/失败位置/候选 lineage。顺带修复 Windows 临时目录被锁时 cleanup 掩盖响应的实际故障，真实隔离 cwd 锁及 evolution 检查 95 passed。全部 not_promoted；token/物理请求/费用 unknown。细节见 [真实记录](reports/omp-live-2026-10-13/README.md)。
 
 `start --port` 与根 `--url` 的独立关系写入 help、两种 README、IDA skill 与 contract，非默认 24444 示例保持同一地址；现有语义不变。help/公开 CLI 隔离参数核对及合同测试 4 passed；未操作真实服务或宿主注册。
+
+经验索引从可读 Git `070bf87` 恢复，后续 New API 条目由现存同日日志补齐；保留脱敏占位、27 引用身份和 17 种子，26 实际目标均存在（另 1 个是明确文件名示例）。UTF-8 双读取核对通过。后续新增先例段落缺可靠原文，保留其三个链接并标明加载顺序/授权措辞未恢复，未猜写授权或晋级经验。

@@ -11,8 +11,8 @@
 | #34 | 已推送 dc09539，Draft PR #42 | [交付回执](https://github.com/2233admin/reverse-skill-evolver/issues/34#issuecomment-6144253174) |
 | #35 | 已推送 f410993，Draft PR #42 | [交付回执](https://github.com/2233admin/reverse-skill-evolver/issues/35#issuecomment-6144302542) |
 | #36 | 已推送 8a0ca33，Draft PR #42 | [交付回执](https://github.com/2233admin/reverse-skill-evolver/issues/36#issuecomment-6144429268) |
-| #37 | 修复并核对，交付 Draft PR #42 | 参数语义不变，help/中英文 README/IDA skill/contract 一致 |
-| #38 | 待实施 | 经验索引编码与引用 |
+| #37 | 已推送 4b42601，Draft PR #42 | [交付回执](https://github.com/2233admin/reverse-skill-evolver/issues/37#issuecomment-6144782032) |
+| #38 | 已恢复并核对，交付 Draft PR #42 | 27 引用身份、26 实际目标、17 种子保留；1 文件名示例不当作日志 |
 | #39 | 待实施 | 首次上手文档，依赖前述行为 |
 | #32 | 总览，待逐项回收 | 不视为独立代码修复，不提前关闭 |
 | #41 | 已有提交待形成 PR | 复用 `632cf1a`，不重写 |
@@ -76,3 +76,11 @@
 修复：root --url help 说明调用/注册地址，start --port help 说明独立本地 loopback 端口；root 选项置于子命令前。中英文 README、IDA skill 与 CLI contract 给出 24444 的 start/status/register/open 完整同端点例子，默认 13337 不变。同步 IDA skill 中 #40 之后的清理/PowerShell 边界，避免旧描述仍宣称清理进程树。
 
 实际运行：`python -m reverse_skill --help`、`start --help` 均显示关系和默认值；`python -m pytest tests/test_contract.py -q` → **4 passed**；公开 CLI 隔离 start recorder 确认根远端 URL 不改变默认启动 13337、显式 port 24444 原样转发；`git diff --check` 通过。未启动真实服务、未调用远端、未写注册配置。下一责任人：审阅者；本 Session 接续 #38。
+
+## #38 验证
+
+恢复来源：可读 Git commit `070bf87` 的完整索引；后续新增 2026-05-26 条目以现存 `2026-05-26_pentest-newapi-rate-limit-bypass.md` 的标题、对照观察、关键词、模式和环境补齐。后续 `{target_domain}` 脱敏占位保留，不恢复历史域名。历史登记统计保持当前 22 项（17 种子 + 5 项项目记录）、28 模式、最近更新 2026-05-26；本轮未重新验证这些历史安全结论，未晋级经验。
+
+实际核对：Python 严格 UTF-8 读取和 PowerShell `Get-Content -Encoding utf8` 均显示可读标题/正文；前后 27 个 `.md` 引用身份无丢失，26 个实际引用目标全部存在，剩余 1 个是明确的文件命名示例；17 条 `[种子]` 标记保留；`git diff --check` 通过。未增加依赖或形式化测试。
+
+不能恢复：后续新增的先例加载顺序/授权措辞段落未找到可靠可读原文；索引明确标为未恢复，保留三个原先例链接，具体操作仍以当前任务授权为准。未对 seed/项目日志作新事实或验证等级判断。下一责任人：审阅者；本 Session 接续 #39。
