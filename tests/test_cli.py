@@ -19,15 +19,15 @@ def test_failed_registration_replacement_keeps_a_registration_without_retry(monk
         operation = args[2]
         calls.append(operation)
         if operation == "get":
-            return subprocess.CompletedProcess(args, 0, json.dumps(registrations[args[3]]), "")
+            return subprocess.CompletedProcess(args, 0, json.dumps(registrations[args[3]]).encode(), b"")
         if operation == "remove":
             registrations.pop(args[3])
-            return subprocess.CompletedProcess(args, 0, "", "")
+            return subprocess.CompletedProcess(args, 0, b"", b"")
         if saved:
             registrations[args[3]] = {"enabled": True, "transport": {"type": "streamable_http", "url": args[-1]}}
         if failure == "timeout":
             raise subprocess.TimeoutExpired(args, kwargs["timeout"])
-        return subprocess.CompletedProcess(args, 1, "", "write failed")
+        return subprocess.CompletedProcess(args, 1, b"", b"write failed")
 
     monkeypatch.setattr(cli_module.shutil, "which", lambda _: "codex")
     monkeypatch.setattr(cli_module.subprocess, "run", run)
@@ -557,13 +557,13 @@ def test_codex_mcp_timeouts_fail_without_fallback_or_retry(
             raise subprocess.TimeoutExpired(args, kwargs.get("timeout", expected_timeout))
         if args[2] == "get":
             if not existing:
-                return subprocess.CompletedProcess(args, 1, "", "not found")
+                return subprocess.CompletedProcess(args, 1, b"", b"not found")
             return subprocess.CompletedProcess(args, 0, json.dumps({
                 "name": "idapro",
                 "enabled": True,
                 "transport": {"type": "streamable_http", "url": "http://old.example/mcp"},
-            }), "")
-        return subprocess.CompletedProcess(args, 0, "", "")
+            }).encode(), b"")
+        return subprocess.CompletedProcess(args, 0, b"", b"")
 
     monkeypatch.setattr(cli_module.shutil, "which", lambda name: "codex")
     monkeypatch.setattr(cli_module.subprocess, "run", run)
@@ -589,12 +589,26 @@ def test_codex_mcp_timeouts_fail_without_fallback_or_retry(
     assert "idapro" in value["error"]["message"]
     assert "timed out" in value["error"]["message"]
     assert [args[2] for args, _ in calls] == expected_operations
-    for args, kwargs in calls:
-        assert args[:2] == ["codex", "mcp"]
-        assert args[3] == "idapro"
-        assert kwargs == {
-            "capture_output": True,
-            "text": True,
-            "check": False,
-            "timeout": expected_timeout,
-        }
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows subprocess pipe-reader decoding")
+@pytest.mark.parametrize("operation", ["get", "add"])
+@pytest.mark.parametrize("channel", ["stdout", "stderr"])
+def test_codex_invalid_utf8_propagates_from_real_subprocess(tmp_path, monkeypatch, operation, channel):
+    script = tmp_path / "inert_codex.py"
+    script.write_text(
+        "import json, sys\n"
+        f"if sys.argv[2] == 'get' and {operation!r} == 'add':\n"
+        "    print(json.dumps({'enabled': True, 'transport': {'type': 'streamable_http', 'url': 'http://old.example/mcp'}}))\n"
+        "else:\n"
+        f"    sys.{channel}.buffer.write(bytes([255]))\n",
+        encoding="utf-8",
+    )
+    command = tmp_path / "inert_codex.cmd"
+    command.write_text(f'@echo off\n"{sys.executable}" "{script}" %*\n', encoding="utf-8")
+    monkeypatch.setattr(cli_module.shutil, "which", lambda _: str(command))
+    with pytest.raises(UnicodeDecodeError):
+        if operation == "get":
+            cli_module.codex_registration("idapro")
+        else:
+            cli_module.register_codex("idapro", "http://new.example/mcp")

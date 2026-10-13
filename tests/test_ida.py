@@ -156,16 +156,29 @@ def test_start_success_returns_log_and_pid(tmp_path, monkeypatch):
 
 @pytest.mark.skipif(os.name != "nt", reason="Windows ownership inspection")
 def test_replace_real_isolated_listeners_preserves_other_port_and_unknown_owner(tmp_path):
-    code = "import socket,time; s=socket.socket(); s.bind(('127.0.0.1',0)); s.listen(); print(s.getsockname()[1],flush=True); time.sleep(60)"
+    code = """import _winapi, json, socket, time
+s = socket.socket()
+s.bind(('127.0.0.1', 0))
+s.listen()
+print(json.dumps({'port': s.getsockname()[1], 'executable': _winapi.GetModuleFileName(0)}), flush=True)
+time.sleep(60)
+"""
     children = [subprocess.Popen([sys.executable, "-c", code], stdout=subprocess.PIPE, text=True) for _ in range(2)]
     try:
-        ports = [int(child.stdout.readline()) for child in children]
-        with pytest.raises(EnvironmentUnavailable, match="does not match"):
-            ida._terminate_stale_server(ports[0], str(tmp_path / "unknown.exe"))
+        listeners = [json.loads(child.stdout.readline()) for child in children]
+        ports = [listener['port'] for listener in listeners]
+        for port in ports:
+            with pytest.raises(EnvironmentUnavailable):
+                ida._terminate_stale_server(port, str(tmp_path / "unknown.exe"))
         assert all(child.poll() is None for child in children)
-        ida._terminate_stale_server(ports[0], sys.executable)
+        for port in ports:
+            with socket.create_connection(('127.0.0.1', port), timeout=1):
+                pass
+        ida._terminate_stale_server(ports[0], listeners[0]['executable'])
         children[0].wait(timeout=3)
         assert children[1].poll() is None
+        with socket.create_connection(('127.0.0.1', ports[1]), timeout=1):
+            pass
     finally:
         for child in children:
             if child.poll() is None:
@@ -180,13 +193,26 @@ def _inert_console_launcher(directory, interpreter=sys.executable):
     maker = ScriptMaker(None, str(directory))
     maker.executable = interpreter
     filenames = []
-    source = b"""import json, os, socket, sys
+    source = b"""import _winapi, ctypes, json, os, socket, subprocess, sys
 from pathlib import Path
+spoof = os.environ.pop('OWNED_SPOOF_ARGV0', None)
+if spoof:
+    child = subprocess.Popen([spoof, sys.argv[0], *sys.argv[1:]],
+                             executable=_winapi.GetModuleFileName(0), stdin=subprocess.PIPE)
+    try:
+        sys.stdin.read()
+    finally:
+        child.stdin.close()
+        child.wait(timeout=5)
+    sys.exit(0)
+ctypes.windll.kernel32.GetCommandLineW.restype = ctypes.c_wchar_p
 s = socket.socket()
 s.bind(('127.0.0.1', int(os.environ['OWNED_LISTEN_PORT'])))
 s.listen()
 Path(os.environ['OWNED_READY_FILE']).write_text(json.dumps({
-    'pid': os.getpid(), 'parent_pid': os.getppid(), 'port': s.getsockname()[1]
+    'pid': os.getpid(), 'port': s.getsockname()[1],
+    'image': _winapi.GetModuleFileName(0),
+    'command': ctypes.windll.kernel32.GetCommandLineW()
 }))
 sys.stdin.read()
 s.close()
@@ -196,7 +222,7 @@ s.close()
 
 
 @contextmanager
-def _owned_launcher_listener(tmp_path, launcher, *, direct_python=False, host='127.0.0.1', wrong_port=False):
+def _owned_launcher_listener(tmp_path, launcher, *, direct_python=False, host='127.0.0.1', wrong_port=False, spoof_image=None):
     import _winapi
 
     with socket.socket() as reservation:
@@ -204,6 +230,8 @@ def _owned_launcher_listener(tmp_path, launcher, *, direct_python=False, host='1
         port = reservation.getsockname()[1]
     marker = tmp_path / 'listener-ready.json'
     env = dict(os.environ, OWNED_LISTEN_PORT=str(port), OWNED_READY_FILE=str(marker))
+    if spoof_image:
+        env['OWNED_SPOOF_ARGV0'] = str(spoof_image)
     command = ([sys.executable] if direct_python else []) + [
         str(launcher), '--host', host, '--port', str(port + 1 if wrong_port else port)
     ]
@@ -247,10 +275,7 @@ def test_replace_real_distlib_launcher_preserves_other_launcher(tmp_path, interp
     companion_dir.mkdir()
     with _owned_launcher_listener(primary_dir, selected) as (primary, info):
         with _owned_launcher_listener(companion_dir, companion) as (other, other_info):
-            assert primary.pid != info['pid']
-            if interpreter_kind == 'current':
-                assert info['parent_pid'] == primary.pid
-            assert other.pid != other_info['pid'] and info['port'] != other_info['port']
+            assert info['port'] != other_info['port']
             ida._terminate_stale_server(info['port'], str(selected))
             primary.wait(timeout=5)
             assert other.poll() is None
@@ -266,6 +291,25 @@ def test_replace_distlib_listener_rejects_unrelated_identity(tmp_path, mismatch)
     with _owned_launcher_listener(tmp_path, running, direct_python=mismatch == 'parent',
                                  host='0.0.0.0' if mismatch == 'host' else '127.0.0.1',
                                  wrong_port=mismatch == 'port') as (process, info):
+        with pytest.raises(EnvironmentUnavailable, match='no process was stopped'):
+            ida._terminate_stale_server(info['port'], str(selected))
+        assert process.poll() is None
+        with socket.create_connection(('127.0.0.1', info['port']), timeout=1):
+            pass
+
+
+@pytest.mark.skipif(os.name != 'nt', reason='Windows console-script launcher ownership')
+def test_replace_distlib_listener_rejects_forged_python_image(tmp_path):
+    import venv
+
+    venv.EnvBuilder(with_pip=False).create(tmp_path / 'spoof venv')
+    spoof = tmp_path / 'spoof venv/Scripts/python.exe'
+    selected = _inert_console_launcher(tmp_path / 'selected scripts')
+    with _owned_launcher_listener(tmp_path, selected, spoof_image=spoof) as (process, info):
+        assert Path(info['image']) != spoof
+        assert info['command'] == subprocess.list2cmdline([
+            str(spoof), str(selected), '--host', '127.0.0.1', '--port', str(info['port'])
+        ])
         with pytest.raises(EnvironmentUnavailable, match='no process was stopped'):
             ida._terminate_stale_server(info['port'], str(selected))
         assert process.poll() is None

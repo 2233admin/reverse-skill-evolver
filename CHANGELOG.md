@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Support Windows virtual-environment launcher chains with different Python images; bind each Python command to its own or its immediate redirector parent's image and preserve unrelated listeners, bounded ancestry inspection, and final port-owner rechecks.
+- Decode Codex output on the caller thread so malformed UTF-8 reports the original error on Windows and leaves the MCP probe unexecuted, instead of losing the error in a background pipe reader.
+
 ## reverse-skill-evolver-cli 1.1.2
 
 - Bound Codex MCP registration subprocesses with explicit timeouts.
