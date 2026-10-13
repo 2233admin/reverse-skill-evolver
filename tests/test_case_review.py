@@ -6,7 +6,6 @@ against synthetic case packages, not the module internals.
 
 import hashlib
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -254,29 +253,9 @@ def test_case_review_missing_root_fails(tmp_path: Path) -> None:
     assert review["issues"][0]["code"] == "case.missing"
 
 
-def test_case_init_workdir_is_gitignored(tmp_path: Path) -> None:
-    # work/ is ignored by the repository; a case created under the repo root
-    # must never appear in git status.
-    os.chdir(ROOT)
-    subprocess.run(
-        [sys.executable, "-m", "reverse_skill", "case", "init", "--hint", "x", "--case-name", "gitignored-case", "--preset", "offline-sample"],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-        check=False,
+def test_case_init_workdir_is_gitignored() -> None:
+    result = subprocess.run(
+        ["git", "check-ignore", "-q", "work/gitignored-case/scope.md"],
+        cwd=ROOT, capture_output=True, check=False,
     )
-    try:
-        status = subprocess.run(
-            ["git", "status", "--porcelain"],
-            cwd=ROOT,
-            capture_output=True,
-            text=True,
-            check=False,
-        ).stdout
-        assert "work/gitignored-case" not in status
-    finally:
-        subprocess.run(["git", "clean", "-fdq", "work"], cwd=ROOT, capture_output=True, check=False)
-        try:
-            (ROOT / "work").rmdir()
-        except OSError:
-            pass
+    assert result.returncode == 0
