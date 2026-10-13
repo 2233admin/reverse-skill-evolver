@@ -17,7 +17,7 @@
 | #32 | 总览，待逐项回收 | 不视为独立代码修复，不提前关闭 |
 | #41 | 已有提交待形成 PR | 复用 `632cf1a`，不重写 |
 | #27–#30 | 已有 Draft PR #31，待功能验证 | 依赖 Draft PR #26；复用实现 |
-| #21 | 用户已要求调用真实模型，恢复有限预算 | [21-D1 回执](https://github.com/2233admin/reverse-skill-evolver/issues/21#issuecomment-6144393049)；37 逻辑调用总上限，单次 60 秒，候选不晋级 |
+| #21 | 真实 suite/反思/失败路径已验证，交付 PR #42 | 31/37 逻辑调用，单次 60 秒；候选不晋级，见真实记录 |
 
 ## #40 验证
 
@@ -68,3 +68,5 @@
 ## #21 当前真实验证
 
 [真实 OMP 记录](omp-live-2026-10-13/README.md)：默认 provider 首请求 402，显式 MiniMax 新 API 第一条真实路由响应通过；下一次调用遇到 Windows 临时 cwd 清理错误。累计转发 3/37，两个 run 均 incomplete。修复 cleanup 不再掩盖已取得的模型响应/错误，相关真实隔离 cwd 锁及 evolution 检查 **95 passed**。接续真实完整 suite，保持预算和 not_promoted。
+
+最终真实结果：完整 frozen 12-case suite 的 baseline/curated 均 12/12，通过 24 调用、84.473 秒、退出码 0，提前停止不反思；另行受控单例完成 3 evaluations + 1 reflection，4 调用、14.187 秒，curated 0/1 → proposal 1/1。全批累计 31/37（含前述失败）。逐个核对 envelope、输入/候选哈希、严格原响应 parser、完整覆盖和 not_promoted 均通过。tokens/物理请求/费用 unknown；不代表下游任务或晋级通过。

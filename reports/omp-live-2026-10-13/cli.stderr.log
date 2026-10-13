@@ -1,0 +1,5 @@
+[evolve] Budget: 3 full-suite evaluations x 12 fixtures + 1 reflections = at most 37 logical OMP calls; provider retries may add requests. Archive: D:\projects\reverse-skill-evolver\repair-open-issues-15\reports\omp-live-2026-10-13\full-suite
+[evolve] no-skill-baseline: 0/12 complete; calling apk-static-reverse
+[evolve] Failed at {'stage': 'no-skill-baseline', 'fixture_id': 'apk-static-reverse', 'completed': 0}: OMP exited 1: Working...
+402 Insufficient Balance (request_id: be204794-b17c-4dca-ad6d-babaf763c021)
+Insufficient Balance (request_id: be204794-b17c-4dca-ad6d-babaf763c021) (type=unknown_error param=invalid_request_error); incomplete archive: D:\projects\reverse-skill-evolver\repair-open-issues-15\reports\omp-live-2026-10-13\full-suite

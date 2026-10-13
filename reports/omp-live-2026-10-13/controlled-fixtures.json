@@ -1,0 +1,1 @@
+{"fixtures":[{"id":"controlled-apk","track":"apk-android","task":"Reverse an Android APK to find its license validation and confirm the patch on a local fixture.","expected_route":"apk-android"}]}

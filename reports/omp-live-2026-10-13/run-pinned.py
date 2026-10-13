@@ -20,6 +20,8 @@ from reverse_skill.errors import ToolOperationError
 parser = argparse.ArgumentParser()
 parser.add_argument("--model", required=True)
 parser.add_argument("--name", required=True)
+parser.add_argument("--candidate")
+parser.add_argument("--fixtures")
 options = parser.parse_args()
 evidence = Path(__file__).resolve().parent
 root = evidence.parents[1]
@@ -47,8 +49,8 @@ def counted_omp(*args):
 
 evolution._omp_args, evolution._omp = pinned_args, counted_omp
 argv = [
-    "--json", "evolve", "--candidate", str(root / "skills/routing.md"),
-    "--catalog", str(root / "skills/routing.json"), "--fixtures", str(root / "skills/evolution/fixtures/route-selection.json"),
+    "--json", "evolve", "--candidate", options.candidate or str(root / "skills/routing.md"),
+    "--catalog", str(root / "skills/routing.json"), "--fixtures", options.fixtures or str(root / "skills/evolution/fixtures/route-selection.json"),
     "--output", str(evidence / options.name), "--max-evaluations", "3", "--max-reflections", "1", "--model-timeout", "60",
 ]
 metadata = {"argv": argv, "entrypoint": "reverse_skill.cli.main (same public CLI)",

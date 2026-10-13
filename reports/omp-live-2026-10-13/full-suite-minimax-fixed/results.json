@@ -1,0 +1,407 @@
+{
+  "inputs": {
+    "catalog": {
+      "source_path": "D:\\projects\\reverse-skill-evolver\\repair-open-issues-15\\skills\\routing.json",
+      "artifact": "catalog.json",
+      "sha256": "ca1836f5c66c2182a4105f59b3779664a19355aacc6b37084f43fb714996c5ed"
+    },
+    "fixtures": {
+      "source_path": "D:\\projects\\reverse-skill-evolver\\repair-open-issues-15\\skills\\evolution\\fixtures\\route-selection.json",
+      "artifact": "fixtures.json",
+      "sha256": "94bececdaa82f99fc02d621dc02c24a40ee47f3843dc7f9cd3f0fc29448f9697"
+    }
+  },
+  "curated_input": {
+    "id": "curated",
+    "candidate_text": "# Reverse Engineering Skill Routing Matrix\r\n\r\nRoute tasks to the most appropriate skill module by target type, user intent, and toolchain.\r\n\r\n## CRITICAL: Routing Execution Protocol\r\n\r\n0. **MUST** define the GOAL first for non-trivial tasks: input, authorization boundary, desired output, success oracle, budget, and stop conditions. Use `evolution/goal.template.yaml`.\r\n1. **MUST** complete routing BEFORE executing. Do NOT \"do first, route later\".\r\n2. **MUST** match ALL four dimensions (target type + user intent + toolchain/capability graph + success oracle) before entering a skill.\r\n3. **MUST** read `routing.json` for machine-readable route candidates, then use this file for human context and edge cases.\r\n4. If route not matched → propose new skill, do NOT force-fit.\r\n5. Cross-module tasks → combine skills per \"Path Crossing\" section.\r\n6. After routing, read the target skill's SKILL.md BEFORE taking action.\r\n7. During execution, record material route switches in a TraceCard; stable route updates require the promotion gate.\r\n\r\n## Machine-Readable Routing Mirror\r\n\r\n`routing.json` is the structured mirror for agents and scripts. It contains:\r\n\r\n- `macro_routes`: target kinds, intent keywords, primary skill, required capabilities, fallback edges, and success oracles.\r\n- `micro_route_rules`: step-level route switching rules for repeated failures, missing tools, stale evidence, and missing oracles.\r\n- `evolution_protocol`: required pre-route and post-route artifacts.\r\n\r\nWhen `routing.md` and `routing.json` disagree, use `routing.md` for safety/intent context, but update `routing.json` before claiming the routing package is current.\r\n\r\n## By Target Type\r\n\r\n| Target Type | Recommended Entry | Alternative |\r\n|-------------|------------------|-------------|\r\n| Self-evolving route / unclear multi-step goal | `evolution/` — GOAL + capability graph + TraceCard + promotion gate | Then dispatch to the concrete child skill |\r\n| Unattended overnight run / 无人值守过夜任务 | `overnight-run/` — OVERNIGHT.md v2 contract: fill slots → validate → scaffold (.night/ + night branch + pre-commit) → run to DEADLINE → morning review | Phase 0-3 closed loop; experience returns via promotion gate |\r\n| APK / Android app | `apk-reverse/` — jadx decompile + apktool unpack | If core is in .so → `ida-reverse/` or `radare2/` |\r\n| Binary exe/dll/so/elf | `ida-reverse/` — IDA Pro decompile | `radare2/` — CLI analysis, or `reverse-engineering/tools.md` — GDB/Unicorn |\r\n| JavaScript / Web frontend | `js-reverse/` — 5-stage workflow | anything-analyzer MCP browser tools, or jshookmcp CDP/Hook |\r\n| HTTP capture / browser sampling / request replay | anything-analyzer MCP (23816) | `js-reverse/`, jshookmcp, or `competition-web-runtime/` |\r\n| Firmware / IoT full-image assessment | `firmware-pentest/SKILL.md` — OWASP FSTM end-to-end workflow | `reverse-engineering/platforms.md` — single-image / static analysis |\r\n| WASM / Python bytecode / .NET | `reverse-engineering/languages.md` | Check specific language section |\r\n| macOS / iOS | `reverse-engineering/platforms.md` — Mach-O/ObjC/Swift | `mobile-reverse/` for iOS-specific |\r\n| Game (Unity/Unreal) | `reverse-engineering/languages-platforms.md` + `ida-reverse/` — engine/native reverse, IL2CPP/Mono triage | `radare2/` CLI analysis |\r\n| Memory dump / PCAP | `reverse-engineering/platforms.md` | `reverse-engineering/patterns*.md` |\r\n| Malware / virus sample | `reverse-engineering/` — YARA/sandbox/behavior analysis | `ida-reverse/` deep analysis |\r\n| Cryptography / encryption algorithms | `reverse-engineering/patterns*.md` — crypto patterns | `js-reverse/` (if frontend crypto) |\r\n| Protocol reverse / custom protocol | `reverse-engineering/platforms.md` — network protocols | `js-reverse/` (if WebSocket/HTTP) |\r\n| Protocol source implementation / codec workspace | `reverse-engineering/platforms.md` — define offline unit tests, CLI/fixture replay, and live-test isolation | `reverse-engineering/languages-compiled.md` if compiled binary evidence is required |\r\n| Go / Rust binary | `reverse-engineering/languages-compiled.md` + `go-reverse.md` | `ida-reverse/` or `radare2/` |\r\n| LLM / AI application | `llm-security/` — OWASP LLM Top 10 + ASI Top 10 | Prompt injection, Agent security |\r\n| API / REST / GraphQL | `api-security/` — BOLA/BFLA/JWT/OAuth | `pentest-tools/` for scanning |\r\n| Supply chain / SBOM / CI-CD | `supply-chain-security/` — Trivy/Syft/Gitleaks | — |\r\n| iOS app (IPA) | `mobile-reverse/` — class-dump/Hopper/Frida iOS | `reverse-engineering/platforms.md` |\r\n| **CTF competition (full stack)** | `../CTF-Sandbox-Orchestrator/ctf-sandbox-orchestrator/SKILL.md` — master entry | Route to 40+ sub-skills by evidence |\r\n| Web runtime / API | `../CTF-Sandbox-Orchestrator/competition-web-runtime/SKILL.md` | — |\r\n| Cloud / Container / K8s | `../CTF-Sandbox-Orchestrator/competition-agent-cloud/SKILL.md` | — |\r\n| Windows / AD / Identity | `../CTF-Sandbox-Orchestrator/competition-identity-windows/SKILL.md` | — |\r\n| Forensics / PCAP / Steganography | `../CTF-Sandbox-Orchestrator/competition-forensic-timeline/SKILL.md` | — |\r\n| Prompt injection / Agent | `../CTF-Sandbox-Orchestrator/competition-prompt-injection/SKILL.md` | — |\r\n| Mobile (Android/iOS) | `../CTF-Sandbox-Orchestrator/competition-android-hooking/SKILL.md` | — |\r\n| Firmware / Malware sample | `../CTF-Sandbox-Orchestrator/competition-firmware-layout/SKILL.md` | — |\r\n\r\n## By User Intent\r\n\r\n| User Says | Route To |\r\n|-----------|----------|\r\n| \"make the skill self-evolve / improve routing / learn from runs\" | `evolution/SKILL.md` — GOAL + TraceCard + promotion gate |\r\n| \"过夜跑 / 整夜自动化 / overnight / unattended / 无人值守 / 早上看结果\" | `overnight-run/SKILL.md` — fill slots → validate-slots → new-overnight scaffold → run to DEADLINE → morning review REPORT.md |\r\n| \"from this goal, choose the complete path / stop the AI from drifting\" | `evolution/SKILL.md` first, then child route |\r\n| \"decompile / IDA analyze\" | `ida-reverse/SKILL.md` — IDA MCP workflow |\r\n| \"recover source / disassemble\" | `reverse-engineering/SKILL.md` + `ida-reverse/` |\r\n| \"Frida hook / dynamic inject\" | `reverse-engineering/tools-dynamic.md` — Frida section |\r\n| \"radare2 / r2 analyze\" | `radare2/SKILL.md` — CLI workflow |\r\n| \"find frontend signature / encrypted params\" | `js-reverse/SKILL.md` — Observe→Capture→Rebuild |\r\n| \"jshookmcp / JS hook / CDP debug\" | `js-reverse/SKILL.md` — same JS/Web chain |\r\n| \"APK unpack / repack / modify smali\" | `apk-reverse/SKILL.md` — decode→rebuild-sign-install |\r\n| \"bypass anti-debug / anti-detection\" | `reverse-engineering/anti-analysis.md` |\r\n| \"what obfuscation / VM is this\" | `reverse-engineering/patterns*.md` — match by pattern |\r\n| \"Go/Rust/Swift reverse\" | `reverse-engineering/languages-compiled.md` + `go-reverse.md` |\r\n| \"kernel driver / Rootkit / LKM\" | `reverse-engineering/kernel-driver-reverse.md` |\r\n| \"Python bytecode / pyc\" | `reverse-engineering/languages.md` — Python section |\r\n| \"symbol execution / angr\" | `reverse-engineering/tools-dynamic.md` — angr section |\r\n| \"patch environment / Node reproduce\" | `js-reverse/references/env-patching.md` |\r\n| \"CTF challenge / competition reverse\" | `reverse-engineering/patterns-ctf*.md` |\r\n| \"write report / documentation\" | `docs-generator/` — technical documentation |\r\n| \"write writeup\" | `docs-generator/` — CTF writeup template |\r\n| \"open webpage / browser automation / fill form\" | `browser-automation/SKILL.md` — Playwright |\r\n| \"crawl page / screenshot / auto login\" | `browser-automation/SKILL.md` |\r\n| \"desktop automation / Windows automation\" | `browser-automation/SKILL.md` — OpenReverse |\r\n| \"game reverse / anti-cheat / hack analysis\" | `reverse-engineering/languages-platforms.md` + `ida-reverse/SKILL.md` |\r\n| \"Unity / IL2CPP / Mono\" | `reverse-engineering/languages-platforms.md` + `ida-reverse/SKILL.md` |\r\n| \"Unreal Engine / UE reverse\" | `reverse-engineering/languages-platforms.md` + `ida-reverse/SKILL.md` |\r\n| \"Cheat Engine / memory scan\" | `reverse-engineering/tools-dynamic.md` — memory/dynamic analysis |\r\n| \"symbol migration / cross-version compare\" | `binary-diff/SKILL.md` — LLM batch migration |\r\n| \"missing PDB / old version symbols\" | `binary-diff/SKILL.md` — cross-version symbol migration |\r\n| \"bindiff / function offset migration\" | `binary-diff/SKILL.md` — binary diff |\r\n| \"port scan / Nmap\" | `pentest-tools/SKILL.md` — information gathering |\r\n| \"vulnerability scan / Nuclei\" | `pentest-tools/SKILL.md` — vulnerability detection |\r\n| \"SQL injection / SQLMap\" | `pentest-tools/SKILL.md` — web pentest |\r\n| \"directory brute force / FFUF / Gobuster\" | `pentest-tools/SKILL.md` — web pentest |\r\n| \"password cracking / Hashcat\" | `pentest-tools/SKILL.md` — password cracking |\r\n| \"penetration testing / active scan\" | `pentest-tools/SKILL.md` — pentest toolchain |\r\n| \"SRC hunting / Bug Bounty\" | `pentest-tools/src-hunter/SKILL.md` — 19 playbooks + H1 cases |\r\n| \"WAF bypass\" | `pentest-tools/src-hunter/references/payloader/` — 263 bypass steps |\r\n| \"draw diagram / flowchart / architecture\" | `diagram-generator/SKILL.md` |\r\n| \"attack path diagram / sequence diagram\" | `diagram-generator/SKILL.md` — Mermaid/Graphviz/PlantUML |\r\n| \"malware / virus analysis / sample analysis\" | `reverse-engineering/SKILL.md` + YARA/sandbox |\r\n| \"firmware / IoT / binwalk / ARM\" | `firmware-pentest/SKILL.md` — full firmware workflow; use `reverse-engineering/platforms-hardware.md` for a narrow static architecture question |\r\n| \"cryptography / AES / RSA\" | `reverse-engineering/patterns*.md` — crypto pattern recognition |\r\n| \"protocol reverse / Protobuf / custom protocol\" | `reverse-engineering/platforms.md` |\r\n| \"protocol source / Rust codec / Go client / fixture replay / cargo test\" | `reverse-engineering/platforms.md` — protocol-source route with offline tests before live endpoints |\r\n| \"cloud security / container escape / K8s\" | `../CTF-Sandbox-Orchestrator/competition-agent-cloud/SKILL.md` |\r\n| \"Prompt injection / AI security\" | `llm-security/SKILL.md` — OWASP LLM + ASI Top 10 |\r\n| \"internal network / lateral movement\" | `pentest-tools/SKILL.md` + `references/network-attack-defense.md` |\r\n| \"privilege escalation\" | `pentest-tools/references/network-attack-defense.md` — escalation section |\r\n| \"Mimikatz / credential extraction / PtH\" | `pentest-tools/references/network-attack-defense.md` |\r\n| \"Kerberos / domain pentest / AD\" | `pentest-tools/references/network-attack-defense.md` |\r\n| \"C2 / persistence / remote control\" | `pentest-tools/references/network-attack-defense.md` |\r\n| \"blue team / detection / defense / IR\" | `pentest-tools/references/network-attack-defense.md` |\r\n| \"APK security testing / mobile security\" | `apk-reverse/references/apk-security-checklist.md` — OWASP MASTG |\r\n| \"SSTI / template injection\" | `pentest-tools/SKILL.md` — SSTImap |\r\n| \"XSS scan / cross-site scripting\" | `pentest-tools/SKILL.md` — XSStrike |\r\n| \"WordPress pentest / WP enumeration\" | `pentest-tools/SKILL.md` — WPProbe |\r\n| \"C2 framework / adversary simulation\" | `pentest-tools/SKILL.md` — AdaptixC2 |\r\n| \"WiFi attack / wireless pentest\" | `pentest-tools/SKILL.md` — Fluxion + aircrack-ng |\r\n| \"NTLM relay / auth coercion\" | `pentest-tools/SKILL.md` — Coercer |\r\n| \"NetExec / CrackMapExec / nxc\" | `pentest-tools/SKILL.md` — network service enumeration |\r\n| \"AI auto pentest / MCP security\" | `pentest-tools/SKILL.md` — HexStrike AI / MetasploitMCP |\r\n| \"Swarm / swarm pentest / autonomous scan\" | `pentest-tools/SKILL.md` — Pentest Swarm AI |\r\n| \"red team / HW / attack exercise\" | `attack-chain/SKILL.md` — full attack chain orchestration |\r\n| \"initial breach / boundary breach\" | `attack-chain/SKILL.md` — boundary breach phase |\r\n| \"close-range pentest / BadUSB / WiFi phishing\" | `attack-chain/SKILL.md` — close-range section |\r\n| \"EDR bypass / evasion / AV bypass\" | `attack-chain/SKILL.md` — EDR/AV evasion section |\r\n| \"phishing / social engineering\" | `attack-chain/SKILL.md` — phishing section |\r\n| \"supply chain attack\" | `attack-chain/SKILL.md` — supply chain section |\r\n| \"trace cleanup / anti-forensics\" | `attack-chain/SKILL.md` — cleanup section |\r\n| \"full pentest / end-to-end\" | `attack-chain/SKILL.md` — full chain planning |\r\n| \"from external to domain controller\" | `attack-chain/SKILL.md` — cross-phase path orchestration |\r\n| \"attack surface assessment / path planning\" | `attack-chain/SKILL.md` — path planning decision tree |\r\n| \"got shell, what next / post-exploitation\" | `attack-chain/SKILL.md` — plan from current foothold |\r\n| \"BurpSuite / Burp proxy / intercept\" | `pentest-tools/SKILL.md` + `references/burpsuite-mcp-guide.md` |\r\n| \"Burp MCP / proxy history analysis\" | `pentest-tools/references/burpsuite-mcp-guide.md` — 63 tools |\r\n| \"Intruder brute force / Repeater replay\" | `pentest-tools/references/burpsuite-mcp-guide.md` |\r\n| \"Collaborator / OOB testing\" | `pentest-tools/references/burpsuite-mcp-guide.md` |\r\n| \"API security / GraphQL / JWT attack\" | `api-security/SKILL.md` — REST/GraphQL/JWT/OAuth |\r\n| \"supply chain security / SBOM / SCA\" | `supply-chain-security/SKILL.md` — Trivy/Syft/Gitleaks |\r\n| \"iOS reverse / IPA / Mach-O\" | `mobile-reverse/SKILL.md` — class-dump/Hopper/Frida iOS |\r\n| \"Objection / SSL Pinning bypass\" | `mobile-reverse/SKILL.md` — dynamic instrumentation |\r\n| \"YARA / malware detection rules\" | `malware-analysis/SKILL.md` — YARA/Sigma/IOC |\r\n| \"N-day / patch diff / CVE reproduction\" | `binary-diff/SKILL.md` — ghidriff/Diaphora/DeepDiff |\r\n| \"pwn / stack overflow / ROP / ret2libc\" | `reverse-engineering/patterns-ctf*.md` + pwntools |\r\n| \"Agent not working / AI lazy / skip steps\" | `llm-security/references/agent-obedience-engineering.md` |\r\n| \"MSF stuck / orphan process / MSF protocol\" | `pentest-tools/references/msf-protocol.md` |\r\n| \"anonymize / placeholder / writeup desensitize\" | `field-journal/anonymization.md` |\r\n| \"Hydra / online brute force\" | `pentest-tools/SKILL.md` — online password attack |\r\n| \"Metasploit / msfconsole / exploit\" | `pentest-tools/SKILL.md` — exploitation framework |\r\n| \"Wireshark / packet analysis / PCAP\" | `pentest-tools/SKILL.md` + `reverse-engineering/platforms.md` |\r\n| \"BurpSuite / web proxy / intercept\" | `pentest-tools/SKILL.md` — web proxy |\r\n| \"ProxyCat / proxy pool / IP rotation\" | `pentest-tools/SKILL.md` — proxy management |\r\n\r\n## By Toolchain\r\n\r\n| Tool | Related Module |\r\n|------|---------------|\r\n| capability-graph.json | `evolution/` — session-level tool/service facts and smoke status |\r\n| routing.json | `evolution/` + `routing.md` — machine-readable route candidates and fallback edges |\r\n| TraceCard | `evolution/` — step-level evidence, route switches, oracle status |\r\n| IDA Pro (idapro_*) | `ida-reverse/` — MCP HTTP server + 72 tools |\r\n| radare2 (r2/rabin2/rasm2) | `radare2/` — CLI + recon.ps1 |\r\n| jadx / apktool | `apk-reverse/` — decode.ps1 / manifest-summary.ps1 |\r\n| Frida | `reverse-engineering/tools-dynamic.md` |\r\n| GDB / GEF / pwndbg / rr | `reverse-engineering/tools.md` |\r\n| Ghidra (headless) | `reverse-engineering/tools.md` + Ghidra MCP |\r\n| angr / Qiling / Unicorn | `reverse-engineering/tools-dynamic.md` |\r\n| BinDiff / Diaphora | `reverse-engineering/tools-advanced.md` |\r\n| anything-analyzer MCP | Port 23816 MCP server (browser + HTTP capture + AI analysis) |\r\n| jshookmcp | `js-reverse/` enhancement MCP for browser/CDP/Hook/Network/SourceMap/AST |\r\n| agent-browser / Playwright | `browser-automation/` — browser automation |\r\n| OpenReverse (UIA/CUA) | `browser-automation/` — Windows desktop automation |\r\n| Cheat Engine / x64dbg / ReClass | `reverse-engineering/tools-dynamic.md` — memory and dynamic analysis |\r\n| IL2CPP Dumper / dnSpy | `reverse-engineering/languages-platforms.md` — Unity/Mono reverse |\r\n| LLM symbol migration / BinDiff alternative | `binary-diff/` — cross-version batch migration |\r\n| Nmap / Masscan | `pentest-tools/` — port scan, service identification |\r\n| Nuclei / ZAP / Nikto | `pentest-tools/` — vulnerability scanning |\r\n| SQLMap / FFUF / Gobuster | `pentest-tools/` — web pentest (injection/brute force) |\r\n| SSTImap | `pentest-tools/` — SSTI auto-detection |\r\n| XSStrike | `pentest-tools/` — advanced XSS scanning |\r\n| Hashcat / John / Hydra | `pentest-tools/` — password cracking |\r\n| Metasploit / Impacket | `pentest-tools/` — exploitation framework |\r\n| BurpSuite | `pentest-tools/` — web proxy, interception, vulnerability scanning |\r\n| BurpSuite MCP | `pentest-tools/` — 63-tool AI full control, see `references/burpsuite-mcp-guide.md` |\r\n| ProxyCat | `pentest-tools/` — proxy pool management & IP rotation |\r\n| Cobalt Strike / Sliver / Havoc | `attack-chain/` — C2 framework |\r\n| pentestMCP (Docker) | `pentest-tools/` — 20+ tools one-click MCP |\r\n| Mermaid / Graphviz / PlantUML | `diagram-generator/` — diagram generation |\r\n| garak / PyRIT / promptfoo | `llm-security/` — LLM red team testing |\r\n| Trivy / Syft / Gitleaks / OSV-Scanner | `supply-chain-security/` — supply chain scanning |\r\n| Objection / Frida iOS / class-dump | `mobile-reverse/` — iOS dynamic analysis |\r\n\r\nCheck `capability-graph.json` first, then `tool-index.md`, for actual tool availability, paths, versions, MCP registration, service health, and smoke status. If neither generated file exists, run `scripts/refresh-tool-index.ps1`. NEVER guess paths.\r\n\r\n---\r\n\r\n## Route Not Matched — Handling\r\n\r\nIf the current task doesn't match any table above, **do NOT force-fit into existing skill**:\r\n\r\n1. Check if it's an edge case of an existing skill (can extend coverage)\r\n2. If truly new type, proactively propose new skill to user:\r\n   - Suggested skill name and coverage\r\n   - Required toolchain\r\n   - Relationship to existing skills\r\n3. User confirms → execute per `CONTRIBUTING.md`\r\n4. After creation, update this routing matrix\r\n\r\n**AI does NOT need to wait for user to discover the gap. Route failure IS the signal to propose a new skill.**\r\n\r\n## Path Crossing (Cross-Module Scenarios)\r\n\r\nSome tasks span multiple modules. Common crossings:\r\n\r\n```\r\nAPK Reverse Path:\r\n  apk-reverse/decode.ps1 → Java layer analysis\r\n  ↓ If core is in .so\r\n  ida-reverse/ or radare2/ → .so analysis\r\n  ↓ If dynamic verification needed\r\n  apk-reverse/frida-run.ps1 → Frida Hook\r\n\r\nFrontend JS Reverse Path:\r\n  js-reverse/Observe → locate target request\r\n  ↓ Need stronger browser/CDP/Hook/Network capability\r\n  jshookmcp → runtime sampling, breakpoints, interception, SourceMap/AST\r\n  ↓ After confirming entry function\r\n  js-reverse/Rebuild → Node local reproduction\r\n  ↓ Need environment patching\r\n  js-reverse/references/env-patching.md\r\n\r\nBinary Reverse Path:\r\n  radare2/recon.ps1 → quick reconnaissance\r\n  ↓ Deep analysis\r\n  ida-reverse/ → IDA decompile\r\n  ↓ Dynamic verification\r\n  reverse-engineering/tools-dynamic.md → Frida/GDB\r\n\r\nCTF Competition Path (via CTF-Sandbox-Orchestrator):\r\n  ctf-sandbox-orchestrator/SKILL.md → build sandbox model\r\n  ↓ Route by dominant evidence\r\n  competition-web-runtime/ or competition-reverse-pwn/ or competition-identity-windows/\r\n  ↓ Blocked → return to master\r\n  ctf-sandbox-orchestrator → re-route\r\n\r\nWeb Pentest + BurpSuite MCP Path:\r\n  browser-automation/ → auto-browse target with Burp proxy\r\n  ↓ Traffic captured\r\n  burpsuite MCP proxy_history → AI analyzes all requests\r\n  ↓ Suspicious endpoints found\r\n  burpsuite MCP intruder_attack → automated enumeration\r\n  ↓ Vulnerability confirmed\r\n  docs-generator/ → generate pentest report\r\n```\r\n",
+    "candidate_sha256": "0e2f71f940e562f7516ee19ad0dc57a9da0aa95eedd8dc1b92d3cbb64fb7a72b",
+    "candidate_artifact": "curated.md",
+    "input_sha256": {
+      "catalog": "ca1836f5c66c2182a4105f59b3779664a19355aacc6b37084f43fb714996c5ed",
+      "fixtures": "94bececdaa82f99fc02d621dc02c24a40ee47f3843dc7f9cd3f0fc29448f9697"
+    }
+  },
+  "status": "complete",
+  "reflections": [],
+  "evaluations_consumed": 2,
+  "max_evaluations": 3,
+  "reflections_consumed": 0,
+  "max_reflections": 1,
+  "fixture_count": 12,
+  "max_logical_calls": 37,
+  "logical_calls_started": 24,
+  "baseline": {
+    "id": "no-skill-baseline",
+    "candidate_text": "",
+    "complete": true,
+    "pass_counts": {
+      "apk-android": 1,
+      "js-browser-signature": 1,
+      "native-binary": 1,
+      "patch-diff": 1,
+      "protocol-pcap": 1,
+      "protocol-source-implementation": 2,
+      "active-security-assessment": 1,
+      "unattended-overnight-run": 1,
+      "firmware-iot": 1,
+      "unmatched": 2
+    },
+    "fixture_counts": {
+      "apk-android": 1,
+      "js-browser-signature": 1,
+      "native-binary": 1,
+      "patch-diff": 1,
+      "protocol-pcap": 1,
+      "protocol-source-implementation": 2,
+      "active-security-assessment": 1,
+      "unattended-overnight-run": 1,
+      "firmware-iot": 1,
+      "unmatched": 2
+    },
+    "pass_rates": {
+      "apk-android": 1.0,
+      "js-browser-signature": 1.0,
+      "native-binary": 1.0,
+      "patch-diff": 1.0,
+      "protocol-pcap": 1.0,
+      "protocol-source-implementation": 1.0,
+      "active-security-assessment": 1.0,
+      "unattended-overnight-run": 1.0,
+      "firmware-iot": 1.0,
+      "unmatched": 1.0
+    },
+    "invalid_counts": {
+      "apk-android": 0,
+      "js-browser-signature": 0,
+      "native-binary": 0,
+      "patch-diff": 0,
+      "protocol-pcap": 0,
+      "protocol-source-implementation": 0,
+      "active-security-assessment": 0,
+      "unattended-overnight-run": 0,
+      "firmware-iot": 0,
+      "unmatched": 0
+    },
+    "outcomes": [
+      {
+        "fixture_id": "apk-static-reverse",
+        "task": "Reverse an Android APK to find its license validation and confirm the patch on a local fixture.",
+        "track": "apk-android",
+        "expected_route": "apk-android",
+        "route_id": "apk-android",
+        "passed": true,
+        "invalid": null,
+        "raw_response": "{\"route_id\": \"apk-android\"}\n"
+      },
+      {
+        "fixture_id": "browser-signature",
+        "task": "Reproduce a browser request signature generated by an obfuscated JavaScript bundle.",
+        "track": "js-browser-signature",
+        "expected_route": "js-browser-signature",
+        "route_id": "js-browser-signature",
+        "passed": true,
+        "invalid": null,
+        "raw_response": "{\"route_id\": \"js-browser-signature\"}\n"
+      },
+      {
+        "fixture_id": "native-function-map",
+        "task": "Analyze a stripped PE executable in IDA and label the function that validates a serial number.",
+        "track": "native-binary",
+        "expected_route": "native-binary",
+        "route_id": "native-binary",
+        "passed": true,
+        "invalid": null,
+        "raw_response": "{\"route_id\": \"native-binary\"}\n"
+      },
+      {
+        "fixture_id": "vendor-patch-root-cause",
+        "task": "Compare two vendor firmware versions and identify the changed function and security bug root cause.",
+        "track": "patch-diff",
+        "expected_route": "patch-diff",
+        "route_id": "patch-diff",
+        "passed": true,
+        "invalid": null,
+        "raw_response": "{\"route_id\": \"patch-diff\"}\n"
+      },
+      {
+        "fixture_id": "pcap-custom-protocol",
+        "task": "Inspect a local PCAP to infer the custom packet fields and replay one message sequence.",
+        "track": "protocol-pcap",
+        "expected_route": "protocol-pcap",
+        "route_id": "protocol-pcap",
+        "passed": true,
+        "invalid": null,
+        "raw_response": "{\"route_id\": \"protocol-pcap\"}\n"
+      },
+      {
+        "fixture_id": "source-protocol-codec",
+        "task": "Implement and test an offline codec for a custom protocol in a Rust source workspace.",
+        "track": "protocol-source-implementation",
+        "expected_route": "protocol-source-implementation",
+        "route_id": "protocol-source-implementation",
+        "passed": true,
+        "invalid": null,
+        "raw_response": "{\"route_id\": \"protocol-source-implementation\"}\n"
+      },
+      {
+        "fixture_id": "authorized-api-assessment",
+        "task": "Assess an explicitly authorized local API for authentication and authorization vulnerabilities.",
+        "track": "active-security-assessment",
+        "expected_route": "active-security-assessment",
+        "route_id": "active-security-assessment",
+        "passed": true,
+        "invalid": null,
+        "raw_response": "{\"route_id\": \"active-security-assessment\"}\n"
+      },
+      {
+        "fixture_id": "overnight-job",
+        "task": "Prepare a bounded unattended overnight run with validated slots and a readable morning report.",
+        "track": "unattended-overnight-run",
+        "expected_route": "unattended-overnight-run",
+        "route_id": "unattended-overnight-run",
+        "passed": true,
+        "invalid": null,
+        "raw_response": "{\"route_id\": \"unattended-overnight-run\"}\n"
+      },
+      {
+        "fixture_id": "router-firmware-audit",
+        "task": "Assess an authorized router firmware image by extracting its filesystem and reviewing embedded services. This is a full firmware workflow, not a version-to-version patch comparison or single-ELF analysis.",
+        "track": "firmware-iot",
+        "expected_route": "firmware-iot",
+        "route_id": "firmware-iot",
+        "passed": true,
+        "invalid": null,
+        "raw_response": "{\"route_id\": \"firmware-iot\"}\n"
+      },
+      {
+        "fixture_id": "rust-pcap-code-change",
+        "task": "In a Rust workspace, update a custom protocol parser using a PCAP fixture, add an offline regression test, and run cargo test. The requested output is a code change, not protocol reverse engineering.",
+        "track": "protocol-source-implementation",
+        "expected_route": "protocol-source-implementation",
+        "route_id": "protocol-source-implementation",
+        "passed": true,
+        "invalid": null,
+        "raw_response": "{\"route_id\": \"protocol-source-implementation\"}\n"
+      },
+      {
+        "fixture_id": "security-keywords-in-glossary",
+        "task": "Write a glossary sentence defining API security, GraphQL, and JWT for a beginner. Do not assess any target, inspect code, or perform a security test.",
+        "track": "unmatched",
+        "expected_route": null,
+        "route_id": null,
+        "passed": true,
+        "invalid": null,
+        "raw_response": "{\"route_id\": null}\n"
+      },
+      {
+        "fixture_id": "unrelated-writing",
+        "task": "Write a short thank-you note for a colleague; no reverse engineering or security work is involved.",
+        "track": "unmatched",
+        "expected_route": null,
+        "route_id": null,
+        "passed": true,
+        "invalid": null,
+        "raw_response": "{\"route_id\": null}\n"
+      }
+    ],
+    "candidate_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "candidate_artifact": "no-skill-baseline.md",
+    "input_sha256": {
+      "catalog": "ca1836f5c66c2182a4105f59b3779664a19355aacc6b37084f43fb714996c5ed",
+      "fixtures": "94bececdaa82f99fc02d621dc02c24a40ee47f3843dc7f9cd3f0fc29448f9697"
+    }
+  },
+  "candidates": [
+    {
+      "id": "curated",
+      "candidate_text": "# Reverse Engineering Skill Routing Matrix\r\n\r\nRoute tasks to the most appropriate skill module by target type, user intent, and toolchain.\r\n\r\n## CRITICAL: Routing Execution Protocol\r\n\r\n0. **MUST** define the GOAL first for non-trivial tasks: input, authorization boundary, desired output, success oracle, budget, and stop conditions. Use `evolution/goal.template.yaml`.\r\n1. **MUST** complete routing BEFORE executing. Do NOT \"do first, route later\".\r\n2. **MUST** match ALL four dimensions (target type + user intent + toolchain/capability graph + success oracle) before entering a skill.\r\n3. **MUST** read `routing.json` for machine-readable route candidates, then use this file for human context and edge cases.\r\n4. If route not matched → propose new skill, do NOT force-fit.\r\n5. Cross-module tasks → combine skills per \"Path Crossing\" section.\r\n6. After routing, read the target skill's SKILL.md BEFORE taking action.\r\n7. During execution, record material route switches in a TraceCard; stable route updates require the promotion gate.\r\n\r\n## Machine-Readable Routing Mirror\r\n\r\n`routing.json` is the structured mirror for agents and scripts. It contains:\r\n\r\n- `macro_routes`: target kinds, intent keywords, primary skill, required capabilities, fallback edges, and success oracles.\r\n- `micro_route_rules`: step-level route switching rules for repeated failures, missing tools, stale evidence, and missing oracles.\r\n- `evolution_protocol`: required pre-route and post-route artifacts.\r\n\r\nWhen `routing.md` and `routing.json` disagree, use `routing.md` for safety/intent context, but update `routing.json` before claiming the routing package is current.\r\n\r\n## By Target Type\r\n\r\n| Target Type | Recommended Entry | Alternative |\r\n|-------------|------------------|-------------|\r\n| Self-evolving route / unclear multi-step goal | `evolution/` — GOAL + capability graph + TraceCard + promotion gate | Then dispatch to the concrete child skill |\r\n| Unattended overnight run / 无人值守过夜任务 | `overnight-run/` — OVERNIGHT.md v2 contract: fill slots → validate → scaffold (.night/ + night branch + pre-commit) → run to DEADLINE → morning review | Phase 0-3 closed loop; experience returns via promotion gate |\r\n| APK / Android app | `apk-reverse/` — jadx decompile + apktool unpack | If core is in .so → `ida-reverse/` or `radare2/` |\r\n| Binary exe/dll/so/elf | `ida-reverse/` — IDA Pro decompile | `radare2/` — CLI analysis, or `reverse-engineering/tools.md` — GDB/Unicorn |\r\n| JavaScript / Web frontend | `js-reverse/` — 5-stage workflow | anything-analyzer MCP browser tools, or jshookmcp CDP/Hook |\r\n| HTTP capture / browser sampling / request replay | anything-analyzer MCP (23816) | `js-reverse/`, jshookmcp, or `competition-web-runtime/` |\r\n| Firmware / IoT full-image assessment | `firmware-pentest/SKILL.md` — OWASP FSTM end-to-end workflow | `reverse-engineering/platforms.md` — single-image / static analysis |\r\n| WASM / Python bytecode / .NET | `reverse-engineering/languages.md` | Check specific language section |\r\n| macOS / iOS | `reverse-engineering/platforms.md` — Mach-O/ObjC/Swift | `mobile-reverse/` for iOS-specific |\r\n| Game (Unity/Unreal) | `reverse-engineering/languages-platforms.md` + `ida-reverse/` — engine/native reverse, IL2CPP/Mono triage | `radare2/` CLI analysis |\r\n| Memory dump / PCAP | `reverse-engineering/platforms.md` | `reverse-engineering/patterns*.md` |\r\n| Malware / virus sample | `reverse-engineering/` — YARA/sandbox/behavior analysis | `ida-reverse/` deep analysis |\r\n| Cryptography / encryption algorithms | `reverse-engineering/patterns*.md` — crypto patterns | `js-reverse/` (if frontend crypto) |\r\n| Protocol reverse / custom protocol | `reverse-engineering/platforms.md` — network protocols | `js-reverse/` (if WebSocket/HTTP) |\r\n| Protocol source implementation / codec workspace | `reverse-engineering/platforms.md` — define offline unit tests, CLI/fixture replay, and live-test isolation | `reverse-engineering/languages-compiled.md` if compiled binary evidence is required |\r\n| Go / Rust binary | `reverse-engineering/languages-compiled.md` + `go-reverse.md` | `ida-reverse/` or `radare2/` |\r\n| LLM / AI application | `llm-security/` — OWASP LLM Top 10 + ASI Top 10 | Prompt injection, Agent security |\r\n| API / REST / GraphQL | `api-security/` — BOLA/BFLA/JWT/OAuth | `pentest-tools/` for scanning |\r\n| Supply chain / SBOM / CI-CD | `supply-chain-security/` — Trivy/Syft/Gitleaks | — |\r\n| iOS app (IPA) | `mobile-reverse/` — class-dump/Hopper/Frida iOS | `reverse-engineering/platforms.md` |\r\n| **CTF competition (full stack)** | `../CTF-Sandbox-Orchestrator/ctf-sandbox-orchestrator/SKILL.md` — master entry | Route to 40+ sub-skills by evidence |\r\n| Web runtime / API | `../CTF-Sandbox-Orchestrator/competition-web-runtime/SKILL.md` | — |\r\n| Cloud / Container / K8s | `../CTF-Sandbox-Orchestrator/competition-agent-cloud/SKILL.md` | — |\r\n| Windows / AD / Identity | `../CTF-Sandbox-Orchestrator/competition-identity-windows/SKILL.md` | — |\r\n| Forensics / PCAP / Steganography | `../CTF-Sandbox-Orchestrator/competition-forensic-timeline/SKILL.md` | — |\r\n| Prompt injection / Agent | `../CTF-Sandbox-Orchestrator/competition-prompt-injection/SKILL.md` | — |\r\n| Mobile (Android/iOS) | `../CTF-Sandbox-Orchestrator/competition-android-hooking/SKILL.md` | — |\r\n| Firmware / Malware sample | `../CTF-Sandbox-Orchestrator/competition-firmware-layout/SKILL.md` | — |\r\n\r\n## By User Intent\r\n\r\n| User Says | Route To |\r\n|-----------|----------|\r\n| \"make the skill self-evolve / improve routing / learn from runs\" | `evolution/SKILL.md` — GOAL + TraceCard + promotion gate |\r\n| \"过夜跑 / 整夜自动化 / overnight / unattended / 无人值守 / 早上看结果\" | `overnight-run/SKILL.md` — fill slots → validate-slots → new-overnight scaffold → run to DEADLINE → morning review REPORT.md |\r\n| \"from this goal, choose the complete path / stop the AI from drifting\" | `evolution/SKILL.md` first, then child route |\r\n| \"decompile / IDA analyze\" | `ida-reverse/SKILL.md` — IDA MCP workflow |\r\n| \"recover source / disassemble\" | `reverse-engineering/SKILL.md` + `ida-reverse/` |\r\n| \"Frida hook / dynamic inject\" | `reverse-engineering/tools-dynamic.md` — Frida section |\r\n| \"radare2 / r2 analyze\" | `radare2/SKILL.md` — CLI workflow |\r\n| \"find frontend signature / encrypted params\" | `js-reverse/SKILL.md` — Observe→Capture→Rebuild |\r\n| \"jshookmcp / JS hook / CDP debug\" | `js-reverse/SKILL.md` — same JS/Web chain |\r\n| \"APK unpack / repack / modify smali\" | `apk-reverse/SKILL.md` — decode→rebuild-sign-install |\r\n| \"bypass anti-debug / anti-detection\" | `reverse-engineering/anti-analysis.md` |\r\n| \"what obfuscation / VM is this\" | `reverse-engineering/patterns*.md` — match by pattern |\r\n| \"Go/Rust/Swift reverse\" | `reverse-engineering/languages-compiled.md` + `go-reverse.md` |\r\n| \"kernel driver / Rootkit / LKM\" | `reverse-engineering/kernel-driver-reverse.md` |\r\n| \"Python bytecode / pyc\" | `reverse-engineering/languages.md` — Python section |\r\n| \"symbol execution / angr\" | `reverse-engineering/tools-dynamic.md` — angr section |\r\n| \"patch environment / Node reproduce\" | `js-reverse/references/env-patching.md` |\r\n| \"CTF challenge / competition reverse\" | `reverse-engineering/patterns-ctf*.md` |\r\n| \"write report / documentation\" | `docs-generator/` — technical documentation |\r\n| \"write writeup\" | `docs-generator/` — CTF writeup template |\r\n| \"open webpage / browser automation / fill form\" | `browser-automation/SKILL.md` — Playwright |\r\n| \"crawl page / screenshot / auto login\" | `browser-automation/SKILL.md` |\r\n| \"desktop automation / Windows automation\" | `browser-automation/SKILL.md` — OpenReverse |\r\n| \"game reverse / anti-cheat / hack analysis\" | `reverse-engineering/languages-platforms.md` + `ida-reverse/SKILL.md` |\r\n| \"Unity / IL2CPP / Mono\" | `reverse-engineering/languages-platforms.md` + `ida-reverse/SKILL.md` |\r\n| \"Unreal Engine / UE reverse\" | `reverse-engineering/languages-platforms.md` + `ida-reverse/SKILL.md` |\r\n| \"Cheat Engine / memory scan\" | `reverse-engineering/tools-dynamic.md` — memory/dynamic analysis |\r\n| \"symbol migration / cross-version compare\" | `binary-diff/SKILL.md` — LLM batch migration |\r\n| \"missing PDB / old version symbols\" | `binary-diff/SKILL.md` — cross-version symbol migration |\r\n| \"bindiff / function offset migration\" | `binary-diff/SKILL.md` — binary diff |\r\n| \"port scan / Nmap\" | `pentest-tools/SKILL.md` — information gathering |\r\n| \"vulnerability scan / Nuclei\" | `pentest-tools/SKILL.md` — vulnerability detection |\r\n| \"SQL injection / SQLMap\" | `pentest-tools/SKILL.md` — web pentest |\r\n| \"directory brute force / FFUF / Gobuster\" | `pentest-tools/SKILL.md` — web pentest |\r\n| \"password cracking / Hashcat\" | `pentest-tools/SKILL.md` — password cracking |\r\n| \"penetration testing / active scan\" | `pentest-tools/SKILL.md` — pentest toolchain |\r\n| \"SRC hunting / Bug Bounty\" | `pentest-tools/src-hunter/SKILL.md` — 19 playbooks + H1 cases |\r\n| \"WAF bypass\" | `pentest-tools/src-hunter/references/payloader/` — 263 bypass steps |\r\n| \"draw diagram / flowchart / architecture\" | `diagram-generator/SKILL.md` |\r\n| \"attack path diagram / sequence diagram\" | `diagram-generator/SKILL.md` — Mermaid/Graphviz/PlantUML |\r\n| \"malware / virus analysis / sample analysis\" | `reverse-engineering/SKILL.md` + YARA/sandbox |\r\n| \"firmware / IoT / binwalk / ARM\" | `firmware-pentest/SKILL.md` — full firmware workflow; use `reverse-engineering/platforms-hardware.md` for a narrow static architecture question |\r\n| \"cryptography / AES / RSA\" | `reverse-engineering/patterns*.md` — crypto pattern recognition |\r\n| \"protocol reverse / Protobuf / custom protocol\" | `reverse-engineering/platforms.md` |\r\n| \"protocol source / Rust codec / Go client / fixture replay / cargo test\" | `reverse-engineering/platforms.md` — protocol-source route with offline tests before live endpoints |\r\n| \"cloud security / container escape / K8s\" | `../CTF-Sandbox-Orchestrator/competition-agent-cloud/SKILL.md` |\r\n| \"Prompt injection / AI security\" | `llm-security/SKILL.md` — OWASP LLM + ASI Top 10 |\r\n| \"internal network / lateral movement\" | `pentest-tools/SKILL.md` + `references/network-attack-defense.md` |\r\n| \"privilege escalation\" | `pentest-tools/references/network-attack-defense.md` — escalation section |\r\n| \"Mimikatz / credential extraction / PtH\" | `pentest-tools/references/network-attack-defense.md` |\r\n| \"Kerberos / domain pentest / AD\" | `pentest-tools/references/network-attack-defense.md` |\r\n| \"C2 / persistence / remote control\" | `pentest-tools/references/network-attack-defense.md` |\r\n| \"blue team / detection / defense / IR\" | `pentest-tools/references/network-attack-defense.md` |\r\n| \"APK security testing / mobile security\" | `apk-reverse/references/apk-security-checklist.md` — OWASP MASTG |\r\n| \"SSTI / template injection\" | `pentest-tools/SKILL.md` — SSTImap |\r\n| \"XSS scan / cross-site scripting\" | `pentest-tools/SKILL.md` — XSStrike |\r\n| \"WordPress pentest / WP enumeration\" | `pentest-tools/SKILL.md` — WPProbe |\r\n| \"C2 framework / adversary simulation\" | `pentest-tools/SKILL.md` — AdaptixC2 |\r\n| \"WiFi attack / wireless pentest\" | `pentest-tools/SKILL.md` — Fluxion + aircrack-ng |\r\n| \"NTLM relay / auth coercion\" | `pentest-tools/SKILL.md` — Coercer |\r\n| \"NetExec / CrackMapExec / nxc\" | `pentest-tools/SKILL.md` — network service enumeration |\r\n| \"AI auto pentest / MCP security\" | `pentest-tools/SKILL.md` — HexStrike AI / MetasploitMCP |\r\n| \"Swarm / swarm pentest / autonomous scan\" | `pentest-tools/SKILL.md` — Pentest Swarm AI |\r\n| \"red team / HW / attack exercise\" | `attack-chain/SKILL.md` — full attack chain orchestration |\r\n| \"initial breach / boundary breach\" | `attack-chain/SKILL.md` — boundary breach phase |\r\n| \"close-range pentest / BadUSB / WiFi phishing\" | `attack-chain/SKILL.md` — close-range section |\r\n| \"EDR bypass / evasion / AV bypass\" | `attack-chain/SKILL.md` — EDR/AV evasion section |\r\n| \"phishing / social engineering\" | `attack-chain/SKILL.md` — phishing section |\r\n| \"supply chain attack\" | `attack-chain/SKILL.md` — supply chain section |\r\n| \"trace cleanup / anti-forensics\" | `attack-chain/SKILL.md` — cleanup section |\r\n| \"full pentest / end-to-end\" | `attack-chain/SKILL.md` — full chain planning |\r\n| \"from external to domain controller\" | `attack-chain/SKILL.md` — cross-phase path orchestration |\r\n| \"attack surface assessment / path planning\" | `attack-chain/SKILL.md` — path planning decision tree |\r\n| \"got shell, what next / post-exploitation\" | `attack-chain/SKILL.md` — plan from current foothold |\r\n| \"BurpSuite / Burp proxy / intercept\" | `pentest-tools/SKILL.md` + `references/burpsuite-mcp-guide.md` |\r\n| \"Burp MCP / proxy history analysis\" | `pentest-tools/references/burpsuite-mcp-guide.md` — 63 tools |\r\n| \"Intruder brute force / Repeater replay\" | `pentest-tools/references/burpsuite-mcp-guide.md` |\r\n| \"Collaborator / OOB testing\" | `pentest-tools/references/burpsuite-mcp-guide.md` |\r\n| \"API security / GraphQL / JWT attack\" | `api-security/SKILL.md` — REST/GraphQL/JWT/OAuth |\r\n| \"supply chain security / SBOM / SCA\" | `supply-chain-security/SKILL.md` — Trivy/Syft/Gitleaks |\r\n| \"iOS reverse / IPA / Mach-O\" | `mobile-reverse/SKILL.md` — class-dump/Hopper/Frida iOS |\r\n| \"Objection / SSL Pinning bypass\" | `mobile-reverse/SKILL.md` — dynamic instrumentation |\r\n| \"YARA / malware detection rules\" | `malware-analysis/SKILL.md` — YARA/Sigma/IOC |\r\n| \"N-day / patch diff / CVE reproduction\" | `binary-diff/SKILL.md` — ghidriff/Diaphora/DeepDiff |\r\n| \"pwn / stack overflow / ROP / ret2libc\" | `reverse-engineering/patterns-ctf*.md` + pwntools |\r\n| \"Agent not working / AI lazy / skip steps\" | `llm-security/references/agent-obedience-engineering.md` |\r\n| \"MSF stuck / orphan process / MSF protocol\" | `pentest-tools/references/msf-protocol.md` |\r\n| \"anonymize / placeholder / writeup desensitize\" | `field-journal/anonymization.md` |\r\n| \"Hydra / online brute force\" | `pentest-tools/SKILL.md` — online password attack |\r\n| \"Metasploit / msfconsole / exploit\" | `pentest-tools/SKILL.md` — exploitation framework |\r\n| \"Wireshark / packet analysis / PCAP\" | `pentest-tools/SKILL.md` + `reverse-engineering/platforms.md` |\r\n| \"BurpSuite / web proxy / intercept\" | `pentest-tools/SKILL.md` — web proxy |\r\n| \"ProxyCat / proxy pool / IP rotation\" | `pentest-tools/SKILL.md` — proxy management |\r\n\r\n## By Toolchain\r\n\r\n| Tool | Related Module |\r\n|------|---------------|\r\n| capability-graph.json | `evolution/` — session-level tool/service facts and smoke status |\r\n| routing.json | `evolution/` + `routing.md` — machine-readable route candidates and fallback edges |\r\n| TraceCard | `evolution/` — step-level evidence, route switches, oracle status |\r\n| IDA Pro (idapro_*) | `ida-reverse/` — MCP HTTP server + 72 tools |\r\n| radare2 (r2/rabin2/rasm2) | `radare2/` — CLI + recon.ps1 |\r\n| jadx / apktool | `apk-reverse/` — decode.ps1 / manifest-summary.ps1 |\r\n| Frida | `reverse-engineering/tools-dynamic.md` |\r\n| GDB / GEF / pwndbg / rr | `reverse-engineering/tools.md` |\r\n| Ghidra (headless) | `reverse-engineering/tools.md` + Ghidra MCP |\r\n| angr / Qiling / Unicorn | `reverse-engineering/tools-dynamic.md` |\r\n| BinDiff / Diaphora | `reverse-engineering/tools-advanced.md` |\r\n| anything-analyzer MCP | Port 23816 MCP server (browser + HTTP capture + AI analysis) |\r\n| jshookmcp | `js-reverse/` enhancement MCP for browser/CDP/Hook/Network/SourceMap/AST |\r\n| agent-browser / Playwright | `browser-automation/` — browser automation |\r\n| OpenReverse (UIA/CUA) | `browser-automation/` — Windows desktop automation |\r\n| Cheat Engine / x64dbg / ReClass | `reverse-engineering/tools-dynamic.md` — memory and dynamic analysis |\r\n| IL2CPP Dumper / dnSpy | `reverse-engineering/languages-platforms.md` — Unity/Mono reverse |\r\n| LLM symbol migration / BinDiff alternative | `binary-diff/` — cross-version batch migration |\r\n| Nmap / Masscan | `pentest-tools/` — port scan, service identification |\r\n| Nuclei / ZAP / Nikto | `pentest-tools/` — vulnerability scanning |\r\n| SQLMap / FFUF / Gobuster | `pentest-tools/` — web pentest (injection/brute force) |\r\n| SSTImap | `pentest-tools/` — SSTI auto-detection |\r\n| XSStrike | `pentest-tools/` — advanced XSS scanning |\r\n| Hashcat / John / Hydra | `pentest-tools/` — password cracking |\r\n| Metasploit / Impacket | `pentest-tools/` — exploitation framework |\r\n| BurpSuite | `pentest-tools/` — web proxy, interception, vulnerability scanning |\r\n| BurpSuite MCP | `pentest-tools/` — 63-tool AI full control, see `references/burpsuite-mcp-guide.md` |\r\n| ProxyCat | `pentest-tools/` — proxy pool management & IP rotation |\r\n| Cobalt Strike / Sliver / Havoc | `attack-chain/` — C2 framework |\r\n| pentestMCP (Docker) | `pentest-tools/` — 20+ tools one-click MCP |\r\n| Mermaid / Graphviz / PlantUML | `diagram-generator/` — diagram generation |\r\n| garak / PyRIT / promptfoo | `llm-security/` — LLM red team testing |\r\n| Trivy / Syft / Gitleaks / OSV-Scanner | `supply-chain-security/` — supply chain scanning |\r\n| Objection / Frida iOS / class-dump | `mobile-reverse/` — iOS dynamic analysis |\r\n\r\nCheck `capability-graph.json` first, then `tool-index.md`, for actual tool availability, paths, versions, MCP registration, service health, and smoke status. If neither generated file exists, run `scripts/refresh-tool-index.ps1`. NEVER guess paths.\r\n\r\n---\r\n\r\n## Route Not Matched — Handling\r\n\r\nIf the current task doesn't match any table above, **do NOT force-fit into existing skill**:\r\n\r\n1. Check if it's an edge case of an existing skill (can extend coverage)\r\n2. If truly new type, proactively propose new skill to user:\r\n   - Suggested skill name and coverage\r\n   - Required toolchain\r\n   - Relationship to existing skills\r\n3. User confirms → execute per `CONTRIBUTING.md`\r\n4. After creation, update this routing matrix\r\n\r\n**AI does NOT need to wait for user to discover the gap. Route failure IS the signal to propose a new skill.**\r\n\r\n## Path Crossing (Cross-Module Scenarios)\r\n\r\nSome tasks span multiple modules. Common crossings:\r\n\r\n```\r\nAPK Reverse Path:\r\n  apk-reverse/decode.ps1 → Java layer analysis\r\n  ↓ If core is in .so\r\n  ida-reverse/ or radare2/ → .so analysis\r\n  ↓ If dynamic verification needed\r\n  apk-reverse/frida-run.ps1 → Frida Hook\r\n\r\nFrontend JS Reverse Path:\r\n  js-reverse/Observe → locate target request\r\n  ↓ Need stronger browser/CDP/Hook/Network capability\r\n  jshookmcp → runtime sampling, breakpoints, interception, SourceMap/AST\r\n  ↓ After confirming entry function\r\n  js-reverse/Rebuild → Node local reproduction\r\n  ↓ Need environment patching\r\n  js-reverse/references/env-patching.md\r\n\r\nBinary Reverse Path:\r\n  radare2/recon.ps1 → quick reconnaissance\r\n  ↓ Deep analysis\r\n  ida-reverse/ → IDA decompile\r\n  ↓ Dynamic verification\r\n  reverse-engineering/tools-dynamic.md → Frida/GDB\r\n\r\nCTF Competition Path (via CTF-Sandbox-Orchestrator):\r\n  ctf-sandbox-orchestrator/SKILL.md → build sandbox model\r\n  ↓ Route by dominant evidence\r\n  competition-web-runtime/ or competition-reverse-pwn/ or competition-identity-windows/\r\n  ↓ Blocked → return to master\r\n  ctf-sandbox-orchestrator → re-route\r\n\r\nWeb Pentest + BurpSuite MCP Path:\r\n  browser-automation/ → auto-browse target with Burp proxy\r\n  ↓ Traffic captured\r\n  burpsuite MCP proxy_history → AI analyzes all requests\r\n  ↓ Suspicious endpoints found\r\n  burpsuite MCP intruder_attack → automated enumeration\r\n  ↓ Vulnerability confirmed\r\n  docs-generator/ → generate pentest report\r\n```\r\n",
+      "complete": true,
+      "pass_counts": {
+        "apk-android": 1,
+        "js-browser-signature": 1,
+        "native-binary": 1,
+        "patch-diff": 1,
+        "protocol-pcap": 1,
+        "protocol-source-implementation": 2,
+        "active-security-assessment": 1,
+        "unattended-overnight-run": 1,
+        "firmware-iot": 1,
+        "unmatched": 2
+      },
+      "fixture_counts": {
+        "apk-android": 1,
+        "js-browser-signature": 1,
+        "native-binary": 1,
+        "patch-diff": 1,
+        "protocol-pcap": 1,
+        "protocol-source-implementation": 2,
+        "active-security-assessment": 1,
+        "unattended-overnight-run": 1,
+        "firmware-iot": 1,
+        "unmatched": 2
+      },
+      "pass_rates": {
+        "apk-android": 1.0,
+        "js-browser-signature": 1.0,
+        "native-binary": 1.0,
+        "patch-diff": 1.0,
+        "protocol-pcap": 1.0,
+        "protocol-source-implementation": 1.0,
+        "active-security-assessment": 1.0,
+        "unattended-overnight-run": 1.0,
+        "firmware-iot": 1.0,
+        "unmatched": 1.0
+      },
+      "invalid_counts": {
+        "apk-android": 0,
+        "js-browser-signature": 0,
+        "native-binary": 0,
+        "patch-diff": 0,
+        "protocol-pcap": 0,
+        "protocol-source-implementation": 0,
+        "active-security-assessment": 0,
+        "unattended-overnight-run": 0,
+        "firmware-iot": 0,
+        "unmatched": 0
+      },
+      "outcomes": [
+        {
+          "fixture_id": "apk-static-reverse",
+          "task": "Reverse an Android APK to find its license validation and confirm the patch on a local fixture.",
+          "track": "apk-android",
+          "expected_route": "apk-android",
+          "route_id": "apk-android",
+          "passed": true,
+          "invalid": null,
+          "raw_response": "{\"route_id\": \"apk-android\"}\n"
+        },
+        {
+          "fixture_id": "browser-signature",
+          "task": "Reproduce a browser request signature generated by an obfuscated JavaScript bundle.",
+          "track": "js-browser-signature",
+          "expected_route": "js-browser-signature",
+          "route_id": "js-browser-signature",
+          "passed": true,
+          "invalid": null,
+          "raw_response": "{\"route_id\": \"js-browser-signature\"}\n"
+        },
+        {
+          "fixture_id": "native-function-map",
+          "task": "Analyze a stripped PE executable in IDA and label the function that validates a serial number.",
+          "track": "native-binary",
+          "expected_route": "native-binary",
+          "route_id": "native-binary",
+          "passed": true,
+          "invalid": null,
+          "raw_response": "{\"route_id\": \"native-binary\"}\n"
+        },
+        {
+          "fixture_id": "vendor-patch-root-cause",
+          "task": "Compare two vendor firmware versions and identify the changed function and security bug root cause.",
+          "track": "patch-diff",
+          "expected_route": "patch-diff",
+          "route_id": "patch-diff",
+          "passed": true,
+          "invalid": null,
+          "raw_response": "{\"route_id\": \"patch-diff\"}\n"
+        },
+        {
+          "fixture_id": "pcap-custom-protocol",
+          "task": "Inspect a local PCAP to infer the custom packet fields and replay one message sequence.",
+          "track": "protocol-pcap",
+          "expected_route": "protocol-pcap",
+          "route_id": "protocol-pcap",
+          "passed": true,
+          "invalid": null,
+          "raw_response": "{\"route_id\": \"protocol-pcap\"}\n"
+        },
+        {
+          "fixture_id": "source-protocol-codec",
+          "task": "Implement and test an offline codec for a custom protocol in a Rust source workspace.",
+          "track": "protocol-source-implementation",
+          "expected_route": "protocol-source-implementation",
+          "route_id": "protocol-source-implementation",
+          "passed": true,
+          "invalid": null,
+          "raw_response": "{\"route_id\": \"protocol-source-implementation\"}\n"
+        },
+        {
+          "fixture_id": "authorized-api-assessment",
+          "task": "Assess an explicitly authorized local API for authentication and authorization vulnerabilities.",
+          "track": "active-security-assessment",
+          "expected_route": "active-security-assessment",
+          "route_id": "active-security-assessment",
+          "passed": true,
+          "invalid": null,
+          "raw_response": "{\"route_id\": \"active-security-assessment\"}\n"
+        },
+        {
+          "fixture_id": "overnight-job",
+          "task": "Prepare a bounded unattended overnight run with validated slots and a readable morning report.",
+          "track": "unattended-overnight-run",
+          "expected_route": "unattended-overnight-run",
+          "route_id": "unattended-overnight-run",
+          "passed": true,
+          "invalid": null,
+          "raw_response": "{\"route_id\": \"unattended-overnight-run\"}\n"
+        },
+        {
+          "fixture_id": "router-firmware-audit",
+          "task": "Assess an authorized router firmware image by extracting its filesystem and reviewing embedded services. This is a full firmware workflow, not a version-to-version patch comparison or single-ELF analysis.",
+          "track": "firmware-iot",
+          "expected_route": "firmware-iot",
+          "route_id": "firmware-iot",
+          "passed": true,
+          "invalid": null,
+          "raw_response": "{\"route_id\": \"firmware-iot\"}\n"
+        },
+        {
+          "fixture_id": "rust-pcap-code-change",
+          "task": "In a Rust workspace, update a custom protocol parser using a PCAP fixture, add an offline regression test, and run cargo test. The requested output is a code change, not protocol reverse engineering.",
+          "track": "protocol-source-implementation",
+          "expected_route": "protocol-source-implementation",
+          "route_id": "protocol-source-implementation",
+          "passed": true,
+          "invalid": null,
+          "raw_response": "{\"route_id\": \"protocol-source-implementation\"}\n"
+        },
+        {
+          "fixture_id": "security-keywords-in-glossary",
+          "task": "Write a glossary sentence defining API security, GraphQL, and JWT for a beginner. Do not assess any target, inspect code, or perform a security test.",
+          "track": "unmatched",
+          "expected_route": null,
+          "route_id": null,
+          "passed": true,
+          "invalid": null,
+          "raw_response": "{\"route_id\": null}\n"
+        },
+        {
+          "fixture_id": "unrelated-writing",
+          "task": "Write a short thank-you note for a colleague; no reverse engineering or security work is involved.",
+          "track": "unmatched",
+          "expected_route": null,
+          "route_id": null,
+          "passed": true,
+          "invalid": null,
+          "raw_response": "{\"route_id\": null}\n"
+        }
+      ],
+      "candidate_sha256": "0e2f71f940e562f7516ee19ad0dc57a9da0aa95eedd8dc1b92d3cbb64fb7a72b",
+      "candidate_artifact": "curated.md",
+      "input_sha256": {
+        "catalog": "ca1836f5c66c2182a4105f59b3779664a19355aacc6b37084f43fb714996c5ed",
+        "fixtures": "94bececdaa82f99fc02d621dc02c24a40ee47f3843dc7f9cd3f0fc29448f9697"
+      }
+    }
+  ],
+  "pareto_frontier": [
+    "curated"
+  ],
+  "termination_reason": "all_frontier_candidates_passed",
+  "promotion": "not_promoted; human review and independent full-suite verification required",
+  "location": {
+    "stage": "curated",
+    "fixture_id": "unrelated-writing",
+    "completed": 12
+  }
+}
