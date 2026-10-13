@@ -144,15 +144,14 @@ def _tree_title_stage(
     escaped = _like_escaped(query)
     if len(hits) < limit:
         remaining = limit - len(hits)
+        exclusion = " AND node_id NOT IN (" + ",".join("?" for _ in seen) + ")" if seen else ""
         rows = connection.execute(
-            "SELECT node_id FROM nodes WHERE title LIKE ? ESCAPE '\\' "
+            "SELECT node_id FROM nodes WHERE title LIKE ? ESCAPE '\\' " + exclusion + " " +
             "ORDER BY node_id LIMIT ?",
-            ("%" + escaped + "%", remaining),
+            ("%" + escaped + "%", *sorted(seen), remaining),
         ).fetchall()
-        for index, row in enumerate(rows):
-            if row["node_id"] in seen:
-                continue
-            hits.append((row["node_id"], float(len(seen) + index)))
+        for row in rows:
+            hits.append((row["node_id"], float(len(hits))))
             seen.add(row["node_id"])
     return hits
 

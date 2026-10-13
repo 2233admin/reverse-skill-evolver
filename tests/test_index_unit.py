@@ -663,3 +663,18 @@ def test_markdown_indented_code_is_not_a_heading(indent):
     nodes = parse_markdown("indent.md", ["# Root", indent + "# comment", "", "## Visible"])
     headings = [(n.title, n.start) for n in nodes if n.kind == "heading"]
     assert headings == [("Root", 1), ("Visible", 4)]
+
+
+@pytest.mark.parametrize("limit", [2, 3])
+def test_tree_title_query_fills_limit_after_exact_hit_deduplication(limit):
+    from reverse_skill.retrieval import _tree_title_stage
+
+    with sqlite3.connect(":memory:") as connection:
+        connection.row_factory = sqlite3.Row
+        connection.execute("CREATE TABLE nodes (node_id TEXT, title TEXT, tree_path TEXT)")
+        rows = [("0000000000000001", "item", "a#item"),
+                ("0000000000000002", "item child", "b#item-child"),
+                ("0000000000000003", "other item", "c#other")]
+        connection.executemany("INSERT INTO nodes VALUES (?, ?, ?)", rows)
+        hits = _tree_title_stage(connection, "item", limit)
+    assert [node_id for node_id, _ in hits] == [row[0] for row in rows[:limit]]
