@@ -162,14 +162,17 @@ def register_codex(name: str, url: str, *, timeout: float = DEFAULT_TIMEOUT) -> 
 
 
 @click.group(no_args_is_help=True, context_settings={"help_option_names": ["-h", "--help"]})
-@click.option("--url", default="http://127.0.0.1:13337/mcp", show_default=True)
+@click.option("--url", default="http://127.0.0.1:13337/mcp", show_default=True, help="Endpoint for calls and Codex registration; start uses its own local --port.")
 @click.option("--name", default="idapro", show_default=True, help="Codex MCP registration name.")
 @click.option("--json", "json_output", is_flag=True, help="Emit one stable JSON envelope on stdout.")
 @click.option("--timeout", type=click.FloatRange(min=0.1), default=DEFAULT_TIMEOUT, show_default=True)
 @click.version_option(__version__, prog_name="reverse-skill")
 @click.pass_context
 def cli(ctx: click.Context, url: str, name: str, json_output: bool, timeout: float) -> None:
-    """Operate IDA Pro MCP workflows and bounded route-evolution search."""
+    """Operate IDA Pro MCP workflows and bounded route-evolution search.
+
+    Put root options such as --url and --timeout before the command.
+    """
     ctx.obj = State(url=url, name=name, json_output=json_output, timeout=timeout)
 
 
@@ -210,7 +213,7 @@ def register(state: State) -> None:
 
 @cli.command()
 @click.option("--ida-dir", type=click.Path(file_okay=False, path_type=Path))
-@click.option("--port", type=click.IntRange(1, 65535), default=13337, show_default=True)
+@click.option("--port", type=click.IntRange(1, 65535), default=13337, show_default=True, help="Local loopback listening port, independent of root --url. Use the matching --url for status/register/calls.")
 @click.option("--server-path", type=click.Path(dir_okay=False, path_type=Path))
 @click.option("--replace-stale", is_flag=True, help="Replace an unhealthy Windows listener only after verifying its executable and port.")
 @click.pass_obj

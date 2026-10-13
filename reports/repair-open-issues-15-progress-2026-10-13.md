@@ -11,7 +11,7 @@
 | #34 | 已推送 dc09539，Draft PR #42 | [交付回执](https://github.com/2233admin/reverse-skill-evolver/issues/34#issuecomment-6144253174) |
 | #35 | 已推送 f410993，Draft PR #42 | [交付回执](https://github.com/2233admin/reverse-skill-evolver/issues/35#issuecomment-6144302542) |
 | #36 | 已推送 8a0ca33，Draft PR #42 | [交付回执](https://github.com/2233admin/reverse-skill-evolver/issues/36#issuecomment-6144429268) |
-| #37 | 待实施 | start 端口与根 URL |
+| #37 | 修复并核对，交付 Draft PR #42 | 参数语义不变，help/中英文 README/IDA skill/contract 一致 |
 | #38 | 待实施 | 经验索引编码与引用 |
 | #39 | 待实施 | 首次上手文档，依赖前述行为 |
 | #32 | 总览，待逐项回收 | 不视为独立代码修复，不提前关闭 |
@@ -70,3 +70,9 @@
 [真实 OMP 记录](omp-live-2026-10-13/README.md)：默认 provider 首请求 402，显式 MiniMax 新 API 第一条真实路由响应通过；下一次调用遇到 Windows 临时 cwd 清理错误。累计转发 3/37，两个 run 均 incomplete。修复 cleanup 不再掩盖已取得的模型响应/错误，相关真实隔离 cwd 锁及 evolution 检查 **95 passed**。接续真实完整 suite，保持预算和 not_promoted。
 
 最终真实结果：完整 frozen 12-case suite 的 baseline/curated 均 12/12，通过 24 调用、84.473 秒、退出码 0，提前停止不反思；另行受控单例完成 3 evaluations + 1 reflection，4 调用、14.187 秒，curated 0/1 → proposal 1/1。全批累计 31/37（含前述失败）。逐个核对 envelope、输入/候选哈希、严格原响应 parser、完整覆盖和 not_promoted 均通过。tokens/物理请求/费用 unknown；不代表下游任务或晋级通过。
+
+## #37 验证
+
+修复：root --url help 说明调用/注册地址，start --port help 说明独立本地 loopback 端口；root 选项置于子命令前。中英文 README、IDA skill 与 CLI contract 给出 24444 的 start/status/register/open 完整同端点例子，默认 13337 不变。同步 IDA skill 中 #40 之后的清理/PowerShell 边界，避免旧描述仍宣称清理进程树。
+
+实际运行：`python -m reverse_skill --help`、`start --help` 均显示关系和默认值；`python -m pytest tests/test_contract.py -q` → **4 passed**；公开 CLI 隔离 start recorder 确认根远端 URL 不改变默认启动 13337、显式 port 24444 原样转发；`git diff --check` 通过。未启动真实服务、未调用远端、未写注册配置。下一责任人：审阅者；本 Session 接续 #38。

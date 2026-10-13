@@ -318,6 +318,8 @@ This uses the model already selected by the local OMP configuration; it does not
 
 `register` writes the Codex configuration through `codex mcp add ... --url ...`, so a new task can use the native `idapro` MCP tools directly. `start` selects the newest valid local IDA installation and reuses an existing healthy service. On Windows, `start --replace-stale` stops only the selected port's listener after checking that its executable matches the selected server. Unknown owners are preserved. New starts report PID and log path; failures retain stdout/stderr and report exit information. A readiness timeout leaves the child running for inspection before retrying.
 
+`start --port` controls the local listening port; root `--url` controls the endpoint for calls, status and registration. Put root options before the command. For a non-default port use `reverse-skill start --port 24444`, then `reverse-skill --url http://127.0.0.1:24444/mcp status` and `reverse-skill --url http://127.0.0.1:24444/mcp register`. A remote URL does not start a remote process. Without overrides all three commands use local port 13337.
+
 Common session operations:
 
 ```console

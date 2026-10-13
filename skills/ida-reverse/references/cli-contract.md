@@ -30,6 +30,15 @@ Exit codes are stable: `0` success, `1` internal failure, `2` usage, `3` unavail
 
 ## Examples
 
+`start --port` launches a local listener on `127.0.0.1`; root `--url` selects the endpoint used by status, doctor, register, open and call. Setting a remote URL does not launch a remote process or change start's default port. Root options precede the subcommand. Default start/status/register all use port 13337. For a non-default port keep these commands together:
+
+```text
+reverse-skill start --port 24444
+reverse-skill --url http://127.0.0.1:24444/mcp status
+reverse-skill --url http://127.0.0.1:24444/mcp register
+reverse-skill --url http://127.0.0.1:24444/mcp --timeout 600 open sample.exe
+```
+
 ```text
 python -m pip install -e .
 reverse-skill install

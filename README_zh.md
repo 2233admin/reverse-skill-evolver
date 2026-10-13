@@ -304,7 +304,9 @@ reverse-skill tools
 reverse-skill integrations
 ```
 
-`register` 通过 `codex mcp add ... --url ...` 写入 Codex 配置；新任务启动时即可直接使用 `idapro` MCP 工具。`start` 会自动选择本机最高版本的有效 IDA，健康服务已存在时直接复用，只有服务不可达时才清理陈旧进程并重启。
+`register` 通过 `codex mcp add ... --url ...` 写入 Codex 配置；新任务启动时即可直接使用 `idapro` MCP 工具。`start` 选择本机最新可用 IDA，复用健康服务；Windows `--replace-stale` 只在核实当前端口监听者 executable 后停止该进程，归属不明时保留。新启动报告 PID 和日志路径，失败保留 stderr/退出信息，超时后先检查报告的 PID 和日志。
+
+`start --port` 控制本地监听端口；根 `--url` 控制调用、诊断和注册地址，须放在子命令前。非默认端口使用 `reverse-skill start --port 24444`，随后用 `reverse-skill --url http://127.0.0.1:24444/mcp status` 和 `reverse-skill --url http://127.0.0.1:24444/mcp register` 检查、注册同一端点。远端 URL 不会启动远端进程；默认三个命令都使用本地 13337。
 
 ### 有界路由进化（需要 OMP 运行时）
 
