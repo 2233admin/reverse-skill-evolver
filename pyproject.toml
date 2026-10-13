@@ -25,6 +25,7 @@ test = [
 
 [project.scripts]
 reverse-skill = "reverse_skill.cli:main"
+reverse-skill-swarm = "reverse_skill.swarm_cli:main"
 
 [tool.setuptools.packages.find]
 include = ["reverse_skill*"]
