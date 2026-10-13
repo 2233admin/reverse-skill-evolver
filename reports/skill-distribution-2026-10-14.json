@@ -1,0 +1,94 @@
+{
+  "verified_at": "2026-10-14",
+  "distribution": "one complete reverse-skill-evolver skill",
+  "source": "Local installation verification before integration onto origin/main; current-head checks recorded separately",
+  "npx_skills": {
+    "version": "1.7.2",
+    "exit_code": 0,
+    "method": "local source --copy into disposable consumer workspace"
+  },
+  "codex_skill_installer": {
+    "exit_code": 0,
+    "method": "real main/validation/copy with source acquisition pointed at the staged export",
+    "final_entry_bytes_match": true,
+    "final_launcher_bytes_match": true
+  },
+  "first_runtime_setup": {
+    "exit_code": 0,
+    "fresh_private_venv": true
+  },
+  "caller_workspace": {
+    "relative_input_with_spaces": true,
+    "trace_validation_exit": 0,
+    "repeat_setup_output": "",
+    "module_shadowing_ignored": true,
+    "PYTHONPATH_ignored": true,
+    "utf8_json_with_PYTHONUTF8_disabled": true
+  },
+  "installed_asr": {
+    "exit_code": 0,
+    "returned": 107,
+    "pages_fetched": 2,
+    "filters": {
+      "audited_only": true,
+      "exclude_mcp_servers": true,
+      "kind": "all"
+    }
+  },
+  "not_verified": [
+    "Remote GitHub installation before publishing these working-tree changes",
+    "Native security-tool installation and external write operations"
+  ],
+  "final_installer_update": {
+    "exit_code": 0,
+    "root_entry_bytes_match": true,
+    "launcher_bytes_match": true
+  },
+  "regression": {
+    "command": "python -m pytest -q",
+    "exit_code": 0,
+    "passed": 232,
+    "skipped": 1,
+    "duration_seconds": 77.19,
+    "scope": "Full suite before final import/UTF-8 guards; distribution tests and actual installed launcher rerun afterward"
+  },
+  "final_distribution_tests": {
+    "command": "python -m pytest -q tests/test_skill_distribution.py tests/test_routing_contract.py",
+    "exit_code": 0,
+    "passed": 17,
+    "duration_seconds": 2.56
+  },
+  "agent_skills_specification": "https://agentskills.io/specification",
+  "metadata_entries_validated": 67,
+  "lint": {
+    "command": "ruff check scripts/run.py tests/test_skill_distribution.py",
+    "exit_code": 0
+  },
+  "verification": [
+    {
+      "conclusion": "One complete skill is discovered and installed",
+      "method": "npx skills 1.7.2 local add --copy; Codex skill-installer main with staged acquisition",
+      "result": "Both exit 0; installed root entry and launcher match current source"
+    },
+    {
+      "conclusion": "Installed package prepares its runtime and preserves caller inputs",
+      "method": "Fresh private venv setup; tracecard-validate with a relative filename containing spaces",
+      "result": "exit 0; repeated launch does not reinstall"
+    },
+    {
+      "conclusion": "Caller module shadowing and Windows encoding do not alter execution",
+      "method": "Installed CLI with caller reverse_skill shadow package, PYTHONPATH, and PYTHONUTF8=0",
+      "result": "TraceCard and UTF-8 ASR JSON succeed"
+    },
+    {
+      "conclusion": "Metadata and installed route/shared-file contracts remain valid",
+      "method": "Final distribution/routing tests; root quick_validate",
+      "result": "17 passed; 67 metadata entries checked; root Skill is valid"
+    },
+    {
+      "conclusion": "Existing Python behavior remains covered",
+      "method": "Full pytest before final launcher guards; scoped tests and installed CLI rerun afterward",
+      "result": "232 passed, 1 skipped; final scoped 17 passed"
+    }
+  ]
+}

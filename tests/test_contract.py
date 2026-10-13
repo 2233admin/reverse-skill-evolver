@@ -41,6 +41,7 @@ def test_opencli_description_matches_click_command_surface() -> None:
     for command in described:
         assert f"  {command}" in result.stdout
     assert described == {
+        "asr",
         "install",
         "register",
         "start",
@@ -94,3 +95,22 @@ def test_opencli_tracecard_validate_requires_input() -> None:
     ]
     assert cli.commands["tracecard-validate"].params[0].opts == ["--input"]
     assert cli.commands["tracecard-validate"].params[0].required is True
+
+
+def test_opencli_asr_commands_match_nested_click_surface() -> None:
+    description = json.loads((ROOT / "reverse-skill.opencli.json").read_text(encoding="utf-8"))
+    group = next(command for command in description["command"]["commands"] if command["name"] == "asr")
+    assert {command["name"] for command in group["commands"]} == {
+        "list", "show", "install", "install-script", "authors", "author", "plugin", "scans",
+        "scan", "scan-result", "import-repo", "create-goal", "record-download",
+    }
+    assert {command["name"] for command in group["commands"]} == set(cli.commands["asr"].commands)
+    for command in group["commands"]:
+        help_text = subprocess.run(
+            [sys.executable, "-m", "reverse_skill", "asr", command["name"], "--help"],
+            cwd=ROOT, capture_output=True, text=True, check=True,
+        ).stdout
+        for option in command.get("options", []):
+            assert option["name"] in help_text
+        for argument in command.get("arguments", []):
+            assert argument["name"] in help_text

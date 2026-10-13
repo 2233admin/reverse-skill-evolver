@@ -1,0 +1,148 @@
+{
+  "verified_at": "2026-10-14",
+  "sources": [
+    "https://forefy.com/llms.txt",
+    "https://forefy.com/docs/openapi.json"
+  ],
+  "live_read_commands": [
+    "list",
+    "show",
+    "install-script",
+    "authors",
+    "author",
+    "plugin",
+    "scans",
+    "scan-result"
+  ],
+  "catalog": {
+    "returned": 107,
+    "pages_fetched": 2,
+    "kinds": {
+      "skill": 99,
+      "goal": 4,
+      "workflow": 4
+    },
+    "filters": {
+      "audited_only": true,
+      "exclude_mcp_servers": true,
+      "kind": "all"
+    }
+  },
+  "raw_install": {
+    "id": "18c3e623-cf91-4992-a51c-d83815c1147c",
+    "files": [
+      "SKILL.md",
+      "references/sankey.md",
+      "references/scoring.md",
+      "references/sourcing.md"
+    ],
+    "byte_match": true,
+    "executed": false,
+    "temporary_destination": true
+  },
+  "selected_for_current_task": [
+    {
+      "id": "dfb43e9f-092e-4890-a6aa-8626b2b38df7",
+      "name": "audit-context-building",
+      "kind": "skill",
+      "description": "Understand a codebase before looking for bugs in it - what each function assumes, what it guarantees, and what it depends on elsewhere. Use when starting an audit, threat model, or architecture review on unfamiliar code, and before any vulnerability-hunting pass.",
+      "is_audited": true,
+      "audited_by": "6e5c2c9e-4442-424b-850e-c5bfb4aea4bf",
+      "audited_at": "2026-03-09 23:44:02",
+      "github_url": "https://github.com/trailofbits/skills",
+      "commit_sha": "d3323cefbcf645678b8dc481de204b02ad3d02dc"
+    },
+    {
+      "id": "a2de4dc4-9299-4498-839b-b333586ba11b",
+      "name": "property-based-testing",
+      "kind": "skill",
+      "description": "Provides guidance for property-based testing across multiple languages and smart contracts. Use when writing tests, reviewing code with serialization/validation/parsing patterns, designing features, or when property-based testing would provide stronger coverage than example-based tests.",
+      "is_audited": true,
+      "audited_by": "6e5c2c9e-4442-424b-850e-c5bfb4aea4bf",
+      "audited_at": "2026-03-17 03:57:27",
+      "github_url": "https://github.com/trailofbits/skills",
+      "commit_sha": "c6097699e4553f0dda4db615330f4a5097c4ff99"
+    },
+    {
+      "id": "d3832868-e153-4949-96cf-e0687c14cfb0",
+      "name": "differential-review",
+      "kind": "skill",
+      "description": "Performs security-focused differential review of code changes (PRs, commits, diffs). Adapts analysis depth to codebase size, uses git history for context, calculates blast radius, checks test coverage, and generates comprehensive markdown reports. Automatically detects and prevents security regressions.\n",
+      "is_audited": true,
+      "audited_by": "6e5c2c9e-4442-424b-850e-c5bfb4aea4bf",
+      "audited_at": "2026-03-08 06:27:42",
+      "github_url": "https://github.com/trailofbits/skills",
+      "commit_sha": "c6097699e4553f0dda4db615330f4a5097c4ff99"
+    },
+    {
+      "id": "acef664b-9ab3-4ea9-8b2a-40c0921b511d",
+      "name": "context-window-to-skill",
+      "kind": "skill",
+      "description": "Takes the active conversation as reference to understand how a skill can be created, with all the lessons learned from the user's needs in the conversation.",
+      "is_audited": true,
+      "audited_by": "6e5c2c9e-4442-424b-850e-c5bfb4aea4bf",
+      "audited_at": "2026-08-25 10:16:46",
+      "github_url": "https://github.com/forefy/.context",
+      "commit_sha": "f78e51b4a31adc6a62133a6c47da8bf3d14aed23"
+    }
+  ],
+  "verification": [
+    {
+      "conclusion": "Public ASR reads work through the CLI",
+      "method": "python -m reverse_skill --json asr <command>",
+      "result": "8 live commands returned success envelopes"
+    },
+    {
+      "conclusion": "Audited-only listing covers every page and excludes servers",
+      "method": "Live asr list and local field assertions",
+      "result": 107
+    },
+    {
+      "conclusion": "Raw-file installation preserves content and does not execute it",
+      "method": "Live asr install in a disposable temporary directory; compare every file byte",
+      "result": "pass"
+    },
+    {
+      "conclusion": "Remote scan submission, publishing, and download accounting",
+      "method": "MockTransport contract tests",
+      "result": "No live POST performed; no account key supplied"
+    },
+    {
+      "conclusion": "ASR adapters, file trust boundaries, JSON output, CLI description and route wiring pass",
+      "method": "python -m pytest -q tests/test_asr.py tests/test_contract.py tests/test_routing_contract.py",
+      "result": "54 passed; exit 0"
+    }
+  ],
+  "not_run_live": [
+    "scan",
+    "import-repo",
+    "create-goal",
+    "record-download",
+    "mine"
+  ],
+  "python_regression": {
+    "command": "python -m pytest -q",
+    "exit_code": 0,
+    "passed": 219,
+    "skipped": 1,
+    "duration_seconds": 83.41,
+    "scope": "Full suite before the final extra POST-adapter and Windows superscript-device-name cases; changed paths rerun below",
+    "optional_yara_available": false
+  },
+  "final_changed_path_tests": {
+    "command": "python -m pytest -q tests/test_asr.py tests/test_contract.py tests/test_routing_contract.py",
+    "exit_code": 0,
+    "passed": 54,
+    "duration_seconds": 7.76
+  },
+  "lint": {
+    "command": "ruff check reverse_skill/asr.py reverse_skill/asr_cli.py tests/test_asr.py tests/test_contract.py tests/test_routing_contract.py",
+    "exit_code": 0,
+    "result": "All checks passed"
+  },
+  "scope_limits": [
+    "ASR only; di3 canvas APIs are outside this integration",
+    "External items are recommended or explicitly installed, not automatically promoted into stable local routes",
+    "The installed console launcher is not present on this host; python -m reverse_skill is the verified source-checkout entry"
+  ]
+}

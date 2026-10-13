@@ -33,6 +33,7 @@ When `routing.md` and `routing.json` disagree, use `routing.md` for safety/inten
 
 | Target Type | Recommended Entry | Alternative |
 |-------------|------------------|-------------|
+| Forefy ASR items / registry chain / installation / publishing | `asr-registry/SKILL.md` — audited skills, goals, and workflows; exclude MCP servers | Continue with the registry item and target-specific local skill |
 | Self-evolving route / unclear multi-step goal | `evolution/` — GOAL + capability graph + TraceCard + promotion gate | Then dispatch to the concrete child skill |
 | Unattended overnight run / 无人值守过夜任务 | `overnight-run/` — OVERNIGHT.md v2 contract: fill slots → validate → scaffold (.night/ + night branch + pre-commit) → run to DEADLINE → morning review | Phase 0-3 closed loop; experience returns via promotion gate |
 | APK / Android app | `apk-reverse/` — jadx decompile + apktool unpack | If core is in .so → `ida-reverse/` or `radare2/` |

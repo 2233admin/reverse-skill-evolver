@@ -1,11 +1,16 @@
 # 系统架构图
 
+分发入口是仓库根目录的 `SKILL.md`，整个仓库作为一个
+`reverse-skill-evolver` skill 安装。`skills/ROUTER.md` 是包内共享参考，
+子模块和 CTF 资源保留原有相对位置。`scripts/run.py` 从安装目录定位 Python
+源码，在用户缓存中准备私有环境，并保持调用方的工作目录与 UTF-8 JSON 输出。
+
 ## 完整行为链流程图
 
 ```mermaid
 flowchart TD
     Start([用户提出安全/逆向任务]) --> Detect{触发关键词匹配?}
-    Detect -->|是| ReadRouting[读取 SKILL.md + routing.md]
+    Detect -->|是| ReadRouting[读取根 SKILL.md + skills/routing.md]
     Detect -->|否| Normal([正常对话])
     
     ReadRouting --> Goal[建立 GOAL 契约<br/>范围+产物+oracle]
@@ -203,7 +208,7 @@ flowchart LR
 ```mermaid
 flowchart TD
     subgraph 共享层["共享层（平台无关）"]
-        Skills[skills/<br/>SKILL.md + routing.md + references]
+        Skills[skills/<br/>ROUTER.md + routing.md + references]
         CTF[CTF-Sandbox-Orchestrator/<br/>40+ 子技能]
         Journal[field-journal/<br/>经验沉淀]
         Docs[docs-generator + diagram-generator]

@@ -9,6 +9,17 @@ ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_PRIMARY = "apk-reverse/SKILL.md"
 
 
+def test_asr_entry_is_discoverable_in_all_routing_surfaces() -> None:
+    for name in ("routing.md", "routing_zh.md", "ROUTER.md"):
+        text = (ROOT / "skills" / name).read_text(encoding="utf-8")
+        assert "asr-registry/" in text
+    mirror = json.loads((ROOT / "skills/routing.json").read_text(encoding="utf-8"))
+    route = next(row for row in mirror["macro_routes"] if row["id"] == "asr-registry")
+    assert route["primary_skill"] == "asr-registry/SKILL.md"
+    assert (ROOT / "skills" / route["primary_skill"]).is_file()
+    assert {"audited_items_verified", "mcp_servers_excluded"} <= set(route["success_oracles"])
+
+
 def _matrix_primary(text: str, source: str, target_pattern: str = r"APK\s*/\s*Android(?:\s+.*)?") -> str:
     rows = []
     for line in text.splitlines():

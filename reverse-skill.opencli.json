@@ -3,13 +3,13 @@
   "opencli": "0.1",
   "info": {
     "title": "reverse-skill",
-    "summary": "Operate local IDA Pro MCP and run bounded routing evolution.",
+    "summary": "Operate local IDA Pro MCP, Forefy ASR, and bounded routing evolution.",
     "version": "1.1.2",
     "license": { "identifier": "MIT" }
   },
   "command": {
     "name": "reverse-skill",
-    "description": "Operate IDA Pro MCP and run bounded routing evolution against local fixtures.",
+    "description": "Operate IDA Pro MCP, audited Forefy ASR items, and bounded routing evolution against local fixtures.",
     "options": [
       { "name": "--url", "arguments": [{ "name": "URL", "required": true }], "description": "MCP Streamable HTTP URL." },
       { "name": "--name", "arguments": [{ "name": "NAME", "required": true }], "description": "Codex MCP registration name." },
@@ -23,10 +23,125 @@
       { "code": 1, "description": "Unexpected internal failure." },
       { "code": 2, "description": "Invalid command-line usage." },
       { "code": 3, "description": "Required local environment or executable unavailable." },
-      { "code": 4, "description": "MCP transport or protocol failure." },
+      { "code": 4, "description": "MCP transport/protocol or ASR transport failure." },
       { "code": 5, "description": "Operation-level failure, including invalid TraceCard content or MCP tool errors." }
     ],
     "commands": [
+      {
+        "name": "asr",
+        "description": "Forefy ASR: audited skills, goals, and workflows only; exclude MCP servers. Publishing and --mine use FOREFY_API_KEY.",
+        "commands": [
+          {
+            "name": "author",
+            "description": "Read a GitHub owner's profile and audited items.",
+            "arguments": [{"name": "KEY", "required": true}]
+          },
+          {
+            "name": "authors",
+            "description": "List contributors with audited top items.",
+            "options": [
+              {"name": "--search", "arguments": [{"name": "SEARCH", "required": true}]},
+              {"name": "--sort-by", "arguments": [{"name": "SORT_BY", "required": true, "acceptedValues": ["score", "downloads", "hearts", "items", "recent"]}]},
+              {"name": "--page", "arguments": [{"name": "PAGE", "required": true}]},
+              {"name": "--per-page", "arguments": [{"name": "PER_PAGE", "required": true}]}
+            ]
+          },
+          {
+            "name": "create-goal",
+            "description": "Publish a structured goal JSON definition using FOREFY_API_KEY.",
+            "options": [
+              {"name": "--input", "required": true, "arguments": [{"name": "INPUT_PATH", "required": true}]}
+            ]
+          },
+          {
+            "name": "import-repo",
+            "description": "Publish repository skills, goals, and workflows using FOREFY_API_KEY.",
+            "arguments": [{"name": "GITHUB_URL", "required": true}],
+            "options": [
+              {"name": "--commit-sha", "arguments": [{"name": "COMMIT_SHA", "required": true}]},
+              {"name": "--path", "description": "Limit publishing to these path prefixes.", "repeatable": true, "arguments": [{"name": "PATHS", "required": true}]},
+              {"name": "--skill-name", "repeatable": true, "arguments": [{"name": "SKILL_NAMES", "required": true}]},
+              {"name": "--is-benchmark"},
+              {"name": "--parent-benchmark-id", "arguments": [{"name": "PARENT_BENCHMARK_ID", "required": true}]}
+            ]
+          },
+          {
+            "name": "install",
+            "description": "Save audited raw files into a new directory without running them.",
+            "arguments": [{"name": "ITEM_ID", "required": true}],
+            "options": [
+              {"name": "--destination", "required": true, "arguments": [{"name": "DESTINATION", "required": true}]}
+            ]
+          },
+          {
+            "name": "install-script",
+            "description": "Retrieve the upstream install script for review.",
+            "arguments": [{"name": "ITEM_ID", "required": true}],
+            "options": [
+              {"name": "--location", "arguments": [{"name": "LOCATION", "required": true, "acceptedValues": ["project", "global"]}]},
+              {"name": "--harness", "arguments": [{"name": "HARNESS", "required": true, "acceptedValues": ["agents", "claude"]}]},
+              {"name": "--shell", "arguments": [{"name": "SHELL", "required": true, "acceptedValues": ["powershell", "bash"]}]}
+            ]
+          },
+          {
+            "name": "list",
+            "description": "List audited skills, goals, and workflows, following every page by default.",
+            "options": [
+              {"name": "--kind", "arguments": [{"name": "KIND", "required": true, "acceptedValues": ["all", "skill", "goal", "workflow"]}]},
+              {"name": "--search", "description": "Search names, descriptions, authors, and repository URLs.", "arguments": [{"name": "SEARCH", "required": true}]},
+              {"name": "--sort-by", "arguments": [{"name": "SORT_BY", "required": true, "acceptedValues": ["audited", "created_at", "popular", "downloads"]}]},
+              {"name": "--page", "arguments": [{"name": "PAGE", "required": true}]},
+              {"name": "--per-page", "arguments": [{"name": "PER_PAGE", "required": true}]},
+              {"name": "--all-pages"},
+              {"name": "--single-page"},
+              {"name": "--mine", "description": "List your items using FOREFY_API_KEY."}
+            ]
+          },
+          {
+            "name": "plugin",
+            "description": "Inspect a bundle's audited skill members and supply-chain verdicts.",
+            "arguments": [{"name": "PLUGIN_ID", "required": true}]
+          },
+          {
+            "name": "record-download",
+            "description": "Record an audited item's download in the registry.",
+            "arguments": [{"name": "ITEM_ID", "required": true}],
+            "options": [
+              {"name": "--source", "arguments": [{"name": "SOURCE", "required": true}]}
+            ]
+          },
+          {
+            "name": "scan",
+            "description": "Submit a public repository scan and return its id for scan-result.",
+            "arguments": [{"name": "GITHUB_URL", "required": true}],
+            "options": [
+              {"name": "--commit-sha", "arguments": [{"name": "COMMIT_SHA", "required": true}]},
+              {"name": "--skill-path", "arguments": [{"name": "SKILL_PATH", "required": true}]},
+              {"name": "--plugin", "description": "Scan the whole plugin at --skill-path."}
+            ]
+          },
+          {
+            "name": "scan-result",
+            "description": "Fetch or poll a scan's findings, quality checks, and AI-slop score.",
+            "arguments": [{"name": "SCAN_ID", "required": true}]
+          },
+          {
+            "name": "scans",
+            "description": "List recent security and quality scans (a scan is not a human audit).",
+            "options": [
+              {"name": "--search", "arguments": [{"name": "SEARCH", "required": true}]},
+              {"name": "--page", "arguments": [{"name": "PAGE", "required": true}]},
+              {"name": "--per-page", "arguments": [{"name": "PER_PAGE", "required": true}]},
+              {"name": "--mine"}
+            ]
+          },
+          {
+            "name": "show",
+            "description": "Read an audited item's metadata and raw files.",
+            "arguments": [{"name": "ITEM_ID", "required": true}]
+          }
+        ]
+      },
       {
         "name": "install",
         "description": "Install ida-pro-mcp and run its interactive installer.",

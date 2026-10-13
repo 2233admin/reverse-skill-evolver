@@ -12,6 +12,7 @@ from typing import Any, Mapping
 import click
 
 from . import __version__
+from .asr_cli import asr
 from .evolution import evolve as run_evolution
 from .evolution import validate_trace_card
 from .errors import EnvironmentUnavailable, McpError, ReverseSkillError, ToolOperationError
@@ -23,6 +24,7 @@ from .mcp import McpClient, probe_tool_count
 SCHEMA_VERSION = "1"
 DEFAULT_TIMEOUT = 120.0
 COMMAND_NAMES = {
+    "asr",
     "install",
     "register",
     "start",
@@ -184,11 +186,14 @@ def register_codex(name: str, url: str, *, timeout: float = DEFAULT_TIMEOUT) -> 
 @click.version_option(__version__, prog_name="reverse-skill")
 @click.pass_context
 def cli(ctx: click.Context, url: str, name: str, json_output: bool, timeout: float) -> None:
-    """Operate IDA Pro MCP workflows and bounded route-evolution search.
+    """Operate IDA Pro MCP, Forefy ASR, and bounded route-evolution search.
 
     Put root options such as --url and --timeout before the command.
     """
     ctx.obj = State(url=url, name=name, json_output=json_output, timeout=timeout)
+
+
+cli.add_command(asr)
 
 
 @cli.command(name="tracecard-validate")
