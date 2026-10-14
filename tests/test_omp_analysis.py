@@ -217,14 +217,14 @@ def test_custom_batch_preserves_zero_and_truncated_scan_coverage(namespace, max_
     assert custom == local
 
 
-def test_custom_batch_stops_preparing_subjects_after_first_match():
+def test_custom_batch_prepares_only_a_bounded_prefix_before_first_match():
     import re
     calls = []
     rows = [(1, "match" + "\N{SNOWMAN}" * 16379)] * 100000
 
     def subject(row):
         calls.append(row)
-        assert len(calls) == 1, "must not prepare the rest of a large scan after one match"
+        assert len(calls) <= 64, "must not prepare the full large scan before one match"
         return row[1]
 
     [(matches, scan)] = analysis._custom_matches(
@@ -233,6 +233,17 @@ def test_custom_batch_stops_preparing_subjects_after_first_match():
     assert matches == [rows[0]]
     assert scan == {"total": 100000, "scanned": 1, "scan_truncated": True,
                     "matches": 1, "text_truncated": False}
+
+
+def test_custom_batch_handles_ordinary_nonmatches_with_a_small_match_limit():
+    import re
+    rows = [(index, "ordinary nonmatching string") for index in range(100)]
+    [(matches, scan)] = analysis._custom_matches(
+        [(rows, lambda row: row[1])], [re.compile("nothing_here")], 1, 100, 4096,
+    )
+    assert matches == []
+    assert scan == {"total": 100, "scanned": 100, "scan_truncated": False,
+                    "matches": 0, "text_truncated": False}
 
 
 def test_custom_batch_bounds_encoded_payload_and_combines_chunk_coverage(monkeypatch):

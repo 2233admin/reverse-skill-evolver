@@ -34,7 +34,7 @@ Custom triage regexes SHALL use owned process chunks with a shared finite deadli
 
 #### Scenario: A large scan reaches its match limit immediately
 - **WHEN** the first of 100,000 maximum-length subjects matches and the match limit is one
-- **THEN** only that subject is prepared and scanned, output retains the original total and truncation coverage, and JSON escaping cannot exceed the payload byte bound
+- **THEN** only a bounded prefix is prepared and one subject is scanned, output retains the original total and truncation coverage, and JSON escaping cannot exceed the payload byte bound
 
 ### Requirement: Snapshot only executed signature fixtures
 Replay SHALL validate all fixtures, freeze the original total, and snapshot/hash only the maxCases prefix before invoking callbacks.

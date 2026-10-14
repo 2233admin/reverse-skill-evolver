@@ -198,9 +198,9 @@ def _custom_matches(sources, patterns, max_matches, max_scan, max_chars):
             request = {"patterns": [pattern.pattern], "batches": [batch],
                        "max_matches": max_matches - len(matches)}
             encoded_size = len(json.dumps(request, ensure_ascii=True))
-            # Preparing at most the remaining match budget avoids fetching unused
-            # subjects when the first rows satisfy a small match limit.
-            end = min(len(rows), max_scan, scanned + min(64, request["max_matches"]))
+            # A fixed bounded prefix amortizes process startup even when the
+            # match limit is small and ordinary subjects do not match.
+            end = min(len(rows), max_scan, scanned + 64)
             for index in range(scanned, end):
                 remaining()
                 value = value_of(rows[index])
