@@ -1,6 +1,6 @@
 # optimizer-mcp-omp
 
-状态：实现与本地验证已完成，随 #58 的 Draft PR 审阅；独立验收和集成由父级 #55 负责。
+状态：实现与本地验证已完成，随 [Draft PR #60](https://github.com/2233admin/reverse-skill-evolver/pull/60) 审阅；独立验收和集成由父级 #55 负责。最终 head、交付回执和运行期工作区状态以 #58 评论及 Orca 回读为准。
 
 ## 授权与范围
 

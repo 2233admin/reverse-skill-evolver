@@ -4,6 +4,8 @@
 
 基线为 `d6d085364508215d0019b83f32dc58dd8f170c9e`，分支为 `2233admin/fix-optimizer-mcp-omp-20261014`。远端 issue 标题、bug/ready-for-agent 标签、原生父级 #55、父级三个子 issue 和 blocked-by=0 均已回读；没有既有本分支 PR。精确运行句柄沿用 #58 派发记录，不创建 Run/Task/Dispatch。
 
+代码修复提交为 `1572e65713ca0e3904d0e25972783904d3858ca5`，已推送并创建 [Draft PR #60](https://github.com/2233admin/reverse-skill-evolver/pull/60)。创建后实际回读确认 base=main、Draft=true、head 分支、上述修复 head 及完整正文与本地准备稿一致。后续提交仅补本交付文档，不改变已经验证的生产/测试代码；最终 PR head 的稳定记录写在 #58 交付评论中。
+
 ## 改前与改后证据
 
 审计源为本次交接指定的只读 `REPORT.md`、`reviewed-findings.json`、`memory.md`、`error.md`、`concurrency.md`、`security.md` 及其脚本。审计脚本先复制到自己的 `tests/tmp/optimizer-mcp-omp/`，只在副本中把源码根绑定到本工作区，并在改后调整“缺陷仍存在”的断言。没有改共享审计产物，也没有把审计局部原型当实现。
@@ -46,7 +48,7 @@
 | 合成与真实 IDA/Burp/OMP 分开记录，仅自有短生命周期合成服务 | 测试 HTTP fixture 的 finally、Node t.after、subprocess timeout kill/reap；本报告未验证部分 | 通过边界核对；无真实目标操作 |
 | 每 ID 有原复现、改后、一致性/改善、失败/缺口单列 | 本报告第一表及失败/未验证段 | 五 ID 全覆盖 |
 | 相关回归、gates all 通过；公开 CLI/JSON/版本/路由保持，测试按风险选择 | 相关 60、全量 Python、Node、Java gate；gates all | 已运行检查见上表；未修改共享 CLI/版本/路由文件 |
-| 自己分支提交推送，一个自足 Draft PR 引用 #58，逐 ID 和未验证边界 | GitHub PR 与 #58 交付回执，在远端发布后回读 head/base/draft/body | 远端交付步骤执行时确认，记录由 issue/PR 保存，不把本地预备状态当已发布 |
+| 自己分支提交推送，一个自足 Draft PR 引用 #58，逐 ID 和未验证边界 | [Draft PR #60](https://github.com/2233admin/reverse-skill-evolver/pull/60) 创建后实际回读 head/base/draft/body，最终 head 由 #58 交付评论保存 | 已推送并回读确认 PR；远端回执和工作区状态由实际运行接口记录，保持 Draft 交独立审查 |
 
 ## 失败记录
 
