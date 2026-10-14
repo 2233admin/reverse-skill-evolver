@@ -121,6 +121,7 @@ CREATE TABLE IF NOT EXISTS nodes (
 CREATE INDEX IF NOT EXISTS nodes_document ON nodes(document_id);
 CREATE INDEX IF NOT EXISTS nodes_parent  ON nodes(parent_id);
 CREATE INDEX IF NOT EXISTS nodes_tree    ON nodes(tree_path);
+CREATE INDEX IF NOT EXISTS nodes_title   ON nodes(title, node_id);
 
 CREATE TABLE IF NOT EXISTS edges (
     source_node TEXT NOT NULL REFERENCES nodes(node_id) ON DELETE CASCADE,
@@ -321,6 +322,11 @@ def create_schema(connection: sqlite3.Connection) -> None:
     connection.executescript(SCHEMA_SQL)
 
 
+def ensure_query_indexes(connection: sqlite3.Connection) -> None:
+    """Upgrade optional query indexes only inside an authorized apply transaction."""
+    connection.execute("CREATE INDEX IF NOT EXISTS nodes_title ON nodes(title, node_id)")
+
+
 def document_id_for(connection: sqlite3.Connection, relative_path: str) -> Optional[int]:
     row = connection.execute(
         "SELECT document_id FROM documents WHERE relative_path = ?", (relative_path,)
@@ -419,22 +425,46 @@ def read_ancestors(connection: sqlite3.Connection, node_id: str) -> List[Dict[st
     return ancestors
 
 
-def read_subtree(connection: sqlite3.Connection, node_id: str) -> List[Dict[str, Any]]:
-    """Return the node and all descendants in document order (DFS)."""
-    rows = connection.execute(
-        "WITH RECURSIVE subtree(node_id) AS ("
-        "  SELECT ? "
-        "  UNION "
-        "  SELECT n.node_id FROM nodes n JOIN subtree s ON n.parent_id = s.node_id"
-        ") "
+_SUBTREE_CTE = (
+    "WITH RECURSIVE subtree(node_id) AS ("
+    "  SELECT ? "
+    "  UNION "
+    "  SELECT n.node_id FROM nodes n JOIN subtree s ON n.parent_id = s.node_id"
+    ") "
+)
+
+
+def count_descendants(connection: sqlite3.Connection, node_id: str) -> int:
+    """Count all descendant IDs without materializing wide Python rows."""
+    row = connection.execute(
+        _SUBTREE_CTE + "SELECT COUNT(*) AS n FROM subtree WHERE node_id <> ?",
+        (node_id, node_id),
+    ).fetchone()
+    return int(row["n"])
+
+
+def read_subtree(
+    connection: sqlite3.Connection, node_id: str, *,
+    limit: Optional[int] = None, exclude_root: bool = False,
+) -> List[Dict[str, Any]]:
+    """Return document-ordered rows, optionally bounding the wide projection."""
+    sql = (
+        _SUBTREE_CTE +
         "SELECT n.node_id, n.document_id, n.parent_id, n.depth, n.ordinal, n.title, n.kind, "
         "n.start_line, n.end_line, n.body_sha256, n.tree_path, n.source_kind, n.symbol_kind, "
         "d.relative_path "
         "FROM nodes n JOIN documents d ON d.document_id = n.document_id "
         "JOIN subtree s ON s.node_id = n.node_id "
-        "ORDER BY n.start_line, n.depth, n.ordinal, n.node_id",
-        (node_id,),
-    ).fetchall()
+    )
+    params: Tuple[Any, ...] = (node_id,)
+    if exclude_root:
+        sql += "WHERE n.node_id <> ? "
+        params += (node_id,)
+    sql += "ORDER BY n.start_line, n.depth, n.ordinal, n.node_id"
+    if limit is not None:
+        sql += " LIMIT ?"
+        params += (limit,)
+    rows = connection.execute(sql, params).fetchall()
     return [dict(row) for row in rows]
 
 
@@ -546,15 +576,36 @@ def insert_fts_rows_bulk(
 
 def delete_document_cascade(connection: sqlite3.Connection, document_id: int) -> None:
     """Remove FTS rows and the document row; nodes/edges cascade via foreign keys."""
-    connection.execute(
-        "DELETE FROM fts_terms WHERE node_id IN (SELECT node_id FROM nodes WHERE document_id = ?)",
-        (document_id,),
-    )
-    connection.execute(
-        "DELETE FROM fts_trigram WHERE node_id IN (SELECT node_id FROM nodes WHERE document_id = ?)",
-        (document_id,),
-    )
-    connection.execute("DELETE FROM documents WHERE document_id = ?", (document_id,))
+    delete_documents_cascade(connection, [document_id])
+
+
+def delete_documents_cascade(
+    connection: sqlite3.Connection, document_ids: Iterable[int]
+) -> None:
+    """Filter each FTS corpus once, then cascade all touched documents.
+
+    A connection-local ID table avoids SQLite parameter limits without chunking
+    the FTS scans. The caller owns the encompassing write transaction.
+    """
+    ids = list(dict.fromkeys(document_ids))
+    if not ids:
+        return
+    connection.execute("CREATE TEMP TABLE index_delete_documents (document_id INTEGER PRIMARY KEY)")
+    try:
+        connection.executemany(
+            "INSERT INTO index_delete_documents VALUES (?)", ((value,) for value in ids)
+        )
+        predicate = (
+            "WHERE node_id IN (SELECT n.node_id FROM nodes n "
+            "JOIN index_delete_documents d ON d.document_id = n.document_id)"
+        )
+        connection.execute("DELETE FROM fts_terms " + predicate)
+        connection.execute("DELETE FROM fts_trigram " + predicate)
+        connection.execute(
+            "DELETE FROM documents WHERE document_id IN (SELECT document_id FROM index_delete_documents)"
+        )
+    finally:
+        connection.execute("DROP TABLE index_delete_documents")
 
 
 def set_meta(connection: sqlite3.Connection, key: str, value: str) -> None:

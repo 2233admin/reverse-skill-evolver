@@ -103,9 +103,11 @@ def _exact_structured_stage(
         "ORDER BY node_id LIMIT ?",
         (query, query, limit),
     ).fetchall()
+    seen = {node_id for node_id, _ in hits}
     for index, row in enumerate(rows, start=1 if not hits else 0):
-        if row["node_id"] not in {node_id for node_id, _ in hits}:
+        if row["node_id"] not in seen:
             hits.append((row["node_id"], float(index)))
+            seen.add(row["node_id"])
     return hits[:limit]
 
 

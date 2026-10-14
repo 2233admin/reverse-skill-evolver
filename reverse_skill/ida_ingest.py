@@ -29,6 +29,7 @@ from .index_store import (
     close,
     default_index_path,
     delete_document_cascade,
+    ensure_query_indexes,
     insert_document,
     insert_edge,
     insert_fts_rows_bulk,
@@ -147,7 +148,8 @@ def load_export(export_path: Path) -> IdaExport:
     if not export_path.is_file():
         raise _invalid(f"IDA export file does not exist: {export_path}")
     try:
-        raw = export_path.read_bytes()
+        with export_path.open("rb") as handle:
+            raw = handle.read(MAX_EXPORT_BYTES + 1)
     except OSError as exc:
         raise _invalid(f"IDA export cannot be read: {exc}") from exc
     if len(raw) > MAX_EXPORT_BYTES:
@@ -336,6 +338,7 @@ def import_export(
     connection.execute("PRAGMA foreign_keys = ON")
     try:
         connection.execute("BEGIN IMMEDIATE")
+        ensure_query_indexes(connection)
         existing = read_document(connection, export.document_path)
         if existing is not None and existing["kind"] != "ida":
             raise _invalid(

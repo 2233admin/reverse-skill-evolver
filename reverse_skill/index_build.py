@@ -44,7 +44,8 @@ from .index_store import (
     compute_root_hash,
     create_schema,
     default_index_path,
-    delete_document_cascade,
+    delete_documents_cascade,
+    ensure_query_indexes,
     insert_document,
     insert_edge,
     insert_fts_rows_bulk,
@@ -62,7 +63,6 @@ from .index_store import (
 _ATX_HEADING_RE = re.compile(r"^(#{1,6})(?:[ \t]+(.*?))?[ \t]*$")
 _FENCE_OPEN_RE = re.compile(r"^(```+|~~~+)")
 _TRAILING_HASHES_RE = re.compile(r"[ \t]+#+$")
-_MARKDOWN_LINK_RE = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
 
 
 @dataclass
@@ -375,6 +375,7 @@ def parse_tree_sitter(
         symbol_kind=language,
     )
     nodes: List[NodeSpec] = [root]
+    occurrences: Dict[Tuple[int, str], int] = {}
 
     def visit(item: Any, parent_index: int) -> None:
         span = getattr(item, "span", None)
@@ -393,11 +394,9 @@ def parse_tree_sitter(
         kind = _enum_text(getattr(item, "kind", None), "symbol")
         title = str(getattr(item, "name", None) or f"<{kind}>")
         parent = nodes[parent_index]
-        occurrence = 1 + sum(
-            1
-            for candidate in nodes
-            if candidate.parent_index == parent_index and candidate.title == title
-        )
+        key = (parent_index, title)
+        occurrence = occurrences.get(key, 0) + 1
+        occurrences[key] = occurrence
         segments = _segment_chain(nodes, parent_index)
         segments.append(_identity_segment(title, occurrence))
         spec = NodeSpec(
@@ -460,7 +459,31 @@ def _parse_file(
 
 
 def _node_links(text: str) -> List[str]:
-    return [match.group(1).strip() for match in _MARKDOWN_LINK_RE.finditer(text)]
+    """Scan the legacy lexical link language without overlapping suffix searches.
+
+    Labels may contain '[' and newlines. All candidate openings before the
+    next ']' share its outcome, so a failed label can be consumed in one step.
+    """
+    links: List[str] = []
+    cursor = 0
+    while True:
+        opening = text.find("[", cursor)
+        if opening < 0:
+            break
+        closing = text.find("]", opening + 1)
+        if closing < 0:
+            break
+        cursor = closing + 1
+        if cursor >= len(text) or text[cursor] != "(":
+            continue
+        end = text.find(")", cursor + 1)
+        if end < 0:
+            break
+        if end == cursor + 1:
+            continue
+        links.append(text[cursor + 1:end].strip())
+        cursor = end + 1
+    return links
 
 
 # --- Markdown ---------------------------------------------------------------
@@ -698,20 +721,14 @@ def _depth_of(nodes: List[NodeSpec], index: int) -> int:
     return depth
 
 
-def _ordinal_of(nodes: List[NodeSpec], index: int) -> int:
-    parent = nodes[index].parent_index
-    if parent is None:
-        return 0
-    siblings = nodes[parent].children
-    try:
-        return siblings.index(index)
-    except ValueError:
-        return 0
-
-
 def _materialize_document(parsed: ParsedDocument, document_id: int) -> List[Dict[str, Any]]:
     """Turn parsed nodes into node rows plus (node, body) FTS payloads."""
     _assign_bodies(parsed.nodes, parsed.lines)
+    ordinals = {
+        child: ordinal
+        for parent in parsed.nodes
+        for ordinal, child in enumerate(parent.children)
+    }
     rows: List[Dict[str, Any]] = []
     for index, spec in enumerate(parsed.nodes):
         parent_id = None
@@ -726,7 +743,7 @@ def _materialize_document(parsed: ParsedDocument, document_id: int) -> List[Dict
                 "document_id": document_id,
                 "parent_id": parent_id,
                 "depth": _depth_of(parsed.nodes, index),
-                "ordinal": _ordinal_of(parsed.nodes, index),
+                "ordinal": ordinals.get(index, 0),
                 "title": spec.title,
                 "kind": spec.kind,
                 "start_line": spec.start,
@@ -899,8 +916,9 @@ def build_apply(
             all_rows.extend(rows)
         _insert_document_rows(connection, all_rows)
         # Link edges resolve after every document's nodes exist (two-pass).
+        link_targets: Dict[int, Dict[str, Any]] = {}
         for parsed in sorted(files, key=lambda item: item.relpath):
-            _insert_link_edges(connection, parsed, materialized[parsed.relpath], document_ids)
+            _insert_link_edges(connection, parsed, materialized[parsed.relpath], document_ids, link_targets)
         ida_preserved = _preserve_ida_layer(resolved, connection)
         root_hash = compute_root_hash((item.relpath, item.sha256) for item in files)
         set_meta(connection, META_SCHEMA_VERSION, SCHEMA_VERSION)
@@ -970,6 +988,18 @@ def _preserve_ida_layer(
             "SELECT document_id, relative_path, kind, sha256, line_count, size_bytes "
             "FROM documents WHERE kind = 'ida' ORDER BY relative_path"
         ).fetchall()
+        fts_by_document: Dict[int, List[Dict[str, Any]]] = {}
+        if documents:
+            # FTS node_id is UNINDEXED: join once and group before the copy loop.
+            for row in source.execute(
+                "SELECT n.document_id, f.node_id, f.title, f.body AS _body "
+                "FROM fts_terms f JOIN nodes n ON n.node_id = f.node_id "
+                "JOIN documents d ON d.document_id = n.document_id "
+                "WHERE d.kind = 'ida' ORDER BY n.document_id, f.node_id"
+            ):
+                item = dict(row)
+                document_id = item.pop("document_id")
+                fts_by_document.setdefault(document_id, []).append(item)
         for document in documents:
             collision = destination.execute(
                 "SELECT document_id FROM documents WHERE relative_path = ?",
@@ -1015,23 +1045,20 @@ def _preserve_ida_layer(
             ).fetchall()
             for edge in edge_rows:
                 insert_edge(destination, edge["source_node"], edge["target_node"], edge["kind"])
-            fts_rows = source.execute(
-                "SELECT node_id, title, body AS _body FROM fts_terms "
-                f"WHERE node_id IN ({placeholders}) ORDER BY node_id",
-                sorted(node_ids),
-            ).fetchall()
+            fts_rows = fts_by_document.get(document["document_id"], [])
             if len(fts_rows) != len(node_rows):
                 raise IndexError(
                     f"IDA document has incomplete FTS rows: {document['relative_path']}"
                 )
-            insert_fts_rows_bulk(destination, [dict(row) for row in fts_rows])
+            insert_fts_rows_bulk(destination, fts_rows)
+            copied_documents += 1
+            copied_nodes += len(node_rows)
+            copied_edges += len(edge_rows)
+        if documents:
             for meta in source.execute(
                 "SELECT key, value FROM index_meta WHERE key LIKE 'ida_%'"
             ).fetchall():
                 set_meta(destination, meta["key"], meta["value"])
-            copied_documents += 1
-            copied_nodes += len(node_rows)
-            copied_edges += len(edge_rows)
     finally:
         close(source)
     return {"documents": copied_documents, "nodes": copied_nodes, "edges": copied_edges}
@@ -1083,6 +1110,7 @@ def _rebuild_link_edges(
     parsed_by_relpath: Dict[str, ParsedDocument],
     relpaths: Sequence[str],
     document_ids: Dict[str, int],
+    link_targets: Dict[int, Dict[str, Any]],
 ) -> int:
     """Delete and re-derive link edges for the given documents; returns edge count."""
     rebuilt = 0
@@ -1102,7 +1130,7 @@ def _rebuild_link_edges(
             source_ids,
         )
         rows = _materialize_document(parsed, document_ids[relpath])
-        _insert_link_edges(connection, parsed, rows, document_ids)
+        _insert_link_edges(connection, parsed, rows, document_ids, link_targets)
         rebuilt += 1
     return rebuilt
 
@@ -1112,9 +1140,12 @@ def _insert_link_edges(
     parsed: ParsedDocument,
     rows: List[Dict[str, Any]],
     document_ids: Dict[str, int],
+    link_targets: Optional[Dict[int, Dict[str, Any]]] = None,
 ) -> None:
     """Resolve relative Markdown links that stay inside the workspace root."""
     base_dir = Path(parsed.relpath).parent.as_posix()
+    if link_targets is None:
+        link_targets = {}
     for row in rows:
         if row["kind"] not in {"heading", "preamble", "file", "module"}:
             continue
@@ -1129,10 +1160,23 @@ def _insert_link_edges(
             candidate = _normalize_relpath(base_dir, target_path)
             if candidate is None or candidate not in document_ids:
                 continue
-            target_rows = _nodes_of_document(connection, document_ids[candidate])
-            if not target_rows:
-                continue
-            target_node = _resolve_anchor(target_rows, anchor, candidate)
+            document_id = document_ids[candidate]
+            if document_id not in link_targets:
+                target_rows = _nodes_of_document(connection, document_id)
+                headings: Dict[str, str] = {}
+                fallback = None
+                for target in target_rows:
+                    if target["kind"] in {"heading", "preamble"}:
+                        headings.setdefault(target["title"], target["node_id"])
+                    if fallback is None and target["kind"] in {"file", "module"} and target["title"] == candidate:
+                        fallback = target["node_id"]
+                link_targets[document_id] = {
+                    "first": target_rows[0]["node_id"] if target_rows else None,
+                    "fallback": fallback,
+                    "headings": headings,
+                }
+            target = link_targets[document_id]
+            target_node = target["headings"].get(anchor, target["fallback"]) if anchor else target["first"]
             if target_node is not None:
                 insert_edge(connection, row["node_id"], target_node, "link")
 
@@ -1164,21 +1208,6 @@ def _nodes_of_document(connection: sqlite3.Connection, document_id: int) -> List
         (document_id,),
     ).fetchall()
     return [dict(row) for row in rows]
-
-
-def _resolve_anchor(
-    target_rows: List[Dict[str, Any]], anchor: str, relpath: str
-) -> Optional[str]:
-    if not anchor:
-        return target_rows[0]["node_id"] if target_rows else None
-    for row in target_rows:
-        if row["kind"] in {"heading", "preamble"} and row["title"] == anchor:
-            return row["node_id"]
-    # Unknown anchor falls back to the file/module node (browser semantics).
-    for row in target_rows:
-        if row["kind"] in {"file", "module"} and row["title"] == relpath:
-            return row["node_id"]
-    return None
 
 
 def _link_sources_for_added_documents(
@@ -1286,6 +1315,7 @@ def update_apply(
     connection.execute("PRAGMA foreign_keys = ON")
     try:
         connection.execute("BEGIN IMMEDIATE")
+        ensure_query_indexes(connection)
         current = read_all_documents(connection)
         meta = {
             row["key"]: row["value"]
@@ -1315,17 +1345,15 @@ def update_apply(
                 )
             )
         )
-        for relpath in removed:
-            delete_document_cascade(connection, source_current[relpath]["document_id"])
+        delete_documents_cascade(connection, (source_current[path]["document_id"] for path in touched))
+        removed_set = set(removed)
         document_ids = {
             relpath: current[relpath]["document_id"]
             for relpath in current
-            if relpath not in removed
+            if relpath not in removed_set
         }
         parsed_by_relpath = {item.relpath: item for item in files}
         for item in added + changed:
-            if item.relpath in source_current:
-                delete_document_cascade(connection, source_current[item.relpath]["document_id"])
             document_id = insert_document(
                 connection,
                 {
@@ -1340,12 +1368,13 @@ def update_apply(
             rows = _materialize_document(item, document_id)
             _insert_document_rows(connection, rows)
         # Link edges resolve after every touched document's nodes exist (two-pass).
+        link_targets: Dict[int, Dict[str, Any]] = {}
         for item in added + changed:
             document_id = document_ids[item.relpath]
             rows = _materialize_document(item, document_id)
-            _insert_link_edges(connection, item, rows, document_ids)
+            _insert_link_edges(connection, item, rows, document_ids, link_targets)
         _rebuild_link_edges(
-            connection, parsed_by_relpath, stale_sources, document_ids
+            connection, parsed_by_relpath, stale_sources, document_ids, link_targets
         )
         if added or changed or removed:
             next_revision = str(int(meta.get(META_INDEX_REVISION, "0") or 0) + 1)
