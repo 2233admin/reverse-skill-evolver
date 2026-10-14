@@ -1,6 +1,6 @@
 - [x] Restore current main, previous testing release and completed repair evidence.
 - [x] Align package/CLI/OpenCLI metadata and add the testing changelog.
 - [x] Validate the clean clone, version gates and affected regressions.
-- [ ] Build the wheel, source archive, Burp JAR, full skill ZIP and checksums.
-- [ ] Install packaged outputs in isolated environments and verify byte provenance.
-- [ ] Prepare a reviewable release candidate and notes; record actual public publishing separately.
+- [x] Build the wheel, source archive, Burp JAR, full skill ZIP and checksums.
+- [x] Install packaged outputs in isolated environments and verify byte provenance.
+- [x] Prepare a reviewable release candidate and notes; record actual public publishing separately.

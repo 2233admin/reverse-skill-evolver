@@ -10,7 +10,7 @@ The release candidate starts from reviewed main `5f84b569598cfb9f9ffd8453ae01966
 | Candidate clean clone | Fresh clone of main, version/documentation changes, a new isolated editable test environment: Python 3.14, **838 passed / 5 skipped**. |
 | Candidate metadata and distribution regression | **90 passed** across CLI, repository gates and whole-skill distribution. OpenSpec strict validation passed with an explicit metadata/documentation-only change. |
 | Candidate repository contracts | gates all clean; Python metadata, CLI and OpenCLI prerelease versions agree. |
-| Java component | Fresh clone Gradle `check jar` passed. Behavior, scheduler and HTTP-handler race regression tasks ran; JDK 25 compiled Java 21 bytecode, class major 65. The component retains version `2.0.0`. |
+| Java component | A clean Git export built with isolated JDK 21 passed Gradle `check jar`, including behavior, scheduler and HTTP-handler race regressions. The attached JAR contains Java 21 bytecode, class major 65; the component retains version `2.0.0`. |
 | Wheel installation | Built with PyPA build/setuptools, installed in a separate fresh environment, executed from an unrelated directory. Both CLI helps, version `1.2.0b2`, route and ASR list passed; imported code came from that environment's site-packages. |
 | Repaired runtime independent review | Installation/CLI, index and protocol slices were independently reviewed before integration. The OMP payload bound and ordinary low-match-limit scan received an additional independent review and real-worker parity scenarios. See [integration evidence](https://github.com/2233admin/reverse-skill-evolver/issues/55#issuecomment-6162700316). |
 
@@ -18,7 +18,9 @@ The five candidate skips are one missing optional YARA dependency and four Windo
 
 ## Artifact provenance and installation checks
 
-The final bundle is assembled from a precise committed Git export, which avoids adding local Gradle caches, virtual environments, temporary files or Windows checkout line-ending conversions. The packaging verification checks ZIP CRC, every tracked source entry against that export, all route module paths, adjacent OMP helpers, wheel Python/data bytes against source, source archive metadata, Java class version, and equality between embedded packages and standalone assets.
+The final bundle is assembled from a precise committed Git export with `core.autocrlf=false` and `core.eol=lf`, which avoids adding local Gradle caches, virtual environments, temporary files or Windows checkout line-ending conversions. The packaging verification checks ZIP CRC, every tracked source entry against that export, all route module paths, adjacent OMP helpers, wheel Python/data bytes against source, source archive metadata, Java class version, and equality between embedded packages and standalone assets.
+
+A first Windows export inherited checkout line-ending conversion; its assets were replaced after comparison with Git blobs exposed the difference. A fresh Gradle script compile under the host JDK 25 also failed; the final build used an isolated JDK 21 without changing host configuration. These preparation failures are retained in the local evidence and are not counted as passed builds.
 
 The top-level `SHA256SUMS.txt` covers the complete ZIP, wheel, Python source archive and Burp JAR. The bundle's `packages/SHA256SUMS.txt` covers its three embedded packages. Installation verification uses an isolated consumer project and private Python runtime; it does not write global agent configuration.
 
