@@ -1448,28 +1448,39 @@ public class McpHttpServer extends NanoHTTPD {
     private volatile String httpHandlerMatch = "";
     private volatile String httpHandlerReplace = "";
     private volatile boolean httpHandlerActive = false;
+    private final Object httpHandlerLock = new Object();
 
     private JsonObject registerHttpHandler(JsonObject params) {
         JsonObject result = new JsonObject();
         try {
+          synchronized (httpHandlerLock) {
             if (params.has("header_name")) { httpHandlerHeader = params.get("header_name").getAsString(); httpHandlerHeaderValue = params.get("header_value").getAsString(); }
             if (params.has("match")) { httpHandlerMatch = params.get("match").getAsString(); httpHandlerReplace = params.get("replace").getAsString(); }
             if (!httpHandlerActive) {
                 api.http().registerHttpHandler(new burp.api.montoya.http.handler.HttpHandler() {
                     public burp.api.montoya.http.handler.RequestToBeSentAction handleHttpRequestToBeSent(burp.api.montoya.http.handler.HttpRequestToBeSent req) {
-                        HttpRequest m = req; if (!httpHandlerHeader.isEmpty()) m = m.withAddedHeader(httpHandlerHeader, httpHandlerHeaderValue);
-                        if (!httpHandlerMatch.isEmpty()) m = HttpRequest.httpRequest(m.httpService(), m.toString().replace(httpHandlerMatch, httpHandlerReplace));
+                        String header, value, match, replacement;
+                        synchronized (httpHandlerLock) {
+                            header = httpHandlerHeader; value = httpHandlerHeaderValue;
+                            match = httpHandlerMatch; replacement = httpHandlerReplace;
+                        }
+                        HttpRequest m = req; if (!header.isEmpty()) m = m.withAddedHeader(header, value);
+                        if (!match.isEmpty()) m = HttpRequest.httpRequest(m.httpService(), m.toString().replace(match, replacement));
                         return burp.api.montoya.http.handler.RequestToBeSentAction.continueWith(m); }
                     public burp.api.montoya.http.handler.ResponseReceivedAction handleHttpResponseReceived(burp.api.montoya.http.handler.HttpResponseReceived r) { return burp.api.montoya.http.handler.ResponseReceivedAction.continueWith(r); }
                 });
                 httpHandlerActive = true;
             }
             result.addProperty("success", true);
+          }
         } catch (Exception e) { result.addProperty("error", e.getMessage()); } return result;
     }
 
     private JsonObject removeHttpHandler(JsonObject params) {
-        JsonObject result = new JsonObject(); httpHandlerHeader = ""; httpHandlerHeaderValue = ""; httpHandlerMatch = ""; httpHandlerReplace = "";
+        JsonObject result = new JsonObject();
+        synchronized (httpHandlerLock) {
+            httpHandlerHeader = ""; httpHandlerHeaderValue = ""; httpHandlerMatch = ""; httpHandlerReplace = "";
+        }
         result.addProperty("success", true); result.addProperty("message", "Handler rules cleared"); return result;
     }
 

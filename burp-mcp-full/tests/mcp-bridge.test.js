@@ -43,14 +43,34 @@ async function fixture(t, reply) {
   return {
     requests, stderr: () => stderr,
     rpc(method, id, params) {
+      return this.raw(JSON.stringify({ jsonrpc: '2.0', id, method, params }), id);
+    },
+    raw(line, id = null, split = false) {
       return new Promise((resolve, reject) => {
         const timer = setTimeout(() => reject(new Error(`No response for ${id}`)), 5000);
         pending.set(id, { resolve, timer });
-        child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id, method, params }) + '\n');
+        const frame = Buffer.from(line + '\n');
+        if (split) {
+          for (const byte of frame) child.stdin.write(Buffer.from([byte]));
+        } else child.stdin.write(frame);
       });
     }
   };
 }
+
+test('completed malformed frames cannot poison later frames, including split stdin writes', async t => {
+  const f = await fixture(t, (req, res) => res.end('[]'));
+  for (const line of [']', '{', '', 'broken JSON']) {
+    const response = await f.raw(line);
+    assert.equal(response.id, null);
+    assert.equal(response.error.code, -32700);
+    assert.ok((await f.rpc('initialize', `after-${line}`)).result);
+  }
+  for (let id = 0; id < 1000; id++) assert.ok((await f.rpc('initialize', id)).result);
+  const response = await f.raw('{"jsonrpc":"2.0","id":"unicode","method":"initialize","params":{"value":"汉字\\ntext"}}', 'unicode', true);
+  assert.ok(response.result);
+  assert.equal(f.requests.length, 1);
+});
 
 test('late backend recovers once; loaded tools stay cached; stdout remains JSON-RPC', async t => {
   const f = await fixture(t, (req, res, count) => res.end(count === 1 ? 'starting' : '["proxy_history"]'));

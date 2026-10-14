@@ -119,3 +119,98 @@ def test_zero_capture_budget_keeps_unknown_coverage(namespace):
     report = analysis.collect_snapshot(namespace, "owned-native", max_functions=0, max_strings=0, max_imports=0)
     assert report["functions"] == report["strings"] == report["imports"] == []
     assert report["coverage"]["functions_total"] == 2 and report["coverage"]["functions_truncated"]
+
+
+def test_custom_batch_matches_default_scan_semantics_and_native_ownership(namespace):
+    import os
+    import threading
+    import re
+    scans = []
+    owner = (os.getpid(), threading.get_ident())
+    for helper in ("functions", "strings", "imports", "xrefs_to", "func"):
+        original = namespace[helper]
+        def owned(*args, original=original, helper=helper):
+            assert (os.getpid(), threading.get_ident()) == owner
+            scans.append(helper)
+            return original(*args)
+        namespace[helper] = owned
+    local = analysis.triage(namespace, "owned-native", max_subject_chars=12)
+    # A semantically identical custom pattern must produce exactly the same rows/coverage.
+    custom_pattern = "(?:" + analysis._DEFAULT_PATTERNS[0] + ")"
+    custom = analysis.triage(namespace, "owned-native", function_pattern=custom_pattern, max_subject_chars=12)
+    custom["coverage"]["patterns"]["functions"] = analysis._DEFAULT_PATTERNS[0]
+    assert custom == local
+    assert set(scans) == {"functions", "strings", "imports", "xrefs_to", "func"}
+    # Backreferences, lookarounds and named groups remain Python regexes.
+    namespace["strings"] = lambda: [(0x140002000, "TOKEN token password")]
+    result = analysis.triage(namespace, "owned-native", string_pattern=r"(?P<word>token)\s+(?P=word)(?= password)")
+    assert result["coverage"]["source_scans"]["strings"]["matches"] == 1
+    for matches, scan in analysis._custom_matches(
+        [([(1, "TOKEN token password"), (2, "x" * 30)], lambda row: row[1])],
+        [re.compile("token", re.IGNORECASE)], 1, 2, 12,
+    ):
+        assert matches == [(1, "TOKEN token password")]
+        assert scan == {"total": 2, "scanned": 1, "scan_truncated": True, "matches": 1, "text_truncated": True}
+
+
+def test_pathological_custom_batch_fails_and_reaps_child_then_recovers(namespace, monkeypatch):
+    import subprocess
+    children = []
+    popen = subprocess.Popen
+    def tracked(*args, **kwargs):
+        child = popen(*args, **kwargs)
+        children.append(child)
+        return child
+    monkeypatch.setattr(analysis.subprocess, "Popen", tracked)
+    namespace["strings"] = lambda: [(0x140002000, "a" * 100 + "!")]
+    try:
+        with pytest.raises(RuntimeError, match="Custom triage regex batch exceeded 2 seconds"):
+            analysis.triage(namespace, "owned-native", string_pattern=r"^(a+)+$")
+        assert len(children) == 1 and children[0].poll() is not None
+        assert namespace["queries"] == []
+        assert analysis.triage(namespace, "owned-native", string_pattern=r"a+")["coverage"]["source_scans"]["strings"]["matches"] == 1
+        assert len(children) == 2 and all(child.poll() is not None for child in children)
+    finally:
+        for child in children:
+            if child.poll() is None:
+                child.kill()
+                child.wait()
+
+
+def test_custom_batch_loads_helper_from_compile_filename(namespace, monkeypatch, tmp_path):
+    isolated = {}
+    script = SCRIPTS / "ida_analysis.py"
+    exec(compile(script.read_text(encoding="utf-8"), str(script), "exec"), isolated)
+    assert "__file__" not in isolated
+    monkeypatch.chdir(tmp_path)
+    report = isolated["triage"](namespace, "owned-native", string_pattern=r"password(?= invalid)")
+    assert report["coverage"]["source_scans"]["strings"]["matches"] == 1
+
+
+def test_missing_adjacent_worker_fails_before_xrefs_and_returns_no_partial_report(namespace, tmp_path):
+    isolated = {}
+    script = SCRIPTS / "ida_analysis.py"
+    exec(compile(script.read_text(encoding="utf-8"), str(tmp_path / "ida_analysis.py"), "exec"), isolated)
+    with pytest.raises(RuntimeError, match=r"Custom triage regex worker failed \(exit 2\)"):
+        isolated["triage"](namespace, "owned-native", string_pattern="password")
+    assert namespace["queries"] == []
+
+
+def test_defaults_never_launch_regex_child_and_invalid_regex_fails_before_enumeration(namespace, monkeypatch):
+    def forbidden(*args, **kwargs):
+        pytest.fail("must not launch a matching child")
+    monkeypatch.setattr(analysis.subprocess, "run", forbidden)
+    assert analysis.triage(namespace, "owned-native")["candidates"]
+    namespace["functions"] = forbidden
+    import re
+    with pytest.raises(re.error):
+        analysis.triage(namespace, "owned-native", string_pattern="[")
+
+
+@pytest.mark.parametrize("max_matches,max_scan", [(0, 100), (100, 0), (1, 1)])
+def test_custom_batch_preserves_zero_and_truncated_scan_coverage(namespace, max_matches, max_scan):
+    local = analysis.triage(namespace, "owned-native", max_matches_per_source=max_matches, max_scan_per_source=max_scan)
+    custom = analysis.triage(namespace, "owned-native", function_pattern="(?:" + analysis._DEFAULT_PATTERNS[0] + ")",
+                             max_matches_per_source=max_matches, max_scan_per_source=max_scan)
+    custom["coverage"]["patterns"] = local["coverage"]["patterns"]
+    assert custom == local

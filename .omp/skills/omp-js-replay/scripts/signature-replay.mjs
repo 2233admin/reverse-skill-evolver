@@ -43,7 +43,8 @@ export async function compareSignatures(fixtures, replay, { maxCases = 100 } = {
       throw new TypeError('Fixtures require unique nonempty ids, JSON input and string expected signatures');
     ids.add(fixture.id);
   }
-  const baseline = fixtures.map(({ id, input, expected }) => {
+  const total = fixtures.length;
+  const baseline = fixtures.slice(0, maxCases).map(({ id, input, expected }) => {
     const snapshot = structuredClone(input);
     return {
       id, input: snapshot, expected,
@@ -52,7 +53,7 @@ export async function compareSignatures(fixtures, replay, { maxCases = 100 } = {
   });
   const cases = [];
   const counts = { matched: 0, mismatched: 0, failed: 0 };
-  for (const fixture of baseline.slice(0, maxCases)) {
+  for (const fixture of baseline) {
     const { id, input, expected, input_sha256 } = fixture;
     const row = {
       id, input_sha256,
@@ -75,11 +76,11 @@ export async function compareSignatures(fixtures, replay, { maxCases = 100 } = {
     }
     cases.push(row);
   }
-  const complete = cases.length === baseline.length;
+  const complete = cases.length === total;
   return {
     schema_version: 1,
-    coverage: { total: baseline.length, processed: cases.length, remaining: baseline.length - cases.length, complete },
-    counts, passed: complete && baseline.length > 0 && counts.failed === 0 && counts.mismatched === 0,
+    coverage: { total, processed: cases.length, remaining: total - cases.length, complete },
+    counts, passed: complete && total > 0 && counts.failed === 0 && counts.mismatched === 0,
     cases,
   };
 }

@@ -1,8 +1,20 @@
 """Read-only evidence collection in an existing OMP native IDA exec namespace."""
 
 import hashlib
+import json
 import re
+import subprocess
+import sys
 from collections.abc import Mapping
+from pathlib import Path
+
+
+_DEFAULT_PATTERNS = (
+    r"parse|decode|decrypt|auth|login|check|verify|password|token|key|exec|system|shell|memcpy|strcpy",
+    r"password|token|secret|license|invalid|unauthorized|https?://",
+    r"memcpy|strcpy|sprintf|system|exec|crypt|socket|connect|recv|send|read|write",
+)
+_REGEX_BATCH_SECONDS = 2.0
 
 
 def _limit(value, name, maximum, minimum=0):
@@ -164,11 +176,45 @@ def _matches(rows, pattern, value_of, max_matches, max_scan, max_chars):
     }
 
 
+def _custom_matches(sources, patterns, max_matches, max_scan, max_chars):
+    batches = []
+    for rows, value_of in sources:
+        subjects = []
+        if max_matches:
+            for row in rows[:max_scan]:
+                value = value_of(row)
+                subjects.append([value[:max_chars], len(value) > max_chars])
+        batches.append({"total": len(rows), "subjects": subjects})
+    payload = json.dumps({
+        "patterns": [pattern.pattern for pattern in patterns],
+        "batches": batches, "max_matches": max_matches,
+    }, ensure_ascii=True)
+    # compile(..., script_path, 'exec') is also the documented native loading path.
+    helper = Path(_custom_matches.__code__.co_filename).resolve().with_name("regex_worker.py")
+    try:
+        result = subprocess.run(
+            [sys.executable, "-I", "-B", str(helper)], input=payload,
+            capture_output=True, text=True, timeout=_REGEX_BATCH_SECONDS,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+    except subprocess.TimeoutExpired as error:
+        # subprocess.run kills and reaps only this matching child before raising.
+        raise RuntimeError(f"Custom triage regex batch exceeded {_REGEX_BATCH_SECONDS:g} seconds") from error
+    if result.returncode:
+        raise RuntimeError(f"Custom triage regex worker failed (exit {result.returncode})")
+    try:
+        scans = json.loads(result.stdout)
+        return [([rows[index] for index in scan["indices"]], scan["coverage"])
+                for (rows, _), scan in zip(sources, scans, strict=True)]
+    except (ValueError, KeyError, IndexError, TypeError) as error:
+        raise RuntimeError("Custom triage regex worker returned an invalid result") from error
+
+
 def triage(
     namespace, database_id, *,
-    function_pattern=r"parse|decode|decrypt|auth|login|check|verify|password|token|key|exec|system|shell|memcpy|strcpy",
-    string_pattern=r"password|token|secret|license|invalid|unauthorized|https?://",
-    import_pattern=r"memcpy|strcpy|sprintf|system|exec|crypt|socket|connect|recv|send|read|write",
+    function_pattern=_DEFAULT_PATTERNS[0],
+    string_pattern=_DEFAULT_PATTERNS[1],
+    import_pattern=_DEFAULT_PATTERNS[2],
     max_candidates=50, max_matches_per_source=100, max_xref_queries=100,
     max_xrefs_per_source=100, max_evidence_per_candidate=20,
     max_scan_per_source=10000, max_subject_chars=4096,
@@ -190,9 +236,19 @@ def triage(
             raise ValueError("each regex must contain between 1 and 256 characters")
         patterns.append(re.compile(pattern, re.IGNORECASE))
     source = _source(namespace, database_id, ("xrefs_to",))
-    functions, function_scan = _matches(namespace["functions"](), patterns[0], lambda row: row[1], max_matches_per_source, max_scan_per_source, max_subject_chars)
-    strings, string_scan = _matches(namespace["strings"](), patterns[1], lambda row: row[1], max_matches_per_source, max_scan_per_source, max_subject_chars)
-    imports, import_scan = _matches(namespace["imports"](), patterns[2], lambda row: f"{row[1] or ''}!{row[2]}", max_matches_per_source, max_scan_per_source, max_subject_chars)
+    if (function_pattern, string_pattern, import_pattern) == _DEFAULT_PATTERNS:
+        functions, function_scan = _matches(namespace["functions"](), patterns[0], lambda row: row[1], max_matches_per_source, max_scan_per_source, max_subject_chars)
+        strings, string_scan = _matches(namespace["strings"](), patterns[1], lambda row: row[1], max_matches_per_source, max_scan_per_source, max_subject_chars)
+        imports, import_scan = _matches(namespace["imports"](), patterns[2], lambda row: f"{row[1] or ''}!{row[2]}", max_matches_per_source, max_scan_per_source, max_subject_chars)
+    else:
+        sources = [
+            (namespace["functions"](), lambda row: row[1]),
+            (namespace["strings"](), lambda row: row[1]),
+            (namespace["imports"](), lambda row: f"{row[1] or ''}!{row[2]}"),
+        ]
+        (functions, function_scan), (strings, string_scan), (imports, import_scan) = _custom_matches(
+            sources, patterns, max_matches_per_source, max_scan_per_source, max_subject_chars,
+        )
     coverage = {
         "native_enumeration": "full_helper_scan",
         "functions_total": function_scan["total"],

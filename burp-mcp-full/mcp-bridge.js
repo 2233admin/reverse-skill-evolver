@@ -270,24 +270,24 @@ async function main() {
   }
 
   const rl = readline.createInterface({ input: process.stdin, terminal: false });
-  let buffer = '';
-
   rl.on('line', async (line) => {
-    buffer += line;
+    let msg;
     try {
-      const msg = JSON.parse(buffer);
-      buffer = '';
-      
+      // readline emits a complete MCP frame, even when that frame is malformed.
+      msg = JSON.parse(line);
+    } catch {
+      const errResp = { jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } };
+      process.stdout.write(JSON.stringify(errResp) + '\n');
+      return;
+    }
+    try {
       const response = await handleRequest(msg);
       if (response) {
         const out = JSON.stringify(response);
         process.stdout.write(out + '\n');
       }
     } catch (e) {
-      // Incomplete JSON, wait for more
-      if (e instanceof SyntaxError) return;
-      buffer = '';
-      const errResp = { jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } };
+      const errResp = { jsonrpc: '2.0', id: msg?.id ?? null, error: { code: -32603, message: 'Internal error' } };
       process.stdout.write(JSON.stringify(errResp) + '\n');
     }
   });

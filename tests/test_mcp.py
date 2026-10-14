@@ -213,9 +213,9 @@ def test_json_and_sse_parsers_require_the_matching_response_id() -> None:
         ("text/event-stream", "matching", None),
         ("text/event-stream", "unmatched", "MCP SSE response did not contain JSON-RPC id"),
         ("text/event-stream", "malformed_before", "not valid JSON"),
-        ("text/event-stream", "malformed_after", "not valid JSON"),
+        ("text/event-stream", "malformed_after", None),
         ("text/event-stream", "non_object_before", "no attribute 'get'"),
-        ("text/event-stream", "non_object_before_malformed", "not valid JSON"),
+        ("text/event-stream", "non_object_before_malformed", "no attribute 'get'"),
         ("text/event-stream", "non_object_after", None),
     ],
 )
@@ -261,7 +261,7 @@ def test_request_preserves_json_and_sse_response_validation(
 
     with McpClient("http://mock/mcp", transport=httpx.MockTransport(handler)) as client:
         if error is not None:
-            expected_error = AttributeError if scenario == "non_object_before" else McpProtocolError
+            expected_error = AttributeError if scenario.startswith("non_object_before") else McpProtocolError
             with pytest.raises(expected_error, match=error):
                 client.request("resources/list")
         else:
@@ -314,7 +314,8 @@ def test_request_releases_unrelated_sse_events_before_decoding_the_next(
     monkeypatch.setattr(json, "loads", tracked_loads)
     with McpClient("http://mock/mcp", transport=httpx.MockTransport(handler)) as client:
         assert client.request("resources/list") == {"value": "done"}
-    assert len(event_refs) == 2
+    # A matching event completes the RPC; later events are never decoded.
+    assert len(event_refs) == 1
     assert all(reference() is None for reference in event_refs)
 
 
