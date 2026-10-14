@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, Iterator, List
 
 from .errors import ToolOperationError
 
@@ -51,6 +51,25 @@ LEAK_PATTERNS: List[Dict[str, Any]] = [
 
 SCAN_EXTENSIONS = {".md", ".txt", ".json", ".yaml", ".yml", ".py"}
 
+_EMAIL_LOCAL = re.compile(r"[A-Za-z0-9._%+-]+")
+_WORD_BOUNDARY = re.compile(r"\b")
+_EMAIL = next(pattern["regex"] for pattern in LEAK_PATTERNS if pattern["name"] == "Email")
+
+
+def _email_matches(line: str) -> Iterator[re.Match[str]]:
+    # Try each local-part run once, rather than retrying all overlapping suffixes.
+    consumed = 0
+    for local in _EMAIL_LOCAL.finditer(line):
+        if local.end() >= len(line) or line[local.end()] != "@" or local.end() <= consumed:
+            continue
+        boundary = _WORD_BOUNDARY.search(line, max(local.start(), consumed), local.end())
+        if boundary is None or boundary.start() >= local.end():
+            continue
+        match = _EMAIL.match(line, boundary.start())
+        if match:
+            consumed = match.end()
+            yield match
+
 
 def _email_allowed(value: str) -> bool:
     domain = value.rsplit("@", 1)[-1].lower()
@@ -75,7 +94,8 @@ def leak_scan(path: str, report_only: bool = False) -> Dict[str, Any]:
             continue
         for index, line in enumerate(lines, 1):
             for pattern in LEAK_PATTERNS:
-                for match in pattern["regex"].finditer(line):
+                matches = _email_matches(line) if pattern["name"] == "Email" else pattern["regex"].finditer(line)
+                for match in matches:
                     if pattern["name"] == "Email" and _email_allowed(match.group(0)):
                         continue
                     findings.append(

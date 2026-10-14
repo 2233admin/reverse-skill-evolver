@@ -4,6 +4,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import zipfile
 
 import pytest
 
@@ -79,9 +80,20 @@ def fake_tools(tmp_path: Path, names: list[str]) -> tuple[Path, Path]:
         encoding="utf-8",
     )
     for name in names:
-        (bin_dir / f"{name}.cmd").write_text(
-            f'@"{sys.executable}" "{stub}" "{name}" %*\n', encoding="utf-8"
-        )
+        if os.name == "nt":
+            (bin_dir / f"{name}.cmd").write_text(
+                f'@"{sys.executable}" "{stub}" "{name}" %*\n', encoding="utf-8"
+            )
+        else:
+            executable = bin_dir / name
+            executable.write_text(
+                f"#!{sys.executable}\n"
+                "import runpy, sys\n"
+                f"sys.argv = [{str(stub)!r}, {name!r}, *sys.argv[1:]]\n"
+                f"runpy.run_path({str(stub)!r}, run_name='__main__')\n",
+                encoding="utf-8",
+            )
+            executable.chmod(0o755)
     return bin_dir, trace
 
 
@@ -176,7 +188,10 @@ def test_apk_build_needs_adb_only_when_installing(engine: str, tmp_path: Path, j
     if jar_only:
         jar = tmp_path / "Tools/apktool/apktool.jar"
         jar.parent.mkdir(parents=True)
-        jar.touch()
+        # Java execution is stubbed; discovery still checks the real ZIP structure.
+        with zipfile.ZipFile(jar, "w") as archive:
+            archive.writestr("META-INF/MANIFEST.MF", "Manifest-Version: 1.0\r\nMain-Class: Main\r\n\r\n")
+            archive.writestr("Main.class", b"synthetic class for the inert Java stub")
     project = tmp_path / "sample project"
     project.mkdir()
     keystore = tmp_path / "debug.keystore"

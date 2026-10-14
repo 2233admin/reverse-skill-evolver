@@ -183,10 +183,49 @@ function Ensure-ApktoolInstall {
     $installDir = $Definition.installDir
     Ensure-DownloadDirectory -Path $installDir
 
-    $jarName = [System.IO.Path]::GetFileName($asset.name)
     $jarPath = Join-Path $installDir 'apktool.jar'
+    $downloadPath = Join-Path $installDir ('.apktool-' + [Guid]::NewGuid().ToString('N') + '.jar')
     $downloadUrl = if ($asset.PSObject.Properties['browser_download_url']) { $asset.browser_download_url } else { $asset.url }
-    Invoke-WebRequest -Uri $downloadUrl -OutFile $jarPath -Headers @{ 'Accept' = 'application/octet-stream' }
+    try {
+        Invoke-WebRequest -Uri $downloadUrl -OutFile $downloadPath -Headers @{ 'Accept' = 'application/octet-stream' }
+        if ($asset.PSObject.Properties['size'] -and (Get-Item -LiteralPath $downloadPath).Length -ne $asset.size) {
+            throw 'Apktool download size does not match the release asset.'
+        }
+        if (-not (Test-ReverseApktoolJar -Path $downloadPath)) { throw 'Apktool download is not a complete executable JAR.' }
+        $java = Resolve-ReverseToolSpec -Name 'java'
+        $process = [System.Diagnostics.Process]::new()
+        $started = $false
+        try {
+            $process.StartInfo.FileName = $java.Command
+            $process.StartInfo.Arguments = '-jar "' + $downloadPath + '" --version'
+            $process.StartInfo.UseShellExecute = $false
+            $process.StartInfo.CreateNoWindow = $true
+            $process.StartInfo.RedirectStandardOutput = $true
+            $process.StartInfo.RedirectStandardError = $true
+            [void]$process.Start()
+            $started = $true
+            $process.BeginOutputReadLine()
+            $process.BeginErrorReadLine()
+            if (-not $process.WaitForExit(15000)) {
+                $process.Kill()
+                $process.WaitForExit()
+                throw 'Apktool version check timed out.'
+            }
+            if ($process.ExitCode -ne 0) { throw 'Apktool version check failed.' }
+        }
+        finally {
+            if ($started -and -not $process.HasExited) { $process.Kill(); $process.WaitForExit() }
+            $process.Dispose()
+        }
+        # Both files share a directory, so publication does not expose a partial copy.
+        if (Test-Path -LiteralPath $jarPath) {
+            [System.IO.File]::Replace($downloadPath, $jarPath, [NullString]::Value)
+        }
+        else { [System.IO.File]::Move($downloadPath, $jarPath) }
+    }
+    finally {
+        if (Test-Path -LiteralPath $downloadPath) { Remove-Item -LiteralPath $downloadPath -Force }
+    }
 
     $wrapperPath = Join-Path $installDir $Definition.wrapperName
     @(

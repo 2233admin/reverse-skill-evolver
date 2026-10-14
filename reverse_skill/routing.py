@@ -19,14 +19,24 @@ def normalize(value: Any) -> str:
 
 
 def contains_keyword(text: str, keyword: str) -> bool:
-    needle, text = normalize(keyword), normalize(text)
-    if not needle:
-        return False
-    if re.fullmatch(r"[a-z0-9_ .+/-]+", needle):
-        return re.search(rf"(?<![a-z0-9_]){re.escape(needle)}(?![a-z0-9_])", text) is not None
-    compact_needle = re.sub(r"[^\w\u0080-\uffff]+", "", needle)
-    compact_text = re.sub(r"[^\w\u0080-\uffff]+", "", text)
-    return needle in text or compact_needle in compact_text
+    return _TaskText(text).contains(keyword)
+
+
+class _TaskText:
+    def __init__(self, text: str) -> None:
+        self.text = normalize(text)
+        self.compact: str | None = None
+
+    def contains(self, keyword: str) -> bool:
+        needle = normalize(keyword)
+        if not needle:
+            return False
+        if re.fullmatch(r"[a-z0-9_ .+/-]+", needle):
+            return re.search(rf"(?<![a-z0-9_]){re.escape(needle)}(?![a-z0-9_])", self.text) is not None
+        compact_needle = re.sub(r"[^\w\u0080-\uffff]+", "", needle)
+        if self.compact is None:
+            self.compact = re.sub(r"[^\w\u0080-\uffff]+", "", self.text)
+        return needle in self.text or compact_needle in self.compact
 
 
 def _task_text(task: dict[str, Any]) -> str:
@@ -34,15 +44,14 @@ def _task_text(task: dict[str, Any]) -> str:
                     ("task", "intent", "target_kind", "mode", "toolchain", "evidence", "input_path"))
 
 
-def _target_kind(task: dict[str, Any], data: dict[str, Any]) -> str:
+def _target_kind(task: dict[str, Any], data: dict[str, Any], text: _TaskText) -> str:
     explicit = normalize(task.get("target_kind"))
     for route_id, aliases in data.get("target_aliases", {}).items():
         if explicit and (explicit == route_id or explicit in {normalize(a) for a in aliases}):
             return route_id
     if explicit:
         return explicit
-    text = _task_text(task)
-    if any(contains_keyword(text, alias) for alias in ("forefy", "asr")):
+    if any(text.contains(alias) for alias in ("forefy", "asr")):
         return "asr-registry"
     suffix = Path(str(task.get("input_path") or "")).suffix.casefold()
     for route_id, suffixes in {
@@ -55,7 +64,7 @@ def _target_kind(task: dict[str, Any], data: dict[str, Any]) -> str:
         if suffix in suffixes:
             return route_id
     for route_id, aliases in data.get("route_aliases", {}).items():
-        if any(contains_keyword(text, alias) for alias in aliases):
+        if any(text.contains(alias) for alias in aliases):
             return route_id
     return ""
 
@@ -63,8 +72,8 @@ def _target_kind(task: dict[str, Any], data: dict[str, Any]) -> str:
 def build_plan(task: dict[str, Any]) -> dict[str, Any]:
     """Select a bundled workflow. Availability and authorization remain unverified."""
     data = json.loads(ROUTING_PATH.read_text(encoding="utf-8"))
-    target = _target_kind(task, data)
-    text = _task_text(task)
+    text = _TaskText(_task_text(task))
+    target = _target_kind(task, data, text)
     explicit = normalize(task.get("route_id"))
     scored = []
     for route in data["macro_routes"]:
@@ -75,11 +84,11 @@ def build_plan(task: dict[str, Any]) -> dict[str, Any]:
         if target == route_id or target in route.get("target_kinds", []):
             score += 100
             signals.append("target_kind:" + target)
-        aliases = [a for a in data.get("route_aliases", {}).get(route_id, []) if contains_keyword(text, a)]
+        aliases = [a for a in data.get("route_aliases", {}).get(route_id, []) if text.contains(a)]
         score += min(60, len(aliases) * 12)
         signals.extend("alias:" + a for a in aliases[:5])
         for keyword in route.get("intent_keywords", []):
-            if contains_keyword(text, keyword):
+            if text.contains(keyword):
                 score += 10
                 signals.append("keyword:" + keyword)
         scored.append((score, route, signals))

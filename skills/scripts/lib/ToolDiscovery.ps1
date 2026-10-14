@@ -608,6 +608,28 @@ function Get-ReverseFallbackPaths {
     }
 }
 
+function Test-ReverseApktoolJar {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $archive = $null
+    $reader = $null
+    try {
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        $archive = [System.IO.Compression.ZipFile]::OpenRead($Path)
+        $manifest = $archive.GetEntry('META-INF/MANIFEST.MF')
+        if ($null -eq $manifest) { return $false }
+        $reader = [System.IO.StreamReader]::new($manifest.Open())
+        $content = $reader.ReadToEnd()
+        if ($content -notmatch '(?m)^Main-Class: ([A-Za-z0-9_.$]+)\r?$') { return $false }
+        return ($null -ne $archive.GetEntry(($Matches[1].Replace('.', '/') + '.class')))
+    }
+    catch { return $false }
+    finally {
+        if ($null -ne $reader) { $reader.Dispose() }
+        if ($null -ne $archive) { $archive.Dispose() }
+    }
+}
+
 function Resolve-ReverseToolSpec {
     [CmdletBinding()]
     param(
@@ -634,6 +656,10 @@ function Resolve-ReverseToolSpec {
             'command' {
                 $cmd = Get-Command -Name $candidate.Value -ErrorAction SilentlyContinue
                 if ($null -ne $cmd) {
+                    if ($Name -eq 'apktool' -and -not [string]::IsNullOrWhiteSpace($cmd.Source)) {
+                        $jar = Join-Path (Split-Path -Parent $cmd.Source) 'apktool.jar'
+                        if ((Test-Path -LiteralPath $jar) -and -not (Test-ReverseApktoolJar -Path $jar)) { continue }
+                    }
                     $spec.Available = $true
                     $spec.Source = 'Get-Command'
                     $spec.ResolvedPath = $cmd.Source
@@ -643,6 +669,7 @@ function Resolve-ReverseToolSpec {
             }
             'path' {
                 if (Test-Path -LiteralPath $candidate.Value -PathType Leaf) {
+                    if ($Name -eq 'apktool' -and -not (Test-ReverseApktoolJar -Path (Join-Path (Split-Path -Parent $candidate.Value) 'apktool.jar'))) { continue }
                     $spec.Available = $true
                     $spec.Source = 'FallbackPath'
                     $spec.ResolvedPath = $candidate.Value
@@ -651,7 +678,7 @@ function Resolve-ReverseToolSpec {
                 }
             }
             'java-jar' {
-                if (Test-Path -LiteralPath $candidate.Value -PathType Leaf) {
+                if ((Test-Path -LiteralPath $candidate.Value -PathType Leaf) -and (Test-ReverseApktoolJar -Path $candidate.Value)) {
                     $java = Resolve-ReverseToolSpec -Name 'java'
                     if ($java.Available) {
                         $spec.Available = $true

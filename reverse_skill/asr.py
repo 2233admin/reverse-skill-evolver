@@ -10,9 +10,9 @@ from urllib.parse import urlsplit
 import httpx
 
 from .errors import EnvironmentUnavailable, ReverseSkillError, ToolOperationError
+from .asr_constants import KINDS
 
 
-KINDS = ("skill", "goal", "workflow")
 BASE_URL = "https://forefy.com"
 
 

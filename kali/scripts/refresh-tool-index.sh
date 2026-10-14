@@ -14,6 +14,12 @@ OUTPUT_CAPABILITY_GRAPH="${3:-${SKILL_ROOT}/capability-graph.json}"
 
 GENERATED_AT=$(date '+%Y-%m-%d %H:%M:%S %z')
 
+# A refresh owns one snapshot; version commands must not run again for JSON.
+TOOL_SNAPSHOT=()
+for entry in "${TOOL_CATALOG[@]}"; do
+    TOOL_SNAPSHOT+=("$(resolve_tool "$entry")")
+done
+
 # ─── 生成 Markdown ────────────────────────────────────────────────────────────────
 
 {
@@ -28,8 +34,7 @@ GENERATED_AT=$(date '+%Y-%m-%d %H:%M:%S %z')
     echo "| 工具 | 归属 skill | 作用 | 可用 | 路径 | 版本 | 来源 | 脚本引用 |"
     echo "|---|---|---|---|---|---|---|---|"
 
-    for entry in "${TOOL_CATALOG[@]}"; do
-        result=$(resolve_tool "$entry")
+    for result in "${TOOL_SNAPSHOT[@]}"; do
         IFS='|' read -r name skill purpose available resolved_path version source <<< "$result"
 
         # 获取脚本引用
@@ -122,8 +127,7 @@ GENERATED_AT=$(date '+%Y-%m-%d %H:%M:%S %z')
 if command -v jq &>/dev/null; then
     # 使用 jq 生成结构化 JSON
     json_tools="[]"
-    for entry in "${TOOL_CATALOG[@]}"; do
-        result=$(resolve_tool "$entry")
+    for result in "${TOOL_SNAPSHOT[@]}"; do
         IFS='|' read -r name skill purpose available resolved_path version source <<< "$result"
         refs="${SCRIPT_REFS[$name]:-}"
 
