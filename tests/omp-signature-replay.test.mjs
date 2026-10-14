@@ -54,6 +54,33 @@ test('partial and empty coverage never pass', async () => {
   assert.equal((await compareSignatures([], sign)).passed, false);
 });
 
+test('maxCases snapshots only selected inputs and freezes the original total', async () => {
+  const fixtures = Array.from({ length: 1000 }, (_, i) => ({ id: String(i), input: { value: 'x'.repeat(8192) }, expected: 'ok' }));
+  const clone = globalThis.structuredClone;
+  let clones = 0, calls = 0;
+  globalThis.structuredClone = value => { clones++; return clone(value); };
+  try {
+    const report = await compareSignatures(fixtures, input => {
+      calls++;
+      input.value = 'changed';
+      fixtures.length = 0;
+      return 'ok';
+    }, { maxCases: 1 });
+    assert.equal(clones, 2);
+    assert.equal(calls, 1);
+    assert.deepEqual(report.coverage, { total: 1000, processed: 1, remaining: 999, complete: false });
+    assert.equal(report.counts.matched, 1);
+    assert.equal(report.passed, false);
+  } finally { globalThis.structuredClone = clone; }
+});
+
+test('invalid unselected fixtures reject before replay or snapshots', async () => {
+  const cycle = {}; cycle.self = cycle;
+  for (const tail of [{ id: 'one', input: {}, expected: '' }, { id: 'tail', input: cycle, expected: '' }, { id: 'tail', input: {}, expected: 7 }]) {
+    await assert.rejects(compareSignatures([samples()[0], tail], () => assert.fail('must not replay'), { maxCases: 1 }), TypeError);
+  }
+});
+
 test('sample strings remain data', async () => {
   globalThis.fixtureExecuted = false;
   const input = 'globalThis.fixtureExecuted = true';

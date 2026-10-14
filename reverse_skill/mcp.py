@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import base64
+import asyncio
 import json
 import re
+import threading
 import time
 import uuid
 from dataclasses import dataclass
@@ -18,6 +20,93 @@ LEGACY_VERSIONS = {"2025-11-25", "2025-06-18", "2025-03-26"}
 MODERN_ERROR_CODES = {-32020, -32021, -32022}
 HEADER_TOKEN = re.compile(r"^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$")
 SAFE_INTEGER = 9_007_199_254_740_991
+
+
+class _NetworkStream(httpx.SyncByteStream):
+    def __init__(self, transport: "_NetworkTransport", response: httpx.Response) -> None:
+        self.transport = transport
+        self.response = response
+
+    def __iter__(self):
+        iterator = self.response.aiter_raw()
+        while True:
+            try:
+                yield self.transport.run(iterator.__anext__())
+            except StopAsyncIteration:
+                return
+
+    def close(self) -> None:
+        self.transport.run(self.response.aclose(), cleanup=True)
+
+
+class _CheckedStream(httpx.SyncByteStream):
+    def __init__(self, stream: httpx.SyncByteStream, check) -> None:
+        self.stream = stream
+        self.check = check
+
+    def __iter__(self):
+        for chunk in self.stream:
+            self.check()
+            yield chunk
+        self.check()
+
+    def close(self) -> None:
+        self.stream.close()
+
+
+class _NetworkTransport(httpx.BaseTransport):
+    """Drive cancellable HTTPX I/O while keeping the caller's synchronous API."""
+
+    def __init__(self, deadline: float | None) -> None:
+        self.deadline = deadline
+        self.loop = None
+        self.thread = None
+        self.client = None
+
+    def run(self, operation, *, cleanup=False):
+        if self.loop is None:
+            self.loop = asyncio.new_event_loop()
+            self.thread = threading.Thread(target=self.loop.run_forever, name="mcp-http", daemon=True)
+            self.thread.start()
+
+        async def wait():
+            if cleanup or self.deadline is None:
+                return await operation
+            # wait_for is available on Python 3.10 and cancels pending network I/O.
+            return await asyncio.wait_for(operation, max(0, self.deadline - time.monotonic()))
+
+        try:
+            return asyncio.run_coroutine_threadsafe(wait(), self.loop).result()
+        except asyncio.TimeoutError as exc:
+            raise httpx.TimeoutException("MCP probe deadline exceeded") from exc
+
+    def handle_request(self, request: httpx.Request) -> httpx.Response:
+        async def send():
+            if self.client is None:
+                self.client = httpx.AsyncClient()
+            outgoing = httpx.Request(
+                request.method, request.url, headers=request.headers,
+                content=request.content, extensions=request.extensions,
+            )
+            return await self.client.send(outgoing, stream=True)
+
+        response = self.run(send())
+        return httpx.Response(
+            response.status_code, headers=response.headers,
+            stream=_NetworkStream(self, response), extensions=response.extensions,
+        )
+
+    def close(self) -> None:
+        if self.loop is None:
+            return
+        try:
+            if self.client is not None:
+                self.run(self.client.aclose(), cleanup=True)
+        finally:
+            self.loop.call_soon_threadsafe(self.loop.stop)
+            self.thread.join()
+            self.loop.close()
+            self.loop = self.thread = self.client = None
 
 
 @dataclass
@@ -81,7 +170,8 @@ class McpClient:
         self.server_info: dict[str, Any] | None = None
         self.capabilities: dict[str, Any] | None = None
         self.tool_headers: dict[str, list[dict[str, Any]]] = {}
-        self.http = httpx.Client(timeout=timeout, transport=transport)
+        self._network = _NetworkTransport(deadline) if transport is None else None
+        self.http = httpx.Client(timeout=timeout, transport=transport if transport is not None else self._network)
         try:
             if not self._discover_modern():
                 self._initialize_legacy()
@@ -90,6 +180,9 @@ class McpClient:
                 self.http.close()
             except Exception:
                 pass
+            finally:
+                if self._network is not None:
+                    self._network.close()
             raise
 
     def __enter__(self) -> "McpClient":
@@ -164,6 +257,44 @@ class McpClient:
     def _remaining_timeout(self) -> float:
         return self.timeout if self.deadline is None else min(self.timeout, self.deadline - time.monotonic())
 
+    def _check_deadline(self) -> None:
+        if self._remaining_timeout() <= 0:
+            raise McpTransportError("MCP probe deadline exceeded")
+
+    def _read_response(self, response: httpx.Response, request_id: str | int | None):
+        if request_id is None:
+            return None, ""
+        content_type = response.headers.get("content-type", "")
+        if content_type.lower().startswith("text/event-stream"):
+            data_lines: list[str] = []
+            for line in response.iter_lines():
+                self._check_deadline()
+                if line.startswith("data:"):
+                    data_lines.append(line[5:].lstrip(" "))
+                elif not line.strip() and data_lines:
+                    content = "\n".join(data_lines)
+                    data_lines.clear()
+                    if not content.strip():
+                        continue
+                    message = json.loads(content)
+                    if str(message.get("id")) == str(request_id):
+                        return message, content
+                    del message
+            # Some legacy servers omit the final blank line before EOF.
+            if data_lines:
+                content = "\n".join(data_lines)
+                message = json.loads(content)
+                if str(message.get("id")) == str(request_id):
+                    return message, content
+            raise McpProtocolError(f"MCP SSE response did not contain JSON-RPC id {request_id}")
+        chunks = []
+        for chunk in response.iter_bytes():
+            self._check_deadline()
+            chunks.append(chunk)
+        self._check_deadline()
+        content = b"".join(chunks).decode(response.encoding or "utf-8")
+        return self._parse_response(content, content_type, request_id), content
+
     def _send(self, message: Mapping[str, Any], extra_headers: Mapping[str, str] | None = None) -> HttpResult:
         method = str(message["method"])
         headers = {"Accept": "application/json, text/event-stream", "Mcp-Method": method}
@@ -184,27 +315,21 @@ class McpClient:
         headers.update(extra_headers or {})
 
         timeout = self._remaining_timeout()
-        if timeout <= 0:
-            raise McpTransportError("MCP probe deadline exceeded")
+        self._check_deadline()
         try:
-            response = self.http.post(self.url, headers=headers, json=message, timeout=timeout)
+            with self.http.stream("POST", self.url, headers=headers, json=message, timeout=timeout) as response:
+                self._check_deadline()
+                response.stream = _CheckedStream(response.stream, self._check_deadline)
+                parsed, content = self._read_response(response, message.get("id"))
+                return HttpResult(
+                    status_code=response.status_code, headers=response.headers,
+                    message=parsed, content_type=response.headers.get("content-type", ""),
+                    raw_content=content,
+                )
         except httpx.RequestError as exc:
             raise McpTransportError(f"MCP request failed: {exc}") from exc
-        if self._remaining_timeout() <= 0:
-            raise McpTransportError("MCP probe deadline exceeded")
-
-        request_id = message.get("id")
-        try:
-            parsed = self._parse_response(response.text, response.headers.get("content-type", ""), request_id)
         except (json.JSONDecodeError, UnicodeDecodeError) as exc:
             raise McpProtocolError(f"MCP response is not valid JSON: {exc}") from exc
-        return HttpResult(
-            status_code=response.status_code,
-            headers=response.headers,
-            message=parsed,
-            content_type=response.headers.get("content-type", ""),
-            raw_content=response.text,
-        )
 
     def _discover_modern(self) -> bool:
         for _ in range(2):
@@ -404,18 +529,24 @@ class McpClient:
             timeout = min(self._remaining_timeout(), 10)
             if self.era == "legacy" and self.session_id and timeout > 0:
                 try:
-                    self.http.delete(
+                    with self.http.stream(
+                        "DELETE",
                         self.url,
                         headers={
                             "Mcp-Session-Id": self.session_id,
                             "MCP-Protocol-Version": self.protocol_version,
                         },
                         timeout=timeout,
-                    )
+                    ):
+                        pass
                 except httpx.RequestError:
                     pass
         finally:
-            self.http.close()
+            try:
+                self.http.close()
+            finally:
+                if self._network is not None:
+                    self._network.close()
 
 
 def probe_tool_count(port: int, timeout: float) -> int:

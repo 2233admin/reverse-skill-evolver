@@ -30,8 +30,22 @@ tasks.register('schedulerRegressionTest', JavaExec) {
     mainClass = 'com.burpmcp.McpHttpServerSchedulerTest'
 }
 
+tasks.register('behaviorRegressionTest', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.burpmcp.McpHttpServerBehaviorTest'
+}
+
+tasks.register('httpHandlerRegressionTest', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.burpmcp.McpHttpHandlerRaceTest'
+}
+
 tasks.named('check') {
     dependsOn tasks.named('schedulerRegressionTest')
+    dependsOn tasks.named('behaviorRegressionTest')
+    dependsOn tasks.named('httpHandlerRegressionTest')
 }
 
 jar {
