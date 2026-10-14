@@ -1,0 +1,35 @@
+# v1.2.0-beta.2 verification scope
+
+The release candidate starts from reviewed main `5f84b569598cfb9f9ffd8453ae019667a02b2e50`. Preparation changes package/version metadata, release documentation and the version assertion. It introduces no runtime logic or dependency change. Python version is `1.2.0b2`; OpenCLI and the release use `1.2.0-beta.2`.
+
+## Actual validation
+
+| Check | Result and scope |
+|---|---|
+| Base main Linux CI | [Project checks](https://github.com/2233admin/reverse-skill-evolver/actions/runs/38524505615): Python 3.10, 788 passed / 55 skipped; gates all clean; Java 21 check and POSIX build entrypoints passed. This covers the repaired runtime before the metadata-only candidate. |
+| Candidate clean clone | Fresh clone of main, version/documentation changes, a new isolated editable test environment: Python 3.14, **838 passed / 5 skipped**. |
+| Candidate metadata and distribution regression | **90 passed** across CLI, repository gates and whole-skill distribution. OpenSpec strict validation passed with an explicit metadata/documentation-only change. |
+| Candidate repository contracts | gates all clean; Python metadata, CLI and OpenCLI prerelease versions agree. |
+| Java component | Fresh clone Gradle `check jar` passed. Behavior, scheduler and HTTP-handler race regression tasks ran; JDK 25 compiled Java 21 bytecode, class major 65. The component retains version `2.0.0`. |
+| Wheel installation | Built with PyPA build/setuptools, installed in a separate fresh environment, executed from an unrelated directory. Both CLI helps, version `1.2.0b2`, route and ASR list passed; imported code came from that environment's site-packages. |
+| Repaired runtime independent review | Installation/CLI, index and protocol slices were independently reviewed before integration. The OMP payload bound and ordinary low-match-limit scan received an additional independent review and real-worker parity scenarios. See [integration evidence](https://github.com/2233admin/reverse-skill-evolver/issues/55#issuecomment-6162700316). |
+
+The five candidate skips are one missing optional YARA dependency and four Windows filename cases involving literal quote/backslash characters. Linux CI runs the filename cases. The earlier Windows main combination once exceeded the existing ten-second port-inspection timeout; an isolated retry and full rerun passed. That failure was retained in the integration evidence.
+
+## Artifact provenance and installation checks
+
+The final bundle is assembled from a precise committed Git export, which avoids adding local Gradle caches, virtual environments, temporary files or Windows checkout line-ending conversions. The packaging verification checks ZIP CRC, every tracked source entry against that export, all route module paths, adjacent OMP helpers, wheel Python/data bytes against source, source archive metadata, Java class version, and equality between embedded packages and standalone assets.
+
+The top-level `SHA256SUMS.txt` covers the complete ZIP, wheel, Python source archive and Burp JAR. The bundle's `packages/SHA256SUMS.txt` covers its three embedded packages. Installation verification uses an isolated consumer project and private Python runtime; it does not write global agent configuration.
+
+The exact release-source commit and final artifact checks belong to the release notes and attached checksums. Preparation, a Draft Release and public publication are separate states. Consult the release PR's current-head Project checks for the candidate's Linux result.
+
+## Remaining environment boundaries
+
+- Synthetic protocol services, SQLite databases, exported IDA JSON, native-helper namespaces and a compiled Java callback test verify their documented paths. They do not prove a user's licensed IDA, OMP native worker, Burp GUI or connected device is configured.
+- Real Apktool/Jadx downloads, Kali system installation, SSH fleet operations, Linux/macOS user setup and real network dependency repair were not repeated for this release candidate.
+- The built-in regex path stays in the native owner. Custom matching children receive bounded text, share a deadline across preparation and matching, and are reaped. Full native enumeration still occurs in the original helper, outside that matching deadline.
+- Swarm outputs remain advisory; model quality and usefulness require the user's own permitted evidence and configured provider. There is no claim that a partial run is a passed analysis.
+- Reported optimization timings are local comparisons on the listed workloads. They do not establish overall or cross-platform speedups.
+
+This is a testing release with these boundaries made explicit.
