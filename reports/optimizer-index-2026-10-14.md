@@ -2,6 +2,8 @@
 
 日期：2026-10-14。关联 [#57](https://github.com/2233admin/reverse-skill-evolver/issues/57)，父级 [#55](https://github.com/2233admin/reverse-skill-evolver/issues/55)。授权覆盖实施、验证、提交、推送及一个 Draft PR；本记录交独立审查，不代表父级集成或发布验收。
 
+交付：[Draft PR #59](https://github.com/2233admin/reverse-skill-evolver/pull/59)，base=main；[#57 交付收据](https://github.com/2233admin/reverse-skill-evolver/issues/57#issuecomment-6161939704) 已回读，其最终版本记录当前远端 head 和 Orca in-review 状态。生产代码与测试的验证提交为 `2d8600f440d8c42f9e0e961897552971d32380d5`；后续提交只补交付文档，使用 Git diff 核对生产代码、测试与 evidence runner 无变化。
+
 ## 范围、来源与状态
 
 基线为 `d6d085364508215d0019b83f32dc58dd8f170c9e`；分支为 `2233admin/fix-optimizer-index-20261014`。开始时回读远端正文、标签、评论、原生父级和 #55 子列表，确认 #57 是 `bug` + `ready-for-agent`、父级为 #55，执行仓库/工作区/分支/head/终端匹配且工作区干净、没有既有 PR。交付前远端 main 仍是该基线。
@@ -45,6 +47,7 @@
 | 兼容语法 | 对五个生产文件、测试与 evidence runner 使用 `ast.parse(...,feature_version=(3,10))` | exit 0，Python 3.10 grammar passed；不能代替真实 3.10 runtime |
 | 较旧 runtime 核心路径 | 现有 Python 3.11.16 运行临时合成 build/plan/inspect/search/import/update/rebuild smoke | exit 0；SQLite 3.53.1，同样采用两个 OR 索引；pytest 在该 interpreter 未安装，所以没有 3.11 完整 pytest 证据 |
 | 文件/格式范围 | `git diff --check`；检查 changed paths 和 OpenSpec 相对引用 | exit 0；只提交 issue 允许路径；无额外依赖或公开字段 |
+| 初始代码 head 的远端 checks | `gh pr checks 59 --json name,state,link` | Python tests、Java checks、GitGuardian Security Checks、CodeRabbit 均 SUCCESS；此观察绑定 `2d8600f`，最终文档 head 的 checks 状态以 PR/交付收据为准 |
 
 ## 验收条件对应
 
@@ -68,7 +71,7 @@
 - 完整 suite 的 5 skipped：1 项 `tests/test_integrations.py:122` 因未安装 yara；4 项 `tests/test_journal_workflow.py:154` 因 Windows 不支持对应 literal quote/backslash 文件名。用 `python -m pytest -q -rs tests/test_integrations.py tests/test_journal_workflow.py` 回读得到 exit 0、27 passed、5 skipped；相关索引/IDA 107 项没有跳过，跳过不能计作已运行成功。
 - 真实 tree-sitter provider 缺失；没有下载 parser/cache，也未运行真实 parser。真实 IDA/Burp 环境和目标调用未执行；合成 export、SQLite、provider 输出和 Java 测试不构成真实目标验证。
 - 跨平台/不同 SQLite query planner 尚未完整验证；Windows Python 3.14.7/SQLite 3.50.4 完整测试及 Python 3.11.16/SQLite 3.53.1 核心 smoke 是本次证据范围。
-- 用户级 skill 安装、真实主要工具操作、父级三 PR 集成、远端 CI 独立审查、合并、发布均由 #55 后续负责，未以本地绿灯替代。
+- 用户级 skill 安装、真实主要工具操作、父级三 PR 集成、独立审查、最终 head 的 CI 核验、合并、发布均由 #55 后续负责，未以初始 head 或本地绿灯替代。
 
 ## 副作用与剩余风险
 
