@@ -114,75 +114,60 @@ install_npm_global() {
 
 # GitHub Release 下载并解压
 install_github_release() {
-    local repo="$1"
-    local asset_regex="$2"
-    local install_dir="$3"
-
+    local repo="$1" asset_regex="$2" install_dir="$3"
     log_info "从 GitHub Release 下载: $repo ..."
-
-    local api_url="https://api.github.com/repos/${repo}/releases/latest"
-    local release_json
-    release_json=$(curl -sL "$api_url")
-
-    local download_url
-    download_url=$(echo "$release_json" | jq -r ".assets[] | select(.name | test(\"${asset_regex}\")) | .browser_download_url" | head -n1)
-
-    if [[ -z "$download_url" || "$download_url" == "null" ]]; then
+    local release_json download_url filename temporary status=0
+    release_json=$(curl -fsSL "https://api.github.com/repos/${repo}/releases/latest") || return $?
+    download_url=$(jq -r --arg pattern "$asset_regex" '[.assets[] | select(.name | test($pattern))][0].browser_download_url // empty' <<< "$release_json") || return $?
+    if [[ -z "$download_url" ]]; then
         log_err "未找到匹配 $asset_regex 的 release asset"
         return 1
     fi
-
-    local filename
-    filename=$(basename "$download_url")
-    local tmp_file="/tmp/bootstrap-$$-${filename}"
-
+    filename=$(basename "$download_url") || return $?
+    temporary=$(mktemp -d "${TMPDIR:-/tmp}/reverse-bootstrap.XXXXXXXX") || return $?
+    local tmp_file="$temporary/$filename" extract="$temporary/extract"
     log_info "下载: $download_url"
-    curl -sL -o "$tmp_file" "$download_url"
-
-    # 创建安装目录
-    mkdir -p "$install_dir"
-
-    # 根据文件类型解压
-    case "$filename" in
-        *.tar.gz|*.tgz)
-            tar -xzf "$tmp_file" -C "$install_dir" --strip-components=1 2>/dev/null \
-                || tar -xzf "$tmp_file" -C "$install_dir"
-            ;;
-        *.zip)
-            local tmp_extract="/tmp/bootstrap-extract-$$"
-            mkdir -p "$tmp_extract"
-            unzip -qo "$tmp_file" -d "$tmp_extract"
-            # 如果只有一个顶层目录，strip 它
-            local top_dirs
-            top_dirs=$(find "$tmp_extract" -maxdepth 1 -mindepth 1 -type d)
-            if [[ $(echo "$top_dirs" | wc -l) -eq 1 ]]; then
-                cp -a "$top_dirs"/* "$install_dir/" 2>/dev/null || mv "$top_dirs"/* "$install_dir/"
-            else
-                cp -a "$tmp_extract"/* "$install_dir/"
-            fi
-            rm -rf "$tmp_extract"
-            ;;
-        *.deb)
-            if [[ $EUID -eq 0 ]]; then
-                dpkg -i "$tmp_file" || apt-get install -f -y
-            else
-                sudo dpkg -i "$tmp_file" || sudo apt-get install -f -y
-            fi
-            ;;
-        *)
-            cp "$tmp_file" "$install_dir/"
-            ;;
-    esac
-
-    rm -f "$tmp_file"
-
-    # 把 bin 目录加入 PATH（当前 session）
+    if curl -fsSL -o "$tmp_file" "$download_url" && mkdir -p "$extract" "$install_dir"; then
+        case "$filename" in
+            *.tar.gz|*.tgz)
+                { tar -xzf "$tmp_file" -C "$extract" --strip-components=1 2>/dev/null || tar -xzf "$tmp_file" -C "$extract"; } &&
+                    cp -a "$extract/." "$install_dir/" || status=$?
+                ;;
+            *.zip)
+                if unzip -qo "$tmp_file" -d "$extract"; then
+                    local top_dirs
+                    top_dirs=$(find "$extract" -maxdepth 1 -mindepth 1 -type d) || status=$?
+                    if [[ $status -eq 0 ]]; then
+                        if [[ -n "$top_dirs" && "$top_dirs" != *$'\n'* ]]; then
+                            cp -a "$top_dirs/." "$install_dir/" || status=$?
+                        else
+                            cp -a "$extract/." "$install_dir/" || status=$?
+                        fi
+                    fi
+                else
+                    status=$?
+                fi
+                ;;
+            *.deb)
+                if [[ $EUID -eq 0 ]]; then
+                    dpkg -i "$tmp_file" || apt-get install -f -y || status=$?
+                else
+                    sudo dpkg -i "$tmp_file" || sudo apt-get install -f -y || status=$?
+                fi
+                ;;
+            *) cp "$tmp_file" "$install_dir/" || status=$? ;;
+        esac
+    else
+        status=$?
+    fi
+    # This directory was created exclusively by mktemp for this invocation.
+    rm -rf -- "$temporary" || return $?
+    [[ $status -eq 0 ]] || return "$status"
     if [[ -d "$install_dir/bin" ]]; then
         export PATH="$install_dir/bin:$PATH"
     else
         export PATH="$install_dir:$PATH"
     fi
-
     log_ok "已安装到 $install_dir"
 }
 
@@ -196,16 +181,16 @@ register_mcp_server() {
     local config_dir
     config_dir=$(dirname "$config_path")
 
-    mkdir -p "$config_dir"
+    mkdir -p "$config_dir" || return $?
 
     if [[ ! -f "$config_path" ]]; then
-        echo '{"mcpServers":{}}' > "$config_path"
+        echo '{"mcpServers":{}}' > "$config_path" || return $?
     fi
 
     if command -v jq &>/dev/null; then
         local tmp_file="/tmp/mcp-config-$$.json"
-        jq ".mcpServers.\"${server_name}\" = ${config_json}" "$config_path" > "$tmp_file"
-        mv "$tmp_file" "$config_path"
+        jq ".mcpServers.\"${server_name}\" = ${config_json}" "$config_path" > "$tmp_file" || return $?
+        mv "$tmp_file" "$config_path" || return $?
         log_ok "MCP server '$server_name' 已注册到 $config_path"
     else
         log_warn "未安装 jq，无法自动注册 MCP server。请手动编辑 $config_path"
@@ -235,6 +220,7 @@ ensure_capability() {
 
     # 先检查是否已可用
     if command -v "$name" &>/dev/null; then
+        if [[ "$name" == "jadx" ]]; then "$name" --version >/dev/null 2>&1 || return $?; fi
         log_ok "$name 已可用: $(command -v "$name")"
         return 0
     fi
@@ -244,98 +230,98 @@ ensure_capability() {
     case "$name" in
         # ─── apt 预装/可装的工具 ───
         nmap|sqlmap|hashcat|hydra|gobuster|ffuf|adb)
-            install_apt_package "$name"
+            install_apt_package "$name" || return $?
             ;;
         msfconsole)
-            install_apt_package "metasploit-framework"
+            install_apt_package "metasploit-framework" || return $?
             ;;
         r2|rabin2|rasm2|radiff2|rahash2|rax2)
             if ! command -v r2 &>/dev/null; then
-                install_apt_package "radare2"
+                install_apt_package "radare2" || return $?
             fi
             ;;
         apktool)
-            install_apt_package "apktool"
+            install_apt_package "apktool" || return $?
             ;;
         seclists)
-            install_apt_package "seclists"
+            install_apt_package "seclists" || return $?
             ;;
         # ─── Kali 2026.1 新增工具（全部 apt 直装） ───
         adaptixc2)
-            install_apt_package "adaptixc2"
+            install_apt_package "adaptixc2" || return $?
             ;;
         atomic-operator)
-            install_apt_package "atomic-operator"
+            install_apt_package "atomic-operator" || return $?
             ;;
         fluxion)
-            install_apt_package "fluxion"
+            install_apt_package "fluxion" || return $?
             ;;
         gef)
-            install_apt_package "gef"
+            install_apt_package "gef" || return $?
             log_info "GEF 已安装。启动 gdb 时自动加载 GEF 增强功能。"
             ;;
         sstimap)
-            install_apt_package "sstimap"
+            install_apt_package "sstimap" || return $?
             ;;
         xsstrike)
-            install_apt_package "xsstrike"
+            install_apt_package "xsstrike" || return $?
             ;;
         wpprobe)
-            install_apt_package "wpprobe"
+            install_apt_package "wpprobe" || return $?
             ;;
         evil-winrm-py)
-            install_apt_package "evil-winrm-py"
+            install_apt_package "evil-winrm-py" || return $?
             ;;
         coercer)
-            install_apt_package "coercer"
+            install_apt_package "coercer" || return $?
             ;;
         netexec)
-            install_apt_package "netexec"
+            install_apt_package "netexec" || return $?
             ;;
         responder)
-            install_apt_package "responder"
+            install_apt_package "responder" || return $?
             ;;
         crackmapexec)
-            install_apt_package "crackmapexec"
+            install_apt_package "crackmapexec" || return $?
             ;;
         bloodhound)
-            install_apt_package "bloodhound"
+            install_apt_package "bloodhound" || return $?
             ;;
         certipy)
-            install_apt_package "certipy-ad"
+            install_apt_package "certipy-ad" || return $?
             ;;
         wfuzz)
-            install_apt_package "wfuzz"
+            install_apt_package "wfuzz" || return $?
             ;;
         aircrack-ng)
-            install_apt_package "aircrack-ng"
+            install_apt_package "aircrack-ng" || return $?
             ;;
         # ─── Kali 原生 MCP 工具（apt 安装 + MCP 注册） ───
         mcp-kali-server)
-            install_apt_package "mcp-kali-server"
+            install_apt_package "mcp-kali-server" || return $?
             register_mcp_server "kali-server" '{
                 "command": "kali-server-mcp",
                 "args": ["--port", "5000"]
-            }'
+            }' || return $?
             log_info "启动方式: kali-server-mcp --port 5000"
             log_info "然后用 mcp-server 连接 AI 客户端到 API server"
             ;;
         metasploitmcp)
-            install_apt_package "metasploitmcp"
+            install_apt_package "metasploitmcp" || return $?
             register_mcp_server "metasploit-mcp" '{
                 "command": "metasploitmcp",
                 "args": ["--transport", "stdio"]
-            }'
+            }' || return $?
             log_info "MetasploitMCP 支持 stdio 和 HTTP 两种模式"
             log_info "  stdio: metasploitmcp --transport stdio"
             log_info "  HTTP:  metasploitmcp --transport http --port 8085"
             ;;
         hexstrike-ai)
-            install_apt_package "hexstrike-ai"
+            install_apt_package "hexstrike-ai" || return $?
             register_mcp_server "hexstrike" '{
                 "command": "hexstrike-ai",
                 "args": []
-            }'
+            }' || return $?
             log_info "HexStrike AI 已安装。150+ 安全工具通过 MCP 暴露给 AI agent。"
             ;;
         # ─── Pentest Swarm AI（群体智能渗透框架） ───
@@ -344,10 +330,10 @@ ensure_capability() {
                 log_ok "pentestswarm 已可用"
             elif command -v go &>/dev/null; then
                 log_info "go install pentestswarm ..."
-                go install github.com/Armur-Ai/Pentest-Swarm-AI/cmd/pentestswarm@latest
+                go install github.com/Armur-Ai/Pentest-Swarm-AI/cmd/pentestswarm@latest || return $?
             elif command -v docker &>/dev/null; then
                 log_info "拉取 pentestswarm Docker 镜像 ..."
-                docker pull ghcr.io/armur-ai/pentestswarm:latest
+                docker pull ghcr.io/armur-ai/pentestswarm:latest || return $?
                 log_info "使用方式: docker run --rm ghcr.io/armur-ai/pentestswarm:latest scan <target> --scope <scope>"
             else
                 log_warn "需要 Go 1.24+ 或 Docker 来安装 pentestswarm"
@@ -358,7 +344,7 @@ ensure_capability() {
             register_mcp_server "pentestswarm" '{
                 "command": "pentestswarm",
                 "args": ["mcp", "serve"]
-            }'
+            }' || return $?
             log_info "Pentest Swarm AI 已配置"
             log_info "  MCP 模式: pentestswarm mcp serve"
             log_info "  扫描模式: pentestswarm scan <target> --scope <scope> --swarm"
@@ -367,74 +353,75 @@ ensure_capability() {
 
         # ─── pip 安装 ───
         frida|frida-ps)
-            install_pip_package "frida-tools"
+            install_pip_package "frida-tools" || return $?
             ;;
         idalib-mcp)
-            install_pip_package "ida-pro-mcp" "git+https://github.com/mrexodia/ida-pro-mcp.git"
+            install_pip_package "ida-pro-mcp" "git+https://github.com/mrexodia/ida-pro-mcp.git" || return $?
             log_info "运行 ida-pro-mcp --install 完成 IDA 插件安装"
             ;;
         proxycat)
-            install_pip_package "proxycat"
+            install_pip_package "proxycat" || return $?
             ;;
 
         # ─── GitHub Release ───
         jadx)
-            install_github_release "skylot/jadx" "^jadx-[0-9].*\\.zip$" "$HOME/tools/jadx"
-            chmod +x "$HOME/tools/jadx/bin/jadx" 2>/dev/null || true
+            install_github_release "skylot/jadx" "^jadx-[0-9].*\\.zip$" "$HOME/tools/jadx" || return $?
+            chmod +x "$HOME/tools/jadx/bin/jadx" 2>/dev/null || return $?
+            "$HOME/tools/jadx/bin/jadx" --version >/dev/null 2>&1 || return $?
             ;;
         ghidra-mcp)
             if command -v ghidra &>/dev/null; then
                 log_ok "ghidra 已通过 apt 安装"
             else
                 install_apt_package "ghidra" 2>/dev/null \
-                    || install_github_release "NationalSecurityAgency/ghidra" "^ghidra_.*_PUBLIC_.*\\.zip$" "$HOME/tools/ghidra"
+                    || install_github_release "NationalSecurityAgency/ghidra" "^ghidra_.*_PUBLIC_.*\\.zip$" "$HOME/tools/ghidra" || return $?
             fi
             log_warn "GhidraMCP 插件需手动安装: https://github.com/LaurieWired/GhidraMCP/releases"
             ;;
         nuclei)
             if command -v go &>/dev/null; then
                 log_info "go install nuclei ..."
-                go install github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
+                go install github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest || return $?
             else
-                install_github_release "projectdiscovery/nuclei" "^nuclei_.*_linux_amd64\\.zip$" "$HOME/tools/nuclei"
+                install_github_release "projectdiscovery/nuclei" "^nuclei_.*_linux_amd64\\.zip$" "$HOME/tools/nuclei" || return $?
             fi
             ;;
 
         # ─── npm/MCP ───
         jshookmcp)
             if ! command -v node &>/dev/null; then
-                install_apt_package "nodejs"
+                install_apt_package "nodejs" || return $?
             fi
             if ! command -v npm &>/dev/null; then
-                install_apt_package "npm"
+                install_apt_package "npm" || return $?
             fi
             register_mcp_server "jshook" '{
                 "command": "npx",
                 "args": ["-y", "@jshookmcp/jshook@latest"],
                 "env": {"JSHOOK_BASE_PROFILE": "search"}
-            }'
+            }' || return $?
             ;;
         agent-browser)
             if ! command -v node &>/dev/null; then
-                install_apt_package "nodejs"
+                install_apt_package "nodejs" || return $?
             fi
-            install_npm_global "agent-browser"
+            install_npm_global "agent-browser" || return $?
             npx playwright install chromium 2>/dev/null || true
             ;;
 
         # ─── 本地 HTTP MCP 服务 ───
         anything-analyzer)
-            register_mcp_server "anything-analyzer" "{\"url\": \"http://localhost:23816/mcp\"}"
+            register_mcp_server "anything-analyzer" "{\"url\": \"http://localhost:23816/mcp\"}" || return $?
             if [[ "$START_SERVICES" == "true" ]]; then
-                start_anything_analyzer
+                start_anything_analyzer || return $?
             fi
             ;;
         idapro)
             # 先确保 idalib-mcp 已安装
-            ensure_capability "idalib-mcp"
-            register_mcp_server "idapro" "{\"url\": \"http://127.0.0.1:13337/mcp\"}"
+            ensure_capability "idalib-mcp" || return $?
+            register_mcp_server "idapro" "{\"url\": \"http://127.0.0.1:13337/mcp\"}" || return $?
             if [[ "$START_SERVICES" == "true" ]]; then
-                start_idapro_service
+                start_idapro_service || return $?
             fi
             ;;
 
@@ -442,7 +429,7 @@ ensure_capability() {
         burpsuite-mcp)
             log_warn "MANUAL_INSTALL_REQUIRED: burpsuite-mcp"
             log_warn "Kali 预装 BurpSuite，在扩展市场搜索 MCP 插件安装"
-            register_mcp_server "burpsuite" "{\"url\": \"http://localhost:9876/mcp\"}"
+            register_mcp_server "burpsuite" "{\"url\": \"http://localhost:9876/mcp\"}" || return $?
             ;;
 
         *)
@@ -501,12 +488,14 @@ start_idapro_service() {
 # ─── 主流程 ────────────────────────────────────────────────────────────────────────
 
 RESULTS=()
+FAILED=0
 
 for cap in "${CAPABILITIES[@]}"; do
     if ensure_capability "$cap"; then
         RESULTS+=("{\"name\":\"$cap\",\"status\":\"ready\"}")
     else
         RESULTS+=("{\"name\":\"$cap\",\"status\":\"failed\"}")
+        FAILED=1
     fi
 done
 
@@ -531,3 +520,4 @@ for r in "${RESULTS[@]}"; do
     fi
 done
 echo ""
+exit "$FAILED"

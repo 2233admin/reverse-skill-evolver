@@ -460,11 +460,14 @@ def parse_evidence(
 def report_sections(text: str, heading_pattern: re.Pattern[str]) -> List[Tuple[str, str]]:
     matches = list(heading_pattern.finditer(text))
     sections: List[Tuple[str, str]] = []
+    boundary = re.compile(r"(?m)^#{1,3}\s+")
+    initial_boundary = re.compile(r"#{1,3}\s+")
     for match in matches:
         end = len(text)
-        for next_match in re.finditer(r"(?m)^#{1,3}\s+", text[match.end() :]):
-            end = match.end() + next_match.start()
-            break
+        # The old sliced search also treated the first remaining character as a line start.
+        next_match = initial_boundary.match(text, match.end()) or boundary.search(text, match.end())
+        if next_match:
+            end = next_match.start()
         sections.append((match.group(1), text[match.start() : end]))
     return sections
 

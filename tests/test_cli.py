@@ -154,7 +154,7 @@ def test_open_preserves_root_timeout_and_does_not_retry(tmp_path, monkeypatch, c
             if fail:
                 raise McpTransportError("request timed out")
             return {"structuredContent": {"success": True, "session_id": "fixture"}}
-    monkeypatch.setattr(cli_module, "McpClient", Client)
+    monkeypatch.setattr("reverse_skill.mcp.McpClient", Client)
     code = cli_module.main(["--json", *timeout_args, "open", str(target)])
     captured = capsys.readouterr()
     value = json.loads(captured.out)
@@ -198,7 +198,7 @@ def test_doctor_preserves_stages_and_actions_with_compatible_errors(monkeypatch,
             pass
         def request(self, name):
             return {"tools": [{"name": "fixture"}]}
-    monkeypatch.setattr(cli_module, "McpClient", Client)
+    monkeypatch.setattr("reverse_skill.mcp.McpClient", Client)
     result = cli_module.main([*(["--json"] if json_mode else []), "--timeout", "0.5", "--url", "http://fixture/mcp", "doctor"])
     captured = capsys.readouterr()
     failed = scenario in {"timeout", "protocol", "registration_timeout"}
@@ -274,7 +274,7 @@ def test_diagnostic_internal_failures_keep_original_exit_code(monkeypatch, capsy
         def request(self, *args):
             mcp_calls.append("request")
             return {"tools": [{"name": "fixture"}]}
-    monkeypatch.setattr(cli_module, "McpClient", Client)
+    monkeypatch.setattr("reverse_skill.mcp.McpClient", Client)
     assert cli_module.main([*(["--json"] if json_mode else []), command]) == 1
     assert mcp_calls == []
     output = capsys.readouterr()

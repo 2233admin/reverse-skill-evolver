@@ -120,10 +120,14 @@ function Sync-Directory {
 
     $remoteNames = Get-RemoteFileNames -RelDir $RelDir
     $localNames = @(Get-ChildItem -LiteralPath $localDir -File -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name)
+    $remoteSet = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    $localSet = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($name in $remoteNames) { [void]$remoteSet.Add($name) }
+    foreach ($name in $localNames) { [void]$localSet.Add($name) }
 
     if ($Direction -eq 'Pull') {
         foreach ($name in $remoteNames) {
-            if ($localNames -contains $name) {
+            if ($localSet.Contains($name)) {
                 $script:Collisions.Add("$RelDir\$name (local already has this file, remote copy NOT pulled)")
                 continue
             }
@@ -135,7 +139,7 @@ function Sync-Directory {
     }
     else {
         foreach ($name in $localNames) {
-            if ($remoteNames -contains $name) {
+            if ($remoteSet.Contains($name)) {
                 $script:Collisions.Add("$RelDir\$name (remote already has this file, local copy NOT pushed)")
                 continue
             }

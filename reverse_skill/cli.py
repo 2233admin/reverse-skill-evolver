@@ -18,12 +18,11 @@ from .evolution import validate_trace_card
 from .errors import EnvironmentUnavailable, McpError, ReverseSkillError, ToolOperationError
 from .ida import find_latest_ida, install_ida_mcp, start_server
 from .integrations import annotate_yara_matches, integration_inventory, scan_yara
-from .mcp import McpClient, probe_tool_count
+from .output import SCHEMA_VERSION, _envelope, _human, emit
 from .workflow_cli import case, gates, route
 from .index_cli import index_group, retrieve_command
 
 
-SCHEMA_VERSION = "1"
 DEFAULT_TIMEOUT = 120.0
 COMMAND_NAMES = {
     "route",
@@ -55,44 +54,6 @@ class State:
         self.name = name
         self.json_output = json_output
         self.timeout = timeout
-
-
-def _envelope(command: str, *, data: Any = None, error: Mapping[str, Any] | None = None) -> dict[str, Any]:
-    return {
-        "schemaVersion": SCHEMA_VERSION,
-        "ok": error is None,
-        "command": command,
-        "data": data if error is None else None,
-        "error": error,
-    }
-
-
-def _human(value: Any, command: str = "") -> str:
-    if command in {"status", "doctor"} and isinstance(value, Mapping):
-        return "\n".join(
-            f"{stage['name']}: {stage['status']} — {stage['detail']}\n  Next: {stage['action']}"
-            for stage in value["stages"]
-        )
-    if command == "integrations":
-        return "\n".join(
-            f"{item['name']}: {'available' if item['available'] else 'unavailable'} ({item['support']})\n"
-            + ("  Next: Use yara-scan; add --database SESSION --annotate for verified unique matches"
-               if item["name"] == "yara" and item["available"]
-               else "  Next: Install .[ida-integrations] to enable YARA scans"
-               if item["name"] == "yara"
-               else "  Next: Use the companion tool separately; its IDA bridge is discovery only")
-            for item in value["integrations"]
-        )
-    if isinstance(value, str):
-        return value
-    return json.dumps(value, ensure_ascii=False, indent=2)
-
-
-def emit(state: State, command: str, data: Any) -> None:
-    if state.json_output:
-        click.echo(json.dumps(_envelope(command, data=data), ensure_ascii=False))
-    else:
-        click.echo(_human(data, command))
 
 
 def _error_message(exc: Exception, command: str, json_output: bool) -> str:
@@ -251,6 +212,8 @@ def register(state: State) -> None:
 @click.pass_obj
 def start(state: State, ida_dir: Path | None, port: int, server_path: Path | None, replace_stale: bool) -> None:
     """Start or reuse the local IDA MCP service."""
+    from .mcp import probe_tool_count
+
     result = start_server(
         probe=probe_tool_count,
         ida_dir=str(ida_dir) if ida_dir else None,
@@ -300,6 +263,8 @@ def _status_data(state: State) -> dict[str, Any]:
         failures[0].diagnostics = data
         raise failures[0]
     try:
+        from .mcp import McpClient
+
         with McpClient(state.url, timeout=state.timeout) as client:
             tools = client.request("tools/list")
             data["mcp"].update({
@@ -344,6 +309,8 @@ def doctor(state: State) -> None:
 @click.pass_obj
 def tools(state: State) -> None:
     """List tools discovered from the active MCP endpoint."""
+    from .mcp import McpClient
+
     with McpClient(state.url, timeout=state.timeout) as client:
         emit(state, "tools", client.request("tools/list"))
 
@@ -434,6 +401,8 @@ def yara_scan(
         "writes": [],
     }
     if annotate and database:
+        from .mcp import McpClient
+
         with McpClient(state.url, timeout=state.timeout) as client:
             result["annotation"] = annotate_yara_matches(client, database, target, instances)
     emit(state, "yara-scan", result)
@@ -484,6 +453,8 @@ def open(
     }
     if preferred_session_id:
         arguments["preferred_session_id"] = preferred_session_id
+    from .mcp import McpClient
+
     with McpClient(state.url, timeout=state.timeout) as client:
         output = structured_content(client.call_tool("idb_open", arguments))
     if output.get("success") is not True:
@@ -495,6 +466,8 @@ def open(
 @click.pass_obj
 def sessions(state: State) -> None:
     """List active and discovered IDA database sessions."""
+    from .mcp import McpClient
+
     with McpClient(state.url, timeout=state.timeout) as client:
         output = structured_content(client.call_tool("idb_list"))
     if output.get("error"):
@@ -527,6 +500,8 @@ def call_tool(
         raise click.BadParameter("arguments and input responses must be JSON objects")
     if database:
         arguments["database"] = database
+    from .mcp import McpClient
+
     with McpClient(state.url, timeout=state.timeout) as client:
         result = client.call_tool(
             tool,
@@ -543,6 +518,8 @@ def call_tool(
 @click.pass_obj
 def close(state: State, database: str, no_save: bool) -> None:
     """Close an IDA database session."""
+    from .mcp import McpClient
+
     with McpClient(state.url, timeout=state.timeout) as client:
         output = structured_content(
             client.call_tool("idb_close", {"database": database, "save": not no_save})

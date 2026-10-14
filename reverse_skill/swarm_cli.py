@@ -8,7 +8,7 @@ from pathlib import Path
 
 import click
 
-from .cli import _envelope
+from .output import _envelope
 from .errors import ReverseSkillError, ToolOperationError
 from .swarm import MAX_CONTEXT_BYTES, run_swarm
 

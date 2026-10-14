@@ -2,12 +2,22 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 import click
 
-from .asr import AsrClient, KINDS, install_item
+from .asr_constants import KINDS
 from .errors import ToolOperationError
+
+if TYPE_CHECKING:
+    from .asr import AsrClient as _AsrClient
+
+
+def AsrClient(**options: Any) -> _AsrClient:
+    """Construct the network client only when an ASR command runs."""
+    from .asr import AsrClient as client_type
+
+    return client_type(**options)
 
 
 @click.group(no_args_is_help=True)
@@ -15,8 +25,8 @@ def asr() -> None:
     """Browse and manage Forefy ASR; audited items only, excluding MCP servers."""
 
 
-def run(state: Any, action: str, operation: Callable[[AsrClient], Any]) -> None:
-    from .cli import emit
+def run(state: Any, action: str, operation: Callable[[_AsrClient], Any]) -> None:
+    from .output import emit
 
     with AsrClient(timeout=state.timeout) as client:
         result = operation(client)
@@ -62,6 +72,8 @@ def install_script(state: Any, item_id: str, **options: Any) -> None:
 @click.pass_obj
 def install(state: Any, item_id: str, destination: Path) -> None:
     """Save audited raw files into a new directory without running them."""
+    from .asr import install_item
+
     run(state, "install", lambda client: install_item(client.item(item_id), destination))
 
 

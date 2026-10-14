@@ -7,11 +7,26 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 import venv
 from pathlib import Path
 
 
-def runtime_python(package: Path, runtime: Path) -> Path:
+_BOOTSTRAP = """
+import json, sys
+try:
+    import click, httpx, reverse_skill
+    from reverse_skill.cli import main
+except ImportError as exc:
+    with open(sys.argv[1], 'w', encoding='utf-8') as signal:
+        json.dump({'import_error': str(exc)}, signal)
+    raise SystemExit(86)
+sys.argv = ['reverse-skill', *sys.argv[2:]]
+raise SystemExit(main())
+"""
+
+
+def runtime_python(package: Path, runtime: Path, *, repair: bool = False) -> Path:
     marker = runtime / "reverse-skill-runtime.json"
     source = str(package.resolve())
     signature = hashlib.sha256(
@@ -31,11 +46,7 @@ def runtime_python(package: Path, runtime: Path) -> Path:
     interpreter = runtime / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
     if not interpreter.is_file():
         venv.EnvBuilder(with_pip=True).create(runtime)
-    ready = subprocess.run(
-        [str(interpreter), "-I", "-X", "utf8", "-c", "import click, httpx, reverse_skill"],
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False,
-    )
-    if state.get("signature") != signature or ready.returncode:
+    if state.get("signature") != signature or repair:
         print("Preparing reverse-skill's private Python runtime...", file=sys.stderr)
         completed = subprocess.run(
             [str(interpreter), "-I", "-X", "utf8", "-m", "pip", "install", "--disable-pip-version-check", "--quiet",
@@ -68,10 +79,23 @@ def main(arguments: list[str] | None = None) -> int:
             raise RuntimeError("Reverse Skill Evolver requires Python 3.10 or newer.")
         if not (package / "pyproject.toml").is_file() or not (package / "reverse_skill").is_dir():
             raise RuntimeError("Install the complete reverse-skill-evolver skill, including its Python source.")
-        interpreter = runtime_python(package, runtime_directory(package))
-        return subprocess.run(
-            [str(interpreter), "-I", "-X", "utf8", "-m", "reverse_skill", *arguments], check=False,
-        ).returncode
+        runtime = runtime_directory(package)
+        interpreter = runtime_python(package, runtime)
+        with tempfile.TemporaryDirectory(prefix="reverse-skill-import-") as temporary:
+            signal = Path(temporary) / "failure.json"
+            for attempt in range(2):
+                completed = subprocess.run(
+                    [str(interpreter), "-I", "-X", "utf8", "-c", _BOOTSTRAP, str(signal), *arguments],
+                    check=False,
+                )
+                # Only the pre-dispatch import block writes this private signal.
+                if completed.returncode != 86 or not signal.is_file():
+                    return completed.returncode
+                failure = json.loads(signal.read_text(encoding="utf-8"))
+                if attempt:
+                    raise RuntimeError(f"Runtime import failed after repair: {failure['import_error']}")
+                signal.unlink()
+                interpreter = runtime_python(package, runtime, repair=True)
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
         if "--json" in arguments:
             print(json.dumps({
