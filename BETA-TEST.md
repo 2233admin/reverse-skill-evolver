@@ -38,7 +38,21 @@ python -m venv .venv
 .\.venv\Scripts\reverse-skill-swarm.exe --help
 ```
 
-On POSIX, use `.venv/bin/python`, `.venv/bin/reverse-skill` and `.venv/bin/reverse-skill-swarm`. CLI version must be `1.2.0b2`. Repository gates require the complete source bundle; run them from its root.
+On POSIX, use `.venv/bin/python`, `.venv/bin/reverse-skill` and `.venv/bin/reverse-skill-swarm`. CLI version must be `1.2.0b2`. A wheel locates gates relative to its installed module, so changing the working directory does not give it the full repository. For repository gates, use the complete bundle's launcher:
+
+```console
+python ./scripts/run.py --json gates all
+```
+
+## Three-call swarm example
+
+Prepare a UTF-8 `evidence.txt` file that you permit your configured OMP model to receive. OMP CLI and its model configuration must already work. From the wheel installation directory in PowerShell, run:
+
+```powershell
+.\.venv\Scripts\reverse-skill-swarm.exe --goal "List supported conclusions and unknowns" --context .\evidence.txt --output .\runs\beta-swarm-001 --max-calls 3 --max-tasks 1 --max-parallel 1 --timeout 60 --json
+```
+
+This allows one coordination call, one analysis call and one summary call. The output directory must be new. Inspect `run.json`, the logical call count, per-agent records and the byte/hash-preserved `context.txt`. Execution can fail on invalid model JSON, timeout or missing provider configuration. Analysis remains `advisory`; provider retries, tokens and cost are outside the three-call logical budget. This command invokes the user's configured model, unlike the help and local route/list commands above.
 
 ## What to test
 
