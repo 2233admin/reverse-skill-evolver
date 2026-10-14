@@ -23,6 +23,7 @@ from .index_store import (
     NodeNotFound,
     close,
     compute_root_hash,
+    count_descendants,
     default_index_path,
     load_contracts,
     open_read_only,
@@ -178,21 +179,22 @@ def index_get_tree(
     resolved = _resolve_index_path(root, index_path)
     connection = open_read_only(resolved)
     try:
+        # Count and bounded rows must describe the same database snapshot.
+        connection.execute("BEGIN")
         node = read_node(connection, node_id)
         if node is None:
             raise NodeNotFound(f"node_id not found in index: {node_id}")
         ancestors = read_subtree_ancestors(connection, node_id)
-        subtree = read_subtree(connection, node_id)
-        descendants = subtree[1:]
-        truncated = len(descendants) > _MAX_DESCENDANTS
-        limited = descendants[:_MAX_DESCENDANTS]
+        descendant_count = count_descendants(connection, node_id)
+        limited = read_subtree(connection, node_id, limit=_MAX_DESCENDANTS, exclude_root=True)
+        truncated = descendant_count > _MAX_DESCENDANTS
         meta = _read_meta(connection)
         payload = {
             "status": "observed",
             "node": _node_payload(node),
             "ancestors": [_node_payload(item) for item in ancestors],
             "descendants": [_node_payload(item) for item in limited],
-            "descendant_count": len(descendants),
+            "descendant_count": descendant_count,
             "descendants_truncated": truncated,
         }
     finally:

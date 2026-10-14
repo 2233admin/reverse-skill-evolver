@@ -1,0 +1,80 @@
+{
+  "python": "3.14.7",
+  "sqlite": "3.50.4",
+  "scope": "synthetic production-function evidence; not native tools or total RSS",
+  "vm_precision_opcodes": 100,
+  "DB-01": {
+    "nodes": 10000,
+    "deleted_documents": 10,
+    "vm_steps": 3437500,
+    "fts_delete_statements": 20,
+    "remaining_rows_sha256": "bec1157ed8013c8c28b3a2f1ece393fb8c51664bb5be9847df1997f0cca3ed5c"
+  },
+  "DB-02": {
+    "vm_steps": 60000,
+    "plans": [
+      "SCAN nodes USING INDEX sqlite_autoindex_nodes_1"
+    ],
+    "hits": [
+      [
+        "0000000000002710",
+        1.0
+      ]
+    ]
+  },
+  "DB-03": {
+    "wide_rows_fetched": 10000,
+    "python_peak_bytes": 12585357,
+    "descendant_count": 9999,
+    "returned": 500,
+    "truncated": true,
+    "payload_sha256": "02b9a061528f2628d62113a9037df315da0bba92d5f598cebfb365396193cff1"
+  },
+  "MEM-01": {
+    "input_bytes": 83886080,
+    "requested_reads": [
+      -1
+    ],
+    "closed": false,
+    "python_peak_bytes": 83887707,
+    "error": "IDA export exceeds 67108864 bytes"
+  },
+  "ALG-01": {
+    "headings": 40000,
+    "sibling_comparisons": 800020000,
+    "child_visits_including_body_assignment": 40000,
+    "rows_sha256": "95e58da2b584ba60da5564f9f98ae4f581400a3187179037f87da2ec4cd9a510"
+  },
+  "ALG-02": {
+    "provider": "synthetic structure/span output",
+    "symbols": 8000,
+    "title_comparisons": 31996000,
+    "nodes_sha256": "4781b235de27aed32efd0890c8090b82418ae4056a232c2d29b10a39b100256c"
+  },
+  "ALG-03": {
+    "queries": 2000,
+    "rows": 4002000,
+    "links": 2000,
+    "edges_sha256": "234b0b6077832f926eb74f7bf4589b3e9a0f05ac64e56de9bd4d4593e3eeb2c2"
+  },
+  "DATA-01": {
+    "documents": 8001,
+    "removed": 4000,
+    "path_comparisons": 24042000,
+    "plan_sha256": "73fa49b768b3f64bd01c9b9cff52734e8b9c10406002cd5afff9077e5dd9e683",
+    "scope": "actual update membership with IO/FTS mocked; integration regression separately keeps real IDA"
+  },
+  "DATA-02": {
+    "matches": 800,
+    "node_id_hash_calls": 320400,
+    "hits_sha256": "daddc388e544261f27993695c28641769c9ba130faeca280a157e0c9867a31e9",
+    "scope": "actual SQL results with instrumented str node IDs"
+  },
+  "SEC-02": {
+    "unclosed_openings": 32000,
+    "forward_find_characters": null,
+    "links": [],
+    "observed_seconds": 0.38840569998137653,
+    "limit": "elapsed time is informational; regex backtracking is not measured by str.find instrumentation"
+  }
+}
