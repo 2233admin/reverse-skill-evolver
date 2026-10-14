@@ -5,6 +5,7 @@ import json
 import re
 import subprocess
 import sys
+import time
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -15,6 +16,7 @@ _DEFAULT_PATTERNS = (
     r"memcpy|strcpy|sprintf|system|exec|crypt|socket|connect|recv|send|read|write",
 )
 _REGEX_BATCH_SECONDS = 2.0
+_REGEX_PAYLOAD_BYTES = 256 * 1024
 
 
 def _limit(value, name, maximum, minimum=0):
@@ -177,37 +179,64 @@ def _matches(rows, pattern, value_of, max_matches, max_scan, max_chars):
 
 
 def _custom_matches(sources, patterns, max_matches, max_scan, max_chars):
-    batches = []
-    for rows, value_of in sources:
-        subjects = []
-        if max_matches:
-            for row in rows[:max_scan]:
-                value = value_of(row)
-                subjects.append([value[:max_chars], len(value) > max_chars])
-        batches.append({"total": len(rows), "subjects": subjects})
-    payload = json.dumps({
-        "patterns": [pattern.pattern for pattern in patterns],
-        "batches": batches, "max_matches": max_matches,
-    }, ensure_ascii=True)
+    deadline = time.monotonic() + _REGEX_BATCH_SECONDS
     # compile(..., script_path, 'exec') is also the documented native loading path.
     helper = Path(_custom_matches.__code__.co_filename).resolve().with_name("regex_worker.py")
-    try:
-        result = subprocess.run(
-            [sys.executable, "-I", "-B", str(helper)], input=payload,
-            capture_output=True, text=True, timeout=_REGEX_BATCH_SECONDS,
-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-        )
-    except subprocess.TimeoutExpired as error:
-        # subprocess.run kills and reaps only this matching child before raising.
-        raise RuntimeError(f"Custom triage regex batch exceeded {_REGEX_BATCH_SECONDS:g} seconds") from error
-    if result.returncode:
-        raise RuntimeError(f"Custom triage regex worker failed (exit {result.returncode})")
-    try:
-        scans = json.loads(result.stdout)
-        return [([rows[index] for index in scan["indices"]], scan["coverage"])
-                for (rows, _), scan in zip(sources, scans, strict=True)]
-    except (ValueError, KeyError, IndexError, TypeError) as error:
-        raise RuntimeError("Custom triage regex worker returned an invalid result") from error
+
+    def remaining():
+        budget = deadline - time.monotonic()
+        if budget <= 0:
+            raise RuntimeError(f"Custom triage regex batch exceeded {_REGEX_BATCH_SECONDS:g} seconds")
+        return budget
+
+    scans = []
+    for (rows, value_of), pattern in zip(sources, patterns, strict=True):
+        matches, scanned, text_truncated = [], 0, False
+        while scanned < min(len(rows), max_scan) and len(matches) < max_matches:
+            subjects = []
+            batch = {"total": len(rows), "subjects": subjects}
+            request = {"patterns": [pattern.pattern], "batches": [batch],
+                       "max_matches": max_matches - len(matches)}
+            encoded_size = len(json.dumps(request, ensure_ascii=True))
+            # Preparing at most the remaining match budget avoids fetching unused
+            # subjects when the first rows satisfy a small match limit.
+            end = min(len(rows), max_scan, scanned + min(64, request["max_matches"]))
+            for index in range(scanned, end):
+                remaining()
+                value = value_of(rows[index])
+                subject = [value[:max_chars], len(value) > max_chars]
+                addition = len(json.dumps(subject, ensure_ascii=True)) + 2
+                if encoded_size + addition > _REGEX_PAYLOAD_BYTES:
+                    if not subjects:
+                        raise RuntimeError("Custom triage regex subject exceeds the payload byte budget")
+                    break
+                subjects.append(subject)
+                encoded_size += addition
+            payload = json.dumps(request, ensure_ascii=True)
+            try:
+                result = subprocess.run(
+                    [sys.executable, "-I", "-B", str(helper)], input=payload,
+                    capture_output=True, text=True, timeout=remaining(),
+                    creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                )
+            except subprocess.TimeoutExpired as error:
+                # run kills and reaps only this matching child before raising.
+                raise RuntimeError(f"Custom triage regex batch exceeded {_REGEX_BATCH_SECONDS:g} seconds") from error
+            if result.returncode:
+                raise RuntimeError(f"Custom triage regex worker failed (exit {result.returncode})")
+            try:
+                [scan] = json.loads(result.stdout)
+                matches.extend(rows[scanned + index] for index in scan["indices"])
+                scanned += scan["coverage"]["scanned"]
+                text_truncated |= scan["coverage"]["text_truncated"]
+            except (ValueError, KeyError, IndexError, TypeError) as error:
+                raise RuntimeError("Custom triage regex worker returned an invalid result") from error
+            remaining()
+        scans.append((matches, {
+            "total": len(rows), "scanned": scanned, "scan_truncated": scanned < len(rows),
+            "matches": len(matches), "text_truncated": text_truncated,
+        }))
+    return scans
 
 
 def triage(

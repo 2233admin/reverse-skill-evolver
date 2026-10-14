@@ -26,11 +26,15 @@ Concurrent first registration SHALL install exactly one callback, publishing act
 - **THEN** one callback remains and each outgoing request receives one header edit and one replacement
 
 ### Requirement: Bound custom Python regex matching
-Custom triage regexes SHALL run as one owned process batch with a finite deadline, accepted Python regex syntax, explicit timeout/failure, and termination/reaping on every exit. Native helpers SHALL remain in the original worker.
+Custom triage regexes SHALL use owned process chunks with a shared finite deadline covering preparation and matching, a 256 KiB encoded payload bound, accepted Python regex syntax, explicit timeout/failure, and termination/reaping on every exit. Native helpers SHALL remain in the original worker.
 
 #### Scenario: A nested repetition consumes excessive CPU
 - **WHEN** `^(a+)+$` scans a long near-match
 - **THEN** triage raises a bounded failure, emits no successful report, and leaves no owned matching child running
+
+#### Scenario: A large scan reaches its match limit immediately
+- **WHEN** the first of 100,000 maximum-length subjects matches and the match limit is one
+- **THEN** only that subject is prepared and scanned, output retains the original total and truncation coverage, and JSON escaping cannot exceed the payload byte bound
 
 ### Requirement: Snapshot only executed signature fixtures
 Replay SHALL validate all fixtures, freeze the original total, and snapshot/hash only the maxCases prefix before invoking callbacks.

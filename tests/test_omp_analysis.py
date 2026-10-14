@@ -166,10 +166,11 @@ def test_pathological_custom_batch_fails_and_reaps_child_then_recovers(namespace
     try:
         with pytest.raises(RuntimeError, match="Custom triage regex batch exceeded 2 seconds"):
             analysis.triage(namespace, "owned-native", string_pattern=r"^(a+)+$")
-        assert len(children) == 1 and children[0].poll() is not None
+        assert children and all(child.poll() is not None for child in children)
         assert namespace["queries"] == []
+        failed_children = len(children)
         assert analysis.triage(namespace, "owned-native", string_pattern=r"a+")["coverage"]["source_scans"]["strings"]["matches"] == 1
-        assert len(children) == 2 and all(child.poll() is not None for child in children)
+        assert len(children) > failed_children and all(child.poll() is not None for child in children)
     finally:
         for child in children:
             if child.poll() is None:
@@ -214,3 +215,68 @@ def test_custom_batch_preserves_zero_and_truncated_scan_coverage(namespace, max_
                              max_matches_per_source=max_matches, max_scan_per_source=max_scan)
     custom["coverage"]["patterns"] = local["coverage"]["patterns"]
     assert custom == local
+
+
+def test_custom_batch_stops_preparing_subjects_after_first_match():
+    import re
+    calls = []
+    rows = [(1, "match" + "\N{SNOWMAN}" * 16379)] * 100000
+
+    def subject(row):
+        calls.append(row)
+        assert len(calls) == 1, "must not prepare the rest of a large scan after one match"
+        return row[1]
+
+    [(matches, scan)] = analysis._custom_matches(
+        [(rows, subject)], [re.compile("match")], 1, 100000, 16384,
+    )
+    assert matches == [rows[0]]
+    assert scan == {"total": 100000, "scanned": 1, "scan_truncated": True,
+                    "matches": 1, "text_truncated": False}
+
+
+def test_custom_batch_bounds_encoded_payload_and_combines_chunk_coverage(monkeypatch):
+    import re
+    payload_sizes = []
+    run = analysis.subprocess.run
+
+    def bounded(*args, **kwargs):
+        payload_sizes.append(len(kwargs["input"].encode("ascii")))
+        assert payload_sizes[-1] <= 4096
+        return run(*args, **kwargs)
+
+    monkeypatch.setattr(analysis, "_REGEX_PAYLOAD_BYTES", 4096, raising=False)
+    monkeypatch.setattr(analysis, "_REGEX_BATCH_SECONDS", 10)
+    monkeypatch.setattr(analysis.subprocess, "run", bounded)
+    rows = [(index, "\N{SNOWMAN}" * 300 + ("match" if index == 6 else "")) for index in range(7)]
+    rows[0] = (0, "\N{SNOWMAN}" * 400)
+    [(matches, scan)] = analysis._custom_matches(
+        [(rows, lambda row: row[1])], [re.compile("match")], 100, 7, 305,
+    )
+    assert len(payload_sizes) > 1
+    assert matches == [rows[6]]
+    assert scan == {"total": 7, "scanned": 7, "scan_truncated": False,
+                    "matches": 1, "text_truncated": True}
+
+
+def test_custom_chunks_share_one_deadline_including_preparation(monkeypatch):
+    import json
+    import re
+    import subprocess
+    clock, timeouts = [0.0], []
+
+    def slow_chunk(*args, **kwargs):
+        timeouts.append(kwargs["timeout"])
+        request = json.loads(kwargs["input"])
+        batch = request["batches"][0]
+        clock[0] += 1.1
+        result = [{"indices": [], "coverage": {"scanned": len(batch["subjects"]), "text_truncated": False}}]
+        return subprocess.CompletedProcess(args[0], 0, stdout=json.dumps(result))
+
+    monkeypatch.setattr(analysis.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(analysis.subprocess, "run", slow_chunk)
+    with pytest.raises(RuntimeError, match="Custom triage regex batch exceeded 2 seconds"):
+        analysis._custom_matches(
+            [([(1, "x")] * 100, lambda row: row[1])], [re.compile("never")], 1, 100, 10,
+        )
+    assert timeouts == pytest.approx([2.0, 0.9])

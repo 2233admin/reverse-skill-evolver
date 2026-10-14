@@ -68,6 +68,8 @@
 
 ## 修改与副作用
 
+整合追加：Codex App 在原 head `e7b3b91` 指出自定义 regex 在子进程启动前预复制所有 subjects。两项新增回归在原实现失败，分别证明 max_matches=1 仍准备第二项、JSON 超过字节预算。现在每批编码上限256 KiB，准备条数不超过剩余match预算且最多64，达到match上限即停止；所有源/批次与准备阶段共用原两秒deadline。输出全局index、扫描数、clipping和truncation保留，默认路径和原生helper所有权不变。相关Python MCP/OMP回归62 passed；新增确定性时钟回归验证第二批只剩0.9秒且不会重置deadline。原故障清理测试验证所有已启动匹配子进程均退出，而不再假设整个操作恰好一个子进程。该段为整合阶段新证据，原作者完整测试记录仍保留其原快照范围。
+
 生产改动：`reverse_skill/mcp.py`；bridge、Java server 和其 Gradle 行为 gate；原生 `ida_analysis.py`、相邻 `regex_worker.py` 和 triage 说明；JS signature-replay。测试仅为 #58 允许的 MCP/OMP/bridge/Java 文件，另有本 issue 的 OpenSpec 与本报告。
 
 没有新依赖，没有改 README/pyproject/通用 CI/版本/路由/索引身份/ASR 优先/授权和能力门/默认只读 plan；没有另派 Agent、新建工作区、用户级安装、配置修改、main 推送、其它 PR 合并或 Release。主仓脏文件保持只读，审计目录保持只读。生成的本地构建和复现 scratch 不提交；仅使用现有工具与依赖缓存。自有 HTTP/Node/匹配子进程均在测试清理路径停止；不清理共享服务或其它 session 进程。
