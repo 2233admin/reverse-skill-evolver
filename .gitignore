@@ -49,6 +49,12 @@ work/
 # Build artifacts
 burp-mcp-full/build/classes/
 burp-mcp-full/build/libs/
+burp-mcp-full/build/reports/
+burp-mcp-full/build/resources/
+burp-mcp-full/build/tmp/
+burp-mcp-full/build/test-results/
+burp-mcp-full/build/publications/
+burp-mcp-full/.gradle/
 burp-mcp-full/lib/
 *.class
 *.jar
@@ -58,3 +64,9 @@ BOOTSTRAP.md
 # Task-local verification runtimes, native caches and private agent state
 .verification/
 .reverse-skill/
+
+# Overnight/autoplan scratch and per-machine agent state
+candidate-runs/
+.gstack/tmp/
+.night/
+.pi-glla/

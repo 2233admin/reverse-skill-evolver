@@ -5,7 +5,7 @@ from typing import Any
 import httpx
 import pytest
 
-from reverse_skill.errors import McpProtocolError
+from reverse_skill.errors import McpProtocolError, McpTransportError
 from reverse_skill.mcp import (
     MODERN_VERSION,
     McpClient,
@@ -323,7 +323,31 @@ def test_invalid_modern_discovery_body_does_not_silently_fall_back() -> None:
     def handler(_: httpx.Request) -> httpx.Response:
         return httpx.Response(502, text="<html>bad gateway</html>", headers={"Content-Type": "text/html"})
 
-    with pytest.raises(McpProtocolError, match="not valid JSON"):
+    # A 5xx means the request never reached a usable MCP endpoint, so this is a
+    # transport failure rather than a protocol-negotiation fault. It must still
+    # surface instead of silently falling back to legacy discovery.
+    with pytest.raises(McpTransportError, match="HTTP 502"):
+        McpClient("http://mock/mcp", transport=httpx.MockTransport(handler))
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        '{"jsonrpc":"2.0","id":"other","error":{"code":-32603,"message":"boom"}}',
+        '{"jsonrpc":"2.0","id":"other","result":{}}',
+    ],
+)
+def test_server_error_with_well_formed_body_is_a_transport_failure(body: str) -> None:
+    """A 5xx must be classified before the body is parsed.
+
+    A syntactically valid JSON-RPC body previously took the protocol paths (id
+    mismatch, or a reported error), masking the fact that the server never
+    served a usable MCP endpoint.
+    """
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(502, text=body, headers={"Content-Type": "application/json"})
+
+    with pytest.raises(McpTransportError, match="HTTP 502"):
         McpClient("http://mock/mcp", transport=httpx.MockTransport(handler))
 
 
