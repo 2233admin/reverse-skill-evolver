@@ -1,13 +1,14 @@
 # v1.2.0-beta.2 verification scope
 
-The release candidate starts from reviewed main `5f84b569598cfb9f9ffd8453ae019667a02b2e50`. Preparation changes package/version metadata, release documentation and the version assertion. It introduces no runtime logic or dependency change. Python version is `1.2.0b2`; OpenCLI and the release use `1.2.0-beta.2`.
+The release candidate starts from main `05a884cbff4bbf636a4fc1d873ebb351435a0cce`, which is a main that already contains the MCP error-classification repair (PR #63, commits `09344cc`, `9bb7a16`) and the `.gitignore` hygiene commit. Preparation changes package/version metadata, release documentation and the version assertion. It introduces no runtime logic or dependency change of its own. Python version is `1.2.0b2`; OpenCLI and the release use `1.2.0-beta.2`.
 
 ## Actual validation
 
 | Check | Result and scope |
 |---|---|
-| Base main Linux CI | [Project checks](https://github.com/2233admin/reverse-skill-evolver/actions/runs/38524505615): Python 3.10, 788 passed / 55 skipped; gates all clean; Java 21 check and POSIX build entrypoints passed. This covers the repaired runtime before the metadata-only candidate. |
-| Candidate clean clone | Fresh clone of main, version/documentation changes, a new isolated editable test environment: Python 3.14, **838 passed / 5 skipped**. |
+| Base main Linux CI | [Project checks](https://github.com/2233admin/reverse-skill-evolver/actions/runs/38524505615): Python 3.10, 788 passed / 55 skipped; gates all clean; Java 21 check and POSIX build entrypoints passed. This run predates the MCP classification repair and therefore covers the repaired runtime only up to `5f84b569`. |
+| Candidate clean clone | Version/documentation changes applied on main `05a884cb`, a new isolated editable test environment: **840 passed / 5 skipped**. This is the first run in this document that exercises the candidate together with the merged MCP repair. |
+| MCP classification coverage | The merged repair's own regression (`tests/test_mcp.py`, server-error classification with and without a well-formed JSON-RPC body) passes inside the candidate suite above. |
 | Candidate metadata and distribution regression | **90 passed** across CLI, repository gates and whole-skill distribution. OpenSpec strict validation passed with an explicit metadata/documentation-only change. |
 | Candidate repository contracts | gates all clean; Python metadata, CLI and OpenCLI prerelease versions agree. |
 | Java component | A clean Git export built with isolated JDK 21 passed Gradle `check jar`, including behavior, scheduler and HTTP-handler race regressions. The attached JAR contains Java 21 bytecode, class major 65; the component retains version `2.0.0`. |
