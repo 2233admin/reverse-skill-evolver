@@ -5,7 +5,7 @@ from typing import Any
 import httpx
 import pytest
 
-from reverse_skill.errors import McpProtocolError
+from reverse_skill.errors import McpProtocolError, McpTransportError
 from reverse_skill.mcp import (
     MODERN_VERSION,
     McpClient,
@@ -323,7 +323,10 @@ def test_invalid_modern_discovery_body_does_not_silently_fall_back() -> None:
     def handler(_: httpx.Request) -> httpx.Response:
         return httpx.Response(502, text="<html>bad gateway</html>", headers={"Content-Type": "text/html"})
 
-    with pytest.raises(McpProtocolError, match="not valid JSON"):
+    # A 5xx means the request never reached a usable MCP endpoint, so this is a
+    # transport failure rather than a protocol-negotiation fault. It must still
+    # surface instead of silently falling back to legacy discovery.
+    with pytest.raises(McpTransportError, match="not valid JSON"):
         McpClient("http://mock/mcp", transport=httpx.MockTransport(handler))
 
 

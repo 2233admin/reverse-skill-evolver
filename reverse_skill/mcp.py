@@ -12,7 +12,7 @@ from typing import Any, Mapping
 
 import httpx
 
-from .errors import McpProtocolError, McpTransportError, ToolOperationError
+from .errors import McpError, McpProtocolError, McpTransportError, ToolOperationError
 
 
 MODERN_VERSION = "2026-07-28"
@@ -295,6 +295,14 @@ class McpClient:
         content = b"".join(chunks).decode(response.encoding or "utf-8")
         return self._parse_response(content, content_type, request_id), content
 
+    @staticmethod
+    def _missing_response_error(status_code: int, detail: str) -> McpError:
+        """An HTTP server error means the transport never reached a working MCP
+        endpoint; only a 2xx/4xx body that is not valid JSON-RPC is a protocol fault."""
+        if status_code == 0 or status_code >= 500:
+            return McpTransportError(detail)
+        return McpProtocolError(detail)
+
     def _send(self, message: Mapping[str, Any], extra_headers: Mapping[str, str] | None = None) -> HttpResult:
         method = str(message["method"])
         headers = {"Accept": "application/json, text/event-stream", "Mcp-Method": method}
@@ -316,9 +324,11 @@ class McpClient:
 
         timeout = self._remaining_timeout()
         self._check_deadline()
+        status_code = 0
         try:
             with self.http.stream("POST", self.url, headers=headers, json=message, timeout=timeout) as response:
                 self._check_deadline()
+                status_code = response.status_code
                 response.stream = _CheckedStream(response.stream, self._check_deadline)
                 parsed, content = self._read_response(response, message.get("id"))
                 return HttpResult(
@@ -329,14 +339,17 @@ class McpClient:
         except httpx.RequestError as exc:
             raise McpTransportError(f"MCP request failed: {exc}") from exc
         except (json.JSONDecodeError, UnicodeDecodeError) as exc:
-            raise McpProtocolError(f"MCP response is not valid JSON: {exc}") from exc
+            raise self._missing_response_error(
+                status_code, f"MCP response is not valid JSON: {exc}"
+            ) from exc
 
     def _discover_modern(self) -> bool:
         for _ in range(2):
             response = self._send(self._message(self._next_id(), "server/discover"))
             if response.message is None:
-                raise McpProtocolError(
-                    f"MCP modern discovery failed: HTTP {response.status_code} returned no JSON-RPC response"
+                raise self._missing_response_error(
+                    response.status_code,
+                    f"MCP modern discovery failed: HTTP {response.status_code} returned no JSON-RPC response",
                 )
             result = response.message.get("result")
             error = response.message.get("error")
@@ -380,7 +393,9 @@ class McpClient:
         }
         response = self._send(message)
         if not response.message or response.message.get("error"):
-            raise McpProtocolError("MCP legacy initialize failed")
+            raise self._missing_response_error(
+                response.status_code, "MCP legacy initialize failed"
+            )
         result = response.message.get("result") or {}
         negotiated = result.get("protocolVersion")
         if negotiated not in LEGACY_VERSIONS:
@@ -400,7 +415,10 @@ class McpClient:
     ) -> dict[str, Any]:
         response = self._send(self._message(self._next_id(), method, params), extra_headers)
         if response.message is None:
-            raise McpProtocolError(f"MCP {method} returned no JSON-RPC response (HTTP {response.status_code})")
+            raise self._missing_response_error(
+                response.status_code,
+                f"MCP {method} returned no JSON-RPC response (HTTP {response.status_code})",
+            )
         if response.message.get("error") is not None:
             raise McpProtocolError(
                 f"MCP {method} failed: {json.dumps(response.message['error'], ensure_ascii=False)}"
