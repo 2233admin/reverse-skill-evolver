@@ -329,6 +329,13 @@ class McpClient:
             with self.http.stream("POST", self.url, headers=headers, json=message, timeout=timeout) as response:
                 self._check_deadline()
                 status_code = response.status_code
+                if response.status_code >= 500:
+                    # A server error means the request never reached a working MCP
+                    # endpoint, whatever body accompanied it. Check before parsing so
+                    # an id mismatch or JSON error cannot mask the status.
+                    raise self._missing_response_error(
+                        response.status_code, f"MCP request failed: HTTP {response.status_code}"
+                    )
                 response.stream = _CheckedStream(response.stream, self._check_deadline)
                 parsed, content = self._read_response(response, message.get("id"))
                 return HttpResult(
