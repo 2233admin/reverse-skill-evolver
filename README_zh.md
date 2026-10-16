@@ -4,7 +4,7 @@
 
 [English](README.md) · 中文 · [AI 社区](https://linux.do)
 
-[![Project checks](https://github.com/2233admin/reverse-skill-evolver/actions/workflows/project-checks.yml/badge.svg?branch=main)](https://github.com/2233admin/reverse-skill-evolver/actions/workflows/project-checks.yml) [![Skills](https://img.shields.io/badge/Skills-Browse-8A2BE2.svg)](SKILL.md) [![MIT license](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) [![Testing release](https://img.shields.io/badge/release-v1.2.0--beta.1-orange.svg)](https://github.com/2233admin/reverse-skill-evolver/releases/tag/v1.2.0-beta.1)
+[![Project checks](https://github.com/2233admin/reverse-skill-evolver/actions/workflows/project-checks.yml/badge.svg?branch=main)](https://github.com/2233admin/reverse-skill-evolver/actions/workflows/project-checks.yml) [![Skills](https://img.shields.io/badge/Skills-Browse-8A2BE2.svg)](SKILL.md) [![MIT license](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) [![Testing release](https://img.shields.io/badge/release-v1.2.0--beta.2-orange.svg)](https://github.com/2233admin/reverse-skill-evolver/releases/tag/v1.2.0-beta.2)
 
 Reverse Skill Evolver 为 Claude Code、Codex 和 OMP 提供逆向工程 skills 与工具接入。代理根据目标和任务选择工作流，使用本机可用的工具，并把分析过程和结果留成可复查的记录。
 
@@ -96,11 +96,11 @@ python "<PACK_ROOT>/scripts/run.py" --json asr list
 
 ## 从这里开始
 
-本轮测试版为 [v1.2.0-beta.1](https://github.com/2233admin/reverse-skill-evolver/releases/tag/v1.2.0-beta.1)。下载 Release 中的完整 ZIP，可以一起取得 skills、Python 安装包和 Burp JAR。安装和蜂群测试步骤见 [测试指南](https://github.com/2233admin/reverse-skill-evolver/blob/v1.2.0-beta.1/BETA-TEST.md)。
+本轮测试版为 [v1.2.0-beta.2](https://github.com/2233admin/reverse-skill-evolver/releases/tag/v1.2.0-beta.2)。下载 Release 中的完整 ZIP，可以一起取得 skills、Python 安装包和 Burp JAR。安装和蜂群测试步骤见 [测试指南](https://github.com/2233admin/reverse-skill-evolver/blob/v1.2.0-beta.2/BETA-TEST.md)。
 
 | 先做什么 | 从哪里进入 | 需要准备什么 |
 |---|---|---|
-| 试一次蜂群分析 | [测试指南](https://github.com/2233admin/reverse-skill-evolver/blob/v1.2.0-beta.1/BETA-TEST.md)中的三次调用示例 | 已配置模型的 OMP CLI，以及允许发送给该模型的 UTF-8 证据 |
+| 试一次蜂群分析 | [测试指南](https://github.com/2233admin/reverse-skill-evolver/blob/v1.2.0-beta.2/BETA-TEST.md)中的三次调用示例 | 已配置模型的 OMP CLI，以及允许发送给该模型的 UTF-8 证据 |
 | 完成一条本地二进制任务 | [本地 IDA 示例](#0-先完成一条本地-ida-任务) | Python 3.10+、已许可的 IDA/idalib、`idalib-mcp` 和自己的样本 |
 | 把技能接入现有客户端 | [客户端接入说明](#7-claude-code--codex-cli--其他-ai-客户端如何接入) | 可用的 AI 客户端，以及任务所需工具 |
 | 查看具体技能和路由 | [技能入口](SKILL.md)与[路由表](skills/routing.md) | 按目标选定的任务 |
@@ -113,7 +113,7 @@ python "<PACK_ROOT>/scripts/run.py" --json asr list
 | PE/ELF 二进制分析 | 二进制概览、反编译、交叉引用及 JSON 记录 | [IDA skill](skills/ida-reverse/SKILL.md)，可用的 OMP 原生 IDA 或已许可的 IDA/idalib 与 MCP 服务 |
 | JavaScript / Web 签名分析 | 浏览器采样、函数定位、本地复现及固定样本逐项对照 | [JS skill](skills/js-reverse/SKILL.md)，按任务使用浏览器工具或 OMP JS eval |
 | HTTP 与 Burp 操作 | 请求、响应、代理历史及 MCP 操作结果 | [Burp 接入说明](burp-mcp-full/README.md)，Burp、Java 21+ 与 bridge |
-| 多 Agent 证据分析 | 输入快照、各代理分析及 `run.json` 汇总 | [蜂群测试指南](https://github.com/2233admin/reverse-skill-evolver/blob/v1.2.0-beta.1/BETA-TEST.md)，已配置模型的 OMP CLI |
+| 多 Agent 证据分析 | 输入快照、各代理分析及 `run.json` 汇总 | [蜂群测试指南](https://github.com/2233admin/reverse-skill-evolver/blob/v1.2.0-beta.2/BETA-TEST.md)，已配置模型的 OMP CLI |
 
 ## Agent 蜂群
 
@@ -127,7 +127,7 @@ python "<PACK_ROOT>/scripts/run.py" --json asr list
 
 ## 验证案例与边界
 
-[OMP 工作流案例](reports/omp-workflow-verification-2026-10-13/README.md)保留了自制 x64 PE/native worker、生成的 Frida 观察脚本，以及实际 signer 与固定样本对照的证据。测试版的构建、安装入口和受控蜂群运行见 [验证记录](https://github.com/2233admin/reverse-skill-evolver/blob/v1.2.0-beta.1/BETA-VALIDATION.md)。
+[OMP 工作流案例](reports/omp-workflow-verification-2026-10-13/README.md)保留了自制 x64 PE/native worker、生成的 Frida 观察脚本，以及实际 signer 与固定样本对照的证据。测试版的构建、安装入口和受控蜂群运行见 [验证记录](https://github.com/2233admin/reverse-skill-evolver/blob/v1.2.0-beta.2/BETA-VALIDATION.md)。
 
 这些记录各有明确样本和验证范围。OMP 18.8.9 已在项目 `.agents/skills/` 和 `.omp/skills/` 两种布局下发现完整包，`omp read skill://reverse-skill-evolver` 及包内路由、ASR、IDA、JS 模块读取均通过。真实模型的蜂群协作质量、模型自动选择 skill、Burp GUI 和首次用户上手仍待测试；固定用例的路由选择结果不代表下游逆向任务已验证。
 
