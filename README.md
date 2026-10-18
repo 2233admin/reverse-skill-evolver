@@ -4,7 +4,7 @@
 
 English · [中文](README_zh.md) · [AI community](https://linux.do)
 
-[![Project checks](https://github.com/2233admin/reverse-skill-evolver/actions/workflows/project-checks.yml/badge.svg?branch=main)](https://github.com/2233admin/reverse-skill-evolver/actions/workflows/project-checks.yml) [![Skills](https://img.shields.io/badge/Skills-Browse-8A2BE2.svg)](SKILL.md) [![MIT license](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) [![Testing release](https://img.shields.io/badge/release-v1.2.0--beta.1-orange.svg)](https://github.com/2233admin/reverse-skill-evolver/releases/tag/v1.2.0-beta.1)
+[![Project checks](https://github.com/2233admin/reverse-skill-evolver/actions/workflows/project-checks.yml/badge.svg?branch=main)](https://github.com/2233admin/reverse-skill-evolver/actions/workflows/project-checks.yml) [![Skills](https://img.shields.io/badge/Skills-Browse-8A2BE2.svg)](SKILL.md) [![MIT license](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) [![Testing release](https://img.shields.io/badge/release-v1.2.0--beta.2-orange.svg)](https://github.com/2233admin/reverse-skill-evolver/releases/tag/v1.2.0-beta.2)
 
 Reverse Skill Evolver provides reverse-engineering skills and tool integration for Claude Code, Codex, and OMP. The agent selects a workflow for the target and task, uses available local tools, and keeps records of the analysis and its results.
 
@@ -108,11 +108,11 @@ The selected directory must be empty or already owned by this package.
 
 ## Start here
 
-The testing release for this round is [v1.2.0-beta.1](https://github.com/2233admin/reverse-skill-evolver/releases/tag/v1.2.0-beta.1). Download the full ZIP from the Release to get the skills, Python packages, and Burp JAR together. Follow the [testing guide](https://github.com/2233admin/reverse-skill-evolver/blob/v1.2.0-beta.1/BETA-TEST.md) for installation and swarm examples.
+The testing release for this round is [v1.2.0-beta.2](https://github.com/2233admin/reverse-skill-evolver/releases/tag/v1.2.0-beta.2). Download the full ZIP from the Release to get the skills, Python packages, and Burp JAR together. Follow the [testing guide](https://github.com/2233admin/reverse-skill-evolver/blob/v1.2.0-beta.2/BETA-TEST.md) for installation and swarm examples.
 
 | First task | Entry | Prerequisites |
 |---|---|---|
-| Try a swarm analysis | The three-call example in the [testing guide](https://github.com/2233admin/reverse-skill-evolver/blob/v1.2.0-beta.1/BETA-TEST.md) | OMP CLI with a configured model, and UTF-8 evidence you permit that model to receive |
+| Try a swarm analysis | The three-call example in the [testing guide](https://github.com/2233admin/reverse-skill-evolver/blob/v1.2.0-beta.2/BETA-TEST.md) | OMP CLI with a configured model, and UTF-8 evidence you permit that model to receive |
 | Complete one local binary task | [Local IDA example](#0-start-with-one-local-ida-task) | Python 3.10+, licensed IDA/idalib, `idalib-mcp`, and your sample |
 | Connect skills to an existing client | [Client integration](#7-how-to-integrate-with-claude-code--codex-cli--other-ai-clients) | A working AI client and the tools needed for your task |
 | Browse skills and routes | [Skill entry](SKILL.md) and [routing table](skills/routing.md) | A task selected for your target |
@@ -125,7 +125,7 @@ The testing release for this round is [v1.2.0-beta.1](https://github.com/2233adm
 | PE/ELF binary analysis | Binary overview, decompilation, cross-references, and JSON records | [IDA skill](skills/ida-reverse/SKILL.md); available OMP native IDA, or licensed IDA/idalib and an MCP service |
 | JavaScript / Web signing analysis | Browser sampling, function tracing, local replay, and per-fixture comparisons | [JS skill](skills/js-reverse/SKILL.md); browser tools or OMP JS eval as needed |
 | HTTP and Burp operations | Requests, responses, proxy history, and MCP operation results | [Burp guide](burp-mcp-full/README.md); Burp, Java 21+, and the bridge |
-| Multi-agent evidence analysis | Input snapshots, individual analyses, and a `run.json` summary | [Swarm testing guide](https://github.com/2233admin/reverse-skill-evolver/blob/v1.2.0-beta.1/BETA-TEST.md); OMP CLI with a configured model |
+| Multi-agent evidence analysis | Input snapshots, individual analyses, and a `run.json` summary | [Swarm testing guide](https://github.com/2233admin/reverse-skill-evolver/blob/v1.2.0-beta.2/BETA-TEST.md); OMP CLI with a configured model |
 
 ## Agent swarm
 
@@ -139,7 +139,7 @@ Routing instructions can be revised based on task experience. `reverse-skill evo
 
 ## Verification examples and limits
 
-The [OMP workflow cases](reports/omp-workflow-verification-2026-10-13/README.md) retain evidence from self-authored x64 PE/native-worker fixtures, generated Frida observation scripts, and supplied signer comparisons against fixed fixtures. The [beta validation record](https://github.com/2233admin/reverse-skill-evolver/blob/v1.2.0-beta.1/BETA-VALIDATION.md) covers builds, installed entry points, and controlled swarm execution.
+The [OMP workflow cases](reports/omp-workflow-verification-2026-10-13/README.md) retain evidence from self-authored x64 PE/native-worker fixtures, generated Frida observation scripts, and supplied signer comparisons against fixed fixtures. The [beta validation record](https://github.com/2233admin/reverse-skill-evolver/blob/v1.2.0-beta.2/BETA-VALIDATION.md) covers builds, installed entry points, and controlled swarm execution.
 
 Each record has a defined sample and scope. OMP 18.8.9 discovered the complete package in project `.agents/skills/` and `.omp/skills/`; `omp read skill://reverse-skill-evolver` and reads of the bundled router, ASR, IDA, and JS modules passed in both layouts. Real-model swarm quality, model-driven automatic skill selection, Burp GUI loading, and first-user onboarding still need testing. Route-selection scores on fixed fixtures do not establish downstream reverse-engineering correctness.
 

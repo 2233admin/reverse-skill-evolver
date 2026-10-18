@@ -54,7 +54,7 @@ def test_help_and_version_are_available() -> None:
     assert help_result.returncode == 0
     assert "Commands:" in help_result.stdout
     assert version_result.returncode == 0
-    assert "1.1.2" in version_result.stdout
+    assert "1.2.0b2" in version_result.stdout
 
 
 def test_help_describes_ida_operations_and_bounded_route_evolution_search() -> None:
