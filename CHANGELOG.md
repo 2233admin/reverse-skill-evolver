@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-## [1.2.0b2] - 2026-10-14
+## [1.2.0b2] - 2026-10-16
 
 - Distribute the entire routing package as one installable `reverse-skill-evolver` skill, with shared scripts, CTF resources and adjacent OMP helpers retained. Document Codex, Claude Code, Cursor, OpenCode and OMP installation.
 - Add audited Forefy ASR discovery and filtering, with MCP servers excluded by default, while keeping registry routing ahead of target keywords.
