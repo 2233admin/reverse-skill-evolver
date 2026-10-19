@@ -69,6 +69,26 @@ def _target_kind(task: dict[str, Any], data: dict[str, Any], text: _TaskText) ->
     return ""
 
 
+def _chain_files(route: dict[str, Any]) -> list[str]:
+    """Resolve a route's ``chain_tags`` to packaged decision-skeleton paths.
+
+    Chains always ship under ``skills/chains/``; ``ROUTING_PATH`` may otherwise
+    sit in the packaged ``reverse_skill/data/`` copy. A tag naming no shipped
+    file is a configuration error, not an empty result — returning ``[]`` would
+    let a typo look like "this route has no decision support", so raise.
+    """
+    tags = route.get("chain_tags") or []
+    if not tags:
+        return []
+    chains_root = PACK_ROOT / "skills" / "chains"
+    resolved: list[str] = []
+    for tag in tags:
+        if not (chains_root / f"{tag}.md").is_file():
+            raise FileNotFoundError(f"chain tag {tag!r} on route {route['id']!r} has no skills/chains/{tag}.md")
+        resolved.append(f"chains/{tag}.md")
+    return resolved
+
+
 def build_plan(task: dict[str, Any]) -> dict[str, Any]:
     """Select a bundled workflow. Availability and authorization remain unverified."""
     data = json.loads(ROUTING_PATH.read_text(encoding="utf-8"))
@@ -104,5 +124,6 @@ def build_plan(task: dict[str, Any]) -> dict[str, Any]:
             "requires_any_capabilities": route.get("requires_any_capabilities", []),
             "fallback_edges": route.get("fallback_edges", []),
             "success_oracles": route.get("success_oracles", []),
+            "chain_files": _chain_files(route),
             "preflight": {"status": "not_run", "authorization_verified": False,
                           "capabilities_verified": False}}

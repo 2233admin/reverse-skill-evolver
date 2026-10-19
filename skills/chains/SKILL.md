@@ -47,4 +47,5 @@ description: Decision-skeleton reference for reverse-engineering and security ro
 
 - **本目录不复制外部仓库文本。** 结构与 `agent/chainskel/`（ARTEX, AGPL-3.0）同类，但内容全部蒸馏自本包 `field-journal/` 自有条目，逐行标源。
 - 骨架是**启发式提示**，不是授权、不是 oracle、不替代所选模块的工作流或 GoAL 契约。
-- 本目录**尚未接入 `routing.json`**：当前需按上述"使用"手动定位。路由注入是独立变更，未获批前不得假设已生效。
+- **路由注入已生效**：`build_plan` 在选中带 `chain_tags` 的路由时返回 `chain_files`，值是本目录的包内相对路径（如 `chains/rev.md`）。16 条路由已带标签；`asr-registry`、`diagram-generator`、`docs-generator`、`case-review`、`unattended-overnight-run` 无标签（与逆向阶段无关）。
+- **`priv` 与 `ad` 不是入口链**：提权与内网 AD 是engagement 内推进阶段，不构成冷启动意图，因此不挂独立路由，而是附在 `active-security-assessment`（`web`/`priv`/`ad`）与 `api-security`（`web`/`priv`）上。

@@ -160,3 +160,55 @@ def test_contract_rejects_missing_apk_target_row(aligned_documents) -> None:
     aligned_documents["routing.md"] = "| iOS / IPA app | `mobile-reverse/SKILL.md` | — |\n"
     with pytest.raises(AssertionError, match="routing\\.md: expected exactly one APK / Android target row"):
         _assert_apk_contract(aligned_documents)
+
+
+def test_every_chain_tag_resolves_to_a_shipped_file() -> None:
+    """A chain_tags entry naming no shipped skeleton is a broken route contract."""
+    mirror = json.loads((ROOT / "skills/routing.json").read_text(encoding="utf-8"))
+    tagged = [route for route in mirror["macro_routes"] if route.get("chain_tags")]
+    assert tagged, "expected at least one route to carry chain_tags"
+    for route in tagged:
+        for tag in route["chain_tags"]:
+            assert (ROOT / "skills" / "chains" / f"{tag}.md").is_file(), (
+                f"route {route['id']!r} references chains/{tag}.md which is not shipped"
+            )
+
+
+def test_both_routing_copies_agree_on_chain_tags() -> None:
+    """gates.py compares the two copies; chain_tags must match exactly."""
+    canonical = json.loads((ROOT / "skills/routing.json").read_text(encoding="utf-8"))
+    packaged = json.loads((ROOT / "reverse_skill/data/routing.json").read_text(encoding="utf-8"))
+    assert canonical == packaged
+
+
+def test_build_plan_returns_chain_files_for_a_tagged_route() -> None:
+    from reverse_skill.routing import build_plan
+
+    plan = build_plan({"task": "脱壳 UPX 的 ELF", "target_kind": "native-binary"})
+    assert plan["status"] == "selected"
+    assert plan["route"]["id"] == "native-binary"
+    assert plan["chain_files"] == ["chains/rev.md"]
+
+
+def test_build_plan_returns_all_tags_for_a_multi_chain_route() -> None:
+    from reverse_skill.routing import build_plan
+
+    plan = build_plan({"task": "渗透测试内网域控", "target_kind": "active-security-assessment"})
+    assert plan["status"] == "selected"
+    assert plan["chain_files"] == ["chains/web.md", "chains/priv.md", "chains/ad.md"]
+
+
+def test_build_plan_reports_no_chain_files_for_an_untagged_route() -> None:
+    from reverse_skill.routing import build_plan
+
+    plan = build_plan({"task": "生成架构图", "target_kind": "diagram-generator"})
+    assert plan["status"] == "selected"
+    assert plan["chain_files"] == []
+
+
+def test_chain_resolver_fails_closed_on_an_unknown_tag() -> None:
+    """A typo must raise, not silently look like a route with no decision support."""
+    from reverse_skill.routing import _chain_files
+
+    with pytest.raises(FileNotFoundError, match="no skills/chains/nonexistent.md"):
+        _chain_files({"id": "native-binary", "chain_tags": ["nonexistent"]})
