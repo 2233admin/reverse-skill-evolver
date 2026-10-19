@@ -93,10 +93,29 @@ errors / output ── 叶子（仅被依赖）
 
 **最小正确改动**：问题 1 —— `index_cli` 与 `workflow_cli` 的 `emit` 改从 `output` 导入，删除 `index_cli.emit` 转发壳；`gates.doc_facts` 单独决策。此项可消除三处延迟 import 与倒置方向，且不影响对外行为。
 
+## 修复记录（2026-10-19，commit `6d93af2`）
+
+问题 1 与问题 2 已修复；问题 3 未动（本次范围外）。
+
+**问题 1**
+- `index_cli.py`：删除 `emit` 转发壳，改为 `from .output import emit`。`State` 仍在 `TYPE_CHECKING` 下导入，无运行时边。
+- `workflow_cli.py`：`emit` 提升为模块级 `from .output import emit`，移除 4 处函数体内 `from .cli import emit`。
+- `gates.py`：`doc_facts(repo_root=None, command_group=None)` 与 `run_all(..., command_group=None)` 接收命令树；默认值仍为惰性解析，供直接调用者与现有测试使用。
+- `workflow_cli.py`：新增 `_root_command_group()`，由命令层在 `gates all` / `gates doc-facts` 时显式传入命令树。倒置方向消除：`gates` 不再在正常路径 import `cli`。
+
+**问题 2**
+- `evolution.py`：`_answer_text` → 公开 `answer_text`，`_omp` → 公开 `omp`；保留内部别名 `_answer_text` / `_omp`，模块内既有调用点不变。
+- `swarm.py`：两处调用改用 `evolution.answer_text` 与 `evolution.omp`。
+- `tests/test_swarm.py:319`：原 patch `evolution._omp` 已失效（`swarm` 现读公开名），改为 patch `evolution.omp`。这是该测试原本断言私有实现细节所致，非行为回归。
+
+**验证**
+- `python -m pytest -q`：**840 passed / 5 skipped**（修复前基线为 839 passed / 5 skipped；差额即上述测试修正确认的新路径）。
+- `python scripts/run.py --json gates all`：`ok true`，`doc-facts` / `version` / `routing-coherence` 全部 `clean`。
+- grep 复核：包内无跨模块私有调用；`index_cli` / `workflow_cli` 运行时不再 import `cli`。
+
 ## 未验证边界
 
-- 未运行 `pytest` 或 `gates all`；上述均为静态读源结论。
-- 未统计各模块测试覆盖率，问题 2/3 的修复风险未经测试评估。
+- 问题 3（`index_build.py` 拆分）未评估、未改动。
+- 未统计各模块测试覆盖率；覆盖率对后续改动风险仍是未知量。
 - 未核对 `reverse_skill/` 与包外目录（`skills/`、`.omp/skills/`、`burp-mcp-full/`）之间的契约，本次仅限包内。
-
-待主人决定：三项是否修复、以何顺序、以及 `gates.doc_facts` 采用何种设计。
+- 本次改动尚未推送远端；release/tag 状态不受影响（`v1.2.0-beta.2` 已指向 `1b62a45`，不含本次重构）。
