@@ -489,19 +489,6 @@ def read_subtree(
     return [dict(row) for row in rows]
 
 
-def read_link_targets(connection: sqlite3.Connection, node_id: str) -> List[Dict[str, Any]]:
-    rows = connection.execute(
-        "SELECT e.target_node, e.kind, n.title, n.tree_path, d.relative_path "
-        "FROM edges e "
-        "JOIN nodes n ON n.node_id = e.target_node "
-        "JOIN documents d ON d.document_id = n.document_id "
-        "WHERE e.source_node = ? AND e.kind = 'link' "
-        "ORDER BY d.relative_path, n.start_line, n.node_id",
-        (node_id,),
-    ).fetchall()
-    return [dict(row) for row in rows]
-
-
 def _read_xrefs(
     connection: sqlite3.Connection, node_id: str, *, incoming: bool
 ) -> List[Dict[str, Any]]:
