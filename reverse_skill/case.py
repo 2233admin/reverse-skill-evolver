@@ -361,12 +361,48 @@ def resolve_artifact(root: Path, artifact_path: str) -> Optional[Path]:
     return resolved
 
 
-def sha256_file(path: Path) -> str:
+def _file_identity(path: Path) -> Optional[Tuple[int, int]]:
+    """Identity tuple, or None when the file cannot be stat'ed.
+
+    ``mtime_ns`` alone is not a safe cache key: filesystem granularity on Windows
+    can be coarse enough that a rewrite lands inside one tick, so a stored mtime
+    would claim a state the file no longer has. It is used here only to compare a
+    file with itself around a read, which is immune to that granularity.
+    """
+    try:
+        stat = path.stat()
+    except OSError:
+        return None
+    return (stat.st_size, stat.st_mtime_ns)
+
+
+def sha256_file(path: Path, cache: Optional[Dict[str, Any]] = None) -> str:
+    """Hash ``path``, reusing ``cache[str(path)]`` only when the file is untouched.
+
+    Every evidence record hashes its own artifact, so N records pointing at the
+    same file read it N times; the audit measured 20 records x 500 MiB as 9.8 GiB
+    of reads. The cache is owned by one ``review_case`` call, never persisted.
+
+    Validity is decided by stat before and after hashing, not by trusting a
+    previously stored mtime: the file is proven byte-stable across the read that
+    produced the digest, so a concurrent rewrite can neither be cached nor
+    reported with a digest that describes no single state of the artifact.
+    """
+    identity_before = _file_identity(path)
+    if cache is not None and identity_before is not None:
+        cached = cache.get(str(path))
+        if cached is not None and cached[0] == identity_before:
+            return cached[1]
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
-    return digest.hexdigest()
+    value = digest.hexdigest()
+    if cache is not None and identity_before is not None:
+        cache[str(path)] = (
+            (identity_before, value) if _file_identity(path) == identity_before else None
+        )
+    return value
 
 
 def verify_artifact(
@@ -375,6 +411,7 @@ def verify_artifact(
     expected_hash: str,
     issues: List[Dict[str, Any]],
     display_path: str,
+    digests: Optional[Dict[str, Any]] = None,
 ) -> None:
     if not artifact_path:
         issue(issues, "warning", "artifact.path_missing", "content_hash is recorded without artifact_path", display_path)
@@ -386,7 +423,7 @@ def verify_artifact(
     if not candidate.is_file():
         issue(issues, "error", "artifact.missing", "artifact_path does not exist", display_path)
         return
-    digest = sha256_file(candidate)
+    digest = sha256_file(candidate, digests)
     if digest != expected_hash:
         issue(issues, "error", "artifact.hash_mismatch", "artifact SHA-256 does not match content_hash", display_path)
 
@@ -396,6 +433,7 @@ def parse_evidence(
     workitems: Dict[str, Any],
     issues: List[Dict[str, Any]],
     verify_hashes: bool,
+    digests: Optional[Dict[str, Any]] = None,
 ) -> Tuple[Dict[str, Any], List[Tuple[str, str]]]:
     evidence_root = root / "evidence"
     records: Dict[str, Any] = {}
@@ -445,7 +483,7 @@ def parse_evidence(
             if not expected_hash:
                 issue(issues, "error", "evidence.hash_invalid", "content_hash must be SHA-256", relative_path(root, path))
         if verify_hashes and expected_hash:
-            verify_artifact(root, artifact_path, expected_hash, issues, relative_path(root, path))
+            verify_artifact(root, artifact_path, expected_hash, issues, relative_path(root, path), digests)
         for workitem_id in linked_workitems:
             if workitem_id not in workitems:
                 issue(issues, "error", "evidence.workitem_missing", "linked work item does not exist: " + workitem_id, relative_path(root, path))
@@ -558,7 +596,7 @@ def review_case(case_root: str, strict: bool = False, verify_hashes: bool = Fals
     workitems, workitem_refs = parse_workitems(root, issues)
     timeline_events, timeline_refs = parse_timeline(root, issues)
     scope = parse_scope(root, issues, strict)
-    evidence, evidence_refs = parse_evidence(root, workitems, issues, verify_hashes)
+    evidence, evidence_refs = parse_evidence(root, workitems, issues, verify_hashes, {})
     findings, paths, report_refs = parse_reports(root, issues)
     references = workitem_refs + timeline_refs + evidence_refs + report_refs
 

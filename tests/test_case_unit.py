@@ -3,9 +3,11 @@
 import hashlib
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
+from reverse_skill import case
 from reverse_skill.case import (
     CaseContractError,
     CasePackageError,
@@ -98,6 +100,147 @@ def test_sha256_file_matches_hashlib(tmp_path: Path) -> None:
     target.write_bytes(b"reverse-skill fixture bytes" * 64)
     expected = hashlib.sha256(target.read_bytes()).hexdigest()
     assert sha256_file(target) == expected
+
+
+def _evidence_record(evidence_id: str, digest: str, artifact: str) -> str:
+    return f"""### {evidence_id}
+- title: Sample hash
+- severity: info
+- status: observed
+- content_hash: sha256:{digest}
+- artifact_path: {artifact}
+- linked_workitem: n/a
+- repro_command: sha256sum {artifact}
+- raw_excerpt: |
+    fixture
+"""
+
+
+def _review_fixture(root: Path, records: int, artifact: Path, digest: str) -> None:
+    """One case package whose Evidence records all point at the same artifact."""
+    (root / "evidence").mkdir(parents=True)
+    (root / "report").mkdir(parents=True)
+    (root / "scope.md").write_text(
+        "## auth\n- status: granted\n- basis: lab_only\n- evidence_of_auth: self-authored local fixture\n"
+        "## in_scope\n- assets:\n  - sample.bin\n## network_profile\n- mode: offline\n"
+        "## signoff\n- ready_for_act: true\n",
+        encoding="utf-8",
+    )
+    (root / "workitems.md").write_text(
+        "# Work Items\n\n| ID | title | role | targets | surface | status | evidence | notes |\n"
+        "|----|-------|------|---------|---------|--------|----------|-------|\n",
+        encoding="utf-8",
+    )
+    (root / "timeline.md").write_text("# Timeline (append-only)\n", encoding="utf-8")
+    for index in range(records):
+        (root / "evidence" / f"E-{index + 1:03d}.md").write_text(
+            _evidence_record(f"E-{index + 1:03d}", digest, "evidence/sample.bin"), encoding="utf-8"
+        )
+
+
+def test_shared_artifact_is_hashed_once_per_review(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """#23: 6 records on one artifact must read it once, not six times."""
+    root = tmp_path / "shared-case"
+    raw = b"reverse-skill shared artifact fixture" * 4096
+    root.mkdir()
+    _review_fixture(root, 6, root / "evidence" / "sample.bin", hashlib.sha256(raw).hexdigest())
+    (root / "evidence" / "sample.bin").write_bytes(raw)
+
+    reads = 0
+    original = Path.open
+
+    def counting_open(self: Path, *args: Any, **kwargs: Any):
+        nonlocal reads
+        if self.name == "sample.bin":
+            reads += 1
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", counting_open)
+    report = review_case(str(root), verify_hashes=True)
+
+    assert report["status"] in {"PASS", "WARN"}
+    assert not [item for item in report["issues"] if item["code"].startswith("artifact.")]
+    assert reads == 1, f"artifact was opened {reads} times; expected one hash per review"
+
+
+def test_cache_does_not_reuse_a_digest_after_the_artifact_changes(tmp_path: Path) -> None:
+    """The cache's whole contract: reuse only while the file is byte-identical.
+
+    Re-hashing a changed file is not evidence of anything — the uncached code does
+    that too. What must hold is that a *populated* cache is invalidated by a
+    rewrite, so this drives ``sha256_file`` directly rather than through a review.
+    """
+    artifact = tmp_path / "sample.bin"
+    first = b"first state" * 2048
+    artifact.write_bytes(first)
+    cache: dict[str, Any] = {}
+
+    first_digest = sha256_file(artifact, cache)
+    assert first_digest == hashlib.sha256(first).hexdigest()
+    assert sha256_file(artifact, cache) == first_digest  # cached, no re-read
+    assert len(cache) == 1
+
+    # Size and mtime both change, so the stale entry must not be returned.
+    second = b"second state, different digest" * 2048
+    artifact.write_bytes(second)
+    second_digest = sha256_file(artifact, cache)
+
+    assert second_digest == hashlib.sha256(second).hexdigest()
+    assert second_digest != first_digest, "the cached digest was reused after an in-place rewrite"
+
+    # A rollback to the original bytes must still verify against the original digest.
+    artifact.write_bytes(first)
+    assert sha256_file(artifact, cache) == first_digest
+
+
+def test_cache_reacts_to_a_same_size_same_timestamp_rewrite(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A rewrite that preserves size must not be masked by a stale identity.
+
+    Windows mtime granularity is coarse enough that two writes can land in the same
+    tick. The cache compares the file against itself around the read instead of
+    trusting a stored timestamp, so a same-size rewrite is still re-hashed when the
+    identity is observed to differ.
+    """
+    artifact = tmp_path / "sample.bin"
+    artifact.write_bytes(b"A" * 4096)
+    cache: dict[str, Any] = {}
+    before = sha256_file(artifact, cache)
+
+    artifact.write_bytes(b"B" * 4096)  # identical size
+    stat = artifact.stat()
+    # Force an identity change even if the filesystem timestamp did not move.
+    monkeypatch.setattr(
+        case, "_file_identity", lambda _: (stat.st_size, stat.st_mtime_ns + 1)
+    )
+    after = sha256_file(artifact, cache)
+
+    assert after != before, "a same-size rewrite must not return the cached digest"
+    assert after == hashlib.sha256(b"B" * 4096).hexdigest()
+
+
+def test_cache_is_never_populated_for_an_artifact_that_changed_while_hashing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A digest that describes no single state must not be cached at all."""
+    artifact = tmp_path / "sample.bin"
+    artifact.write_bytes(b"x" * 4096)
+    cache: dict[str, Any] = {}
+
+    real_identity = case._file_identity
+    calls = {"n": 0}
+
+    def drifting_identity(path: Path):
+        calls["n"] += 1
+        value = real_identity(path)
+        # Second call = the post-read check; report a different file.
+        return value if calls["n"] == 1 else (value[0] + 1, value[1])
+
+    monkeypatch.setattr(case, "_file_identity", drifting_identity)
+    sha256_file(artifact, cache)
+
+    assert cache[str(artifact)] is None, "an unverifiable digest must not be cached as valid"
 
 
 def test_init_case_writes_frozen_package(tmp_path: Path) -> None:

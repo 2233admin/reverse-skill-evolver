@@ -1,5 +1,7 @@
 import json
+import threading
 import weakref
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any
 
 import httpx
@@ -7,6 +9,8 @@ import pytest
 
 from reverse_skill.errors import McpProtocolError, McpTransportError
 from reverse_skill.mcp import (
+    MAX_RESPONSE_BYTES,
+    MAX_SSE_EVENTS,
     MODERN_VERSION,
     McpClient,
     encode_header_value,
@@ -373,3 +377,147 @@ def test_constructor_closes_http_client_when_discovery_fails(monkeypatch: pytest
 
     assert raised.value is error
     assert client.closed
+
+
+class _StreamingServer:
+    """A real socket server that streams forever without ever completing a response.
+
+    The point is that no client-side deadline can save the reader: the server keeps
+    handing out bytes as fast as the client asks for them, so only an explicit
+    accumulation budget can stop it.
+    """
+
+    def __init__(self, content_type: str, chunk: bytes) -> None:
+        self.content_type = content_type
+        self.chunk = chunk
+        self.sent = 0
+        self.stop = threading.Event()
+        outer = self
+
+        class Handler(BaseHTTPRequestHandler):
+            protocol_version = "HTTP/1.1"
+
+            def log_message(self, *_: Any) -> None:
+                pass
+
+            def _discover(self, body: bytes) -> bool:
+                try:
+                    message = json.loads(body)
+                except ValueError:
+                    return False
+                return message.get("method") == "server/discover"
+
+            def _respond(self, discover: bool) -> None:
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json" if discover else outer.content_type)
+                self.send_header("Transfer-Encoding", "chunked")
+                self.end_headers()
+                payload = (
+                    json.dumps(
+                        {
+                            "jsonrpc": "2.0",
+                            "id": json.loads(self.rfile_body).get("id"),
+                            "result": {"resultType": "complete", "supportedVersions": [MODERN_VERSION]},
+                        }
+                    ).encode("utf-8")
+                    if discover
+                    else None
+                )
+                if discover:
+                    self.wfile.write(b"%x\r\n%s\r\n0\r\n\r\n" % (len(payload), payload))
+                    self.wfile.flush()
+                    return
+                while not outer.stop.is_set():
+                    try:
+                        self.wfile.write(b"%x\r\n%s\r\n" % (len(outer.chunk), outer.chunk))
+                        self.wfile.flush()
+                    except (BrokenPipeError, ConnectionResetError, OSError):
+                        return
+                    outer.sent += len(outer.chunk)
+
+            def do_POST(self) -> None:
+                length = int(self.headers.get("Content-Length") or 0)
+                self.rfile_body = self.rfile.read(length).decode("utf-8", "replace")
+                self._respond(self._discover(self.rfile_body.encode("utf-8")))
+
+        self.server = HTTPServer(("127.0.0.1", 0), Handler)
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+
+    @property
+    def url(self) -> str:
+        host, port = self.server.server_address[:2]
+        return f"http://{host}:{port}/mcp"
+
+    def __enter__(self) -> "_StreamingServer":
+        self.thread.start()
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        self.stop.set()
+        self.server.shutdown()
+        self.server.server_close()
+        self.thread.join(timeout=5)
+
+
+def test_oversized_json_response_fails_instead_of_buffering_forever() -> None:
+    """#15: a fast sender must hit the byte budget, not this process's memory limit."""
+    with _StreamingServer("application/json", b"x" * (256 * 1024)) as server:
+        with McpClient(server.url, timeout=30.0) as client:
+            with pytest.raises(McpProtocolError) as raised:
+                client.request("resources/list")
+
+    message = str(raised.value)
+    assert f"exceeded {MAX_RESPONSE_BYTES} bytes" in message
+    # The report must name the observed size so an operator can tell how far past
+    # the limit the peer went.
+    read = int(message.rsplit("read ", 1)[1].rstrip(")"))
+    assert MAX_RESPONSE_BYTES < read <= MAX_RESPONSE_BYTES + 256 * 1024
+    assert server.sent < 4 * MAX_RESPONSE_BYTES, "the reader must stop pulling once capped"
+
+
+def test_oversized_sse_event_stream_hits_the_byte_budget() -> None:
+    """A single never-terminated SSE event is bounded by bytes, not by event count."""
+    with _StreamingServer("text/event-stream", b"data: " + b"y" * (64 * 1024) + b"\n") as server:
+        with McpClient(server.url, timeout=30.0) as client:
+            with pytest.raises(McpProtocolError, match="exceeded") as raised:
+                client.request("resources/list")
+
+    assert str(MAX_RESPONSE_BYTES) in str(raised.value)
+
+
+def test_sse_event_count_budget_fires_on_many_small_events() -> None:
+    """Many small unrelated events exhaust the event budget before the byte budget."""
+    event = b'data: {"jsonrpc":"2.0","id":"unrelated","result":{}}\n\n'
+    with _StreamingServer("text/event-stream", event) as server:
+        with McpClient(server.url, timeout=30.0) as client:
+            with pytest.raises(McpProtocolError) as raised:
+                client.request("resources/list")
+
+    assert f"exceeded {MAX_SSE_EVENTS} events" in str(raised.value)
+    # Small events must not have tripped the byte limit first, or this test would
+    # pass for the wrong reason.
+    assert len(event) * MAX_SSE_EVENTS < MAX_RESPONSE_BYTES
+
+
+def test_normal_responses_still_read_within_the_budgets() -> None:
+    """The budgets must not disturb ordinary responses."""
+    payload = "z" * 400_000
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = _json(request)
+        if body["method"] == "server/discover":
+            return httpx.Response(
+                200,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": body["id"],
+                    "result": {"resultType": "complete", "supportedVersions": [MODERN_VERSION]},
+                },
+            )
+        return httpx.Response(
+            200,
+            json={"jsonrpc": "2.0", "id": body["id"], "result": {"value": payload}},
+        )
+
+    with McpClient("http://mock/mcp", transport=httpx.MockTransport(handler)) as client:
+        assert client.request("resources/list") == {"value": payload}

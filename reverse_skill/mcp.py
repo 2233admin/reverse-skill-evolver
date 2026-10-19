@@ -21,6 +21,14 @@ MODERN_ERROR_CODES = {-32020, -32021, -32022}
 HEADER_TOKEN = re.compile(r"^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$")
 SAFE_INTEGER = 9_007_199_254_740_991
 
+# The deadline bounds waiting time, not memory: a fast sender can keep every
+# per-chunk deadline check satisfied while the buffer grows without limit, and a
+# single SSE event streamed as one long line is unbounded even with an event cap.
+# Both budgets are therefore checked while accumulating, and exceeding one fails
+# loudly with the observed size instead of truncating silently.
+MAX_RESPONSE_BYTES = 8 * 1024 * 1024
+MAX_SSE_EVENTS = 4096
+
 
 class _NetworkStream(httpx.SyncByteStream):
     def __init__(self, transport: "_NetworkTransport", response: httpx.Response) -> None:
@@ -265,13 +273,27 @@ class McpClient:
         if request_id is None:
             return None, ""
         content_type = response.headers.get("content-type", "")
+        # Read before consuming the stream: a failure path must not touch it afterwards.
+        encoding = response.encoding or "utf-8"
         if content_type.lower().startswith("text/event-stream"):
             data_lines: list[str] = []
+            events = 0
+            consumed = 0
             for line in response.iter_lines():
                 self._check_deadline()
+                consumed += len(line.encode("utf-8", "replace"))
+                if consumed > MAX_RESPONSE_BYTES:
+                    raise McpProtocolError(
+                        f"MCP SSE response exceeded {MAX_RESPONSE_BYTES} bytes (read {consumed})"
+                    )
                 if line.startswith("data:"):
                     data_lines.append(line[5:].lstrip(" "))
                 elif not line.strip() and data_lines:
+                    events += 1
+                    if events > MAX_SSE_EVENTS:
+                        raise McpProtocolError(
+                            f"MCP SSE response exceeded {MAX_SSE_EVENTS} events (read {events})"
+                        )
                     content = "\n".join(data_lines)
                     data_lines.clear()
                     if not content.strip():
@@ -288,11 +310,17 @@ class McpClient:
                     return message, content
             raise McpProtocolError(f"MCP SSE response did not contain JSON-RPC id {request_id}")
         chunks = []
+        consumed = 0
         for chunk in response.iter_bytes():
             self._check_deadline()
+            consumed += len(chunk)
+            if consumed > MAX_RESPONSE_BYTES:
+                raise McpProtocolError(
+                    f"MCP response exceeded {MAX_RESPONSE_BYTES} bytes (read {consumed})"
+                )
             chunks.append(chunk)
         self._check_deadline()
-        content = b"".join(chunks).decode(response.encoding or "utf-8")
+        content = b"".join(chunks).decode(encoding)
         return self._parse_response(content, content_type, request_id), content
 
     @staticmethod
