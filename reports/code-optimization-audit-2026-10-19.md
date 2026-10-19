@@ -8,8 +8,9 @@ session produced the number) and **source-backed** (static reading; no benchmark
 
 **0 critical, 2 high, 6 medium, 11 low.**
 
-> **Status update.** Findings 1 and 2 (both HIGH) were fixed in commit `2285e91` after this audit.
-> See "Fixes applied" at the end of the report for the before/after measurements.
+> **Status update.** Findings 1, 2, 7, 9, 12, 13 and 14 were fixed after this audit, in
+> commit `2285e91` (1–2) and `5bbe0ec` (7, 9, 12–14). See "Fixes applied" at the end for the
+> before/after measurements.
 
 The stack rules out most of the usual domains: no web server, no ORM, no frontend, no container
 build in this package. 11 lanes ran; **three returned only ruled-out false positives**, which is the
@@ -200,8 +201,9 @@ Ordered by impact ÷ risk. Nothing here is a rewrite.
 
 ## Unverified boundaries
 
-- Lanes were **read-only**: no lane applied a fix. Fixes for findings 1–2 were made separately by the
-  coordinator and are recorded under "Fixes applied"; findings 3–30 remain unfixed and un-retested.
+- Lanes were **read-only**: no lane applied a fix. Fixes for findings 1, 2, 7, 9, 12–14 were made
+  separately by the coordinator and are recorded under "Fixes applied"; all other findings remain
+  unfixed and un-retested.
 - Timing is **Windows / Python 3.14 / warm cache**. The quadratic regexes are the most portable
   result (algorithmic, not platform); the SQLite and import numbers are not.
 - **Memory was not benchmarked** anywhere. Findings 13, 19, 23, 25, 11 are allocation arguments,
@@ -260,8 +262,58 @@ including the cases where `#` is not preceded by whitespace and is therefore *no
 `python scripts/run.py --json gates all` → `ok true`, all three checks `clean`.
 `grep _TRAILING_HASHES_RE reverse_skill/ tests/` → no references remain.
 
+### Findings 7, 9, 12–14 — commit `5bbe0ec`
+
+**#7 — `index update` no longer parses unchanged files.** `ParsedDocument` gained
+`nodes_deferred`, and `materialize_nodes` builds the tree on demand. The update path hashes every
+file (needed for `root_hash`) but materialises node trees only for added, changed and stale
+link-source documents. Markdown line data is still decoded, because
+`_link_sources_for_added_documents` scans unchanged bodies for links.
+
+| Bench (60 files, parse-dominated, min of 5) | before | after |
+|---|---:|---:|
+| `update_plan`, no change | 31.5 ms | 11.2 ms |
+| `update_apply`, no change | 32.1 ms | 12.1 ms |
+
+**2.7×.** Honest scoping: on 460 *tiny* files the same change measured ~0% (85.1 → 85.3 ms) because
+`scan_workspace` spends 66 of 70 ms in `_path_islink`/`_path_isjunction`/`stat`/`open` — syscalls,
+not parsing. Profiler output confirmed zero parse time on the no-change path, i.e. the deferral
+works; the end-to-end gain scales with file content size.
+
+Correctness checked on all three paths: no-change, one-changed, one-added, plus an idempotent
+re-apply, with index counts stable (`documents: 41, nodes: 122, edges: 81`).
+
+**#9 — `_depth_of` removed.** Replaced by one forward pass over nodes, which is valid because
+parsers emit parents before children. Verified on this repository: **9405 nodes, 0 depth mismatches**
+against the old ancestor walk, **0 parent-after-child violations**. The now-unused `_depth_of` was
+deleted.
+
+**#12 — `gates.py` JWT regex anchored.** A non-base64url lookbehind prevents a failed match from
+rescanning the rest of the line from every `eyJ` in a run.
+
+| `'eyJ' * n` | before | after |
+|---|---:|---:|
+| n = 8000 | 0.0977 s | 0.00017 s |
+| n = 32000 | 1.4440 s | 0.00067 s |
+
+Eight detection cases (valid, two-in-line, prefix-only, no-dots, short-segments, embedded in text,
+trailing dot, concatenated tokens) produce **identical results** before and after.
+
+**#13/#14 — `leak_scan` bounded.** Files over `MAX_SCAN_BYTES` (8 MiB) are now **reported** in
+`skipped_oversized` rather than read whole; retained findings cap at `MAX_FINDINGS` (1000) with
+`findings_truncated` set. Deliberately fail-closed: an oversized file yields status `findings`, not
+`clean`, so a file the scanner declines to read can never look clean. Verified: clean dir → `clean`;
+one email → `findings`; oversized alone → `findings` with 0 findings; 1500 findings → capped at 1000
+with `truncated: true`.
+
+### Regression evidence for this batch
+
+`python -m pytest -q` → **840 passed, 5 skipped**.
+`python scripts/run.py --json gates all` → `ok true`, all three checks `clean`.
+Probe and benchmark scripts were removed after use; only the two source files are committed.
+
 ### Still open from this audit
 
-Findings 3–30 are **not** fixed. Highest remaining: #7 (`index update` reparses every file) and #12
-(the same quadratic shape in the `gates.py` JWT regex, which now has a proven fix pattern to copy).
+Findings 3–6, 8, 10, 11, 15–30 are **not** fixed. Highest remaining: #15 (unbounded MCP response
+buffering) and #23 (artifact re-hashed once per evidence record).
 
