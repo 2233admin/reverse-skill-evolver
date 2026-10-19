@@ -136,6 +136,9 @@ function Get-ReverseToolCatalog {
             VersionArgs = @('-v')
             Fallbacks = @(
                 [pscustomobject]@{ Type = 'command'; Value = 'r2' },
+                # The Windows release ships bin\r2.bat, not r2.exe; without this the
+                # main analyser is reported missing while every sibling r2*.exe is found.
+                [pscustomobject]@{ Type = 'path'; Value = (Join-Path $env:USERPROFILE 'Tools\radare2\bin\r2.bat') },
                 [pscustomobject]@{ Type = 'path'; Value = (Join-Path $env:USERPROFILE 'Tools\radare2\bin\r2.exe') },
                 [pscustomobject]@{ Type = 'path'; Value = (Join-Path $env:USERPROFILE 'Tools\radare2\r2.exe') },
                 [pscustomobject]@{ Type = 'path'; Value = 'C:\Tools\radare2\bin\r2.exe' }

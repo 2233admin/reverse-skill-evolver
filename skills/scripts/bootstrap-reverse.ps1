@@ -113,7 +113,10 @@ function Expand-ArchiveIntoDirectory {
     }
     New-Item -ItemType Directory -Path $Destination -Force | Out-Null
 
-    $children = Get-ChildItem -LiteralPath $tempExtract
+    # @(...) is required: under Set-StrictMode, a single child makes Get-ChildItem
+    # return a scalar with no .Count, which aborts every archive whose root holds
+    # exactly one entry -- the common shape for GitHub release zips.
+    $children = @(Get-ChildItem -LiteralPath $tempExtract)
     if ($children.Count -eq 1 -and $children[0].PSIsContainer) {
         $sourceDir = $children[0].FullName
     }
