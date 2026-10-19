@@ -152,6 +152,17 @@
       ]
     },
     {
+      "name": "idapro",
+      "bootstrapKind": "local-http-mcp",
+      "mcpNames": ["idapro"],
+      "mcpUrl": "http://127.0.0.1:13337/mcp",
+      "servicePort": 13337,
+      "docsUrl": "https://github.com/mrexodia/ida-pro-mcp",
+      "canAutoInstall": false,
+      "verificationMode": "service-or-registration",
+      "manualInstallHint": "需要 IDA Pro 商业许可。用 `reverse-skill install` 安装 ida-pro-mcp，再用 `reverse-skill start` 启动本地服务（默认 13337）"
+    },
+    {
       "name": "burpsuite-mcp",
       "bootstrapKind": "local-http-mcp",
       "mcpNames": ["burpsuite"],

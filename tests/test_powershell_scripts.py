@@ -364,8 +364,14 @@ def test_refresh_entry_writes_consistent_indexes(engine: str, tmp_path: Path) ->
         for field in ("tool_available", "mcp_registered", "service_online", "can_auto_install", "bootstrap_kind"):
             assert capability_nodes[name][field] == capability[field]
     assert capabilities["idalib-mcp"]["mcp_registered"] is True
-    assert tools["idapro"]["available"] is tool_nodes["idapro"]["available"] is True
-    assert tools["idapro"]["resolved_path"] == tool_nodes["idapro"]["resolved_path"] == str(bin_dir / "reverse-skill.cmd")
+    # idapro is a local HTTP service whose previous fallback pointed at 'reverse-skill',
+    # this package's own executable (bin_dir above). That made idapro report available
+    # whenever the package was installed, with no IDA present. It must stay Missing even
+    # though reverse-skill resolves here.
+    assert tools["idapro"]["available"] is tool_nodes["idapro"]["available"] is False
+    assert tools["idapro"]["resolved_path"] == tool_nodes["idapro"]["resolved_path"] == ""
+    assert tools["idapro"]["source"] == "Missing"
+    assert str(bin_dir / "reverse-skill.cmd") not in markdown.read_text(encoding="utf-8-sig")
     tool_table, capability_table = markdown.read_text(encoding="utf-8-sig").split("## 能力状态视图", 1)
     assert "| idapro |" in tool_table
     assert "| idapro |" not in capability_table

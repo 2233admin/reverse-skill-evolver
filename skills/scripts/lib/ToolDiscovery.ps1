@@ -105,9 +105,12 @@ function Get-ReverseToolCatalog {
             Skill = 'ida-reverse'
             Purpose = 'Python IDA Pro MCP CLI'
             VersionArgs = @('--version')
-            Fallbacks = @(
-                [pscustomobject]@{ Type = 'command'; Value = 'reverse-skill' }
-            )
+            # idapro is a local HTTP service, not a CLI on PATH. The previous fallback
+            # pointed at 'reverse-skill', this package's own executable, so installing
+            # the package made idapro report available with no IDA present. Its real
+            # state comes from Get-ReverseCapabilityState (port 13337 + MCP registration,
+            # per verificationMode "service-or-registration" in the bootstrap manifest).
+            Fallbacks = @()
         }
         [pscustomobject]@{
             Name = 'frida-ps'
