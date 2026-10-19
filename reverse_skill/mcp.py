@@ -44,6 +44,10 @@ class _NetworkStream(httpx.SyncByteStream):
                 return
 
     def close(self) -> None:
+        # After a terminal shutdown this must not run: run() would lazily start a
+        # new loop and thread, resurrecting a transport that close() retired.
+        if self.transport.closed:
+            return
         self.transport.run(self.response.aclose(), cleanup=True)
 
 
@@ -70,8 +74,13 @@ class _NetworkTransport(httpx.BaseTransport):
         self.loop = None
         self.thread = None
         self.client = None
+        # Terminal once close() has run; run() refuses to restart a retired
+        # transport, so unwinding cleanup cannot resurrect the loop and thread.
+        self.closed = False
 
     def run(self, operation, *, cleanup=False):
+        if self.closed:
+            raise McpTransportError("MCP transport is closed")
         if self.loop is None:
             self.loop = asyncio.new_event_loop()
             self.thread = threading.Thread(target=self.loop.run_forever, name="mcp-http", daemon=True)
@@ -87,6 +96,12 @@ class _NetworkTransport(httpx.BaseTransport):
             return asyncio.run_coroutine_threadsafe(wait(), self.loop).result()
         except asyncio.TimeoutError as exc:
             raise httpx.TimeoutException("MCP probe deadline exceeded") from exc
+        except KeyboardInterrupt:
+            # Ctrl-C interrupts only this waiting thread. Retire the loop and its
+            # thread before re-raising, or the asyncio operation stays live on a
+            # daemon thread the caller can no longer reach.
+            self.close()
+            raise
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
         async def send():
@@ -105,16 +120,54 @@ class _NetworkTransport(httpx.BaseTransport):
         )
 
     def close(self) -> None:
-        if self.loop is None:
+        if self.loop is None or self.closed:
+            self.closed = True
             return
+        self.closed = True
         try:
             if self.client is not None:
-                self.run(self.client.aclose(), cleanup=True)
+                # Close the async client while the loop is live; this is resource
+                # cleanup, not a substitute for draining the cancelled reads.
+                try:
+                    asyncio.run_coroutine_threadsafe(self.client.aclose(), self.loop).result(
+                        timeout=max(1.0, self.deadline or 10.0)
+                    )
+                except (asyncio.TimeoutError, asyncio.CancelledError, RuntimeError):
+                    pass
         finally:
-            self.loop.call_soon_threadsafe(self.loop.stop)
-            self.thread.join()
-            self.loop.close()
-            self.loop = self.thread = self.client = None
+            try:
+                # Cancel and *await* every task on this loop. Cancelling alone only
+                # requests it; without the gather the loop can be closed while a
+                # task is still finishing, which asyncio reports as a destroyed
+                # pending task (measured before this change).
+                asyncio.run_coroutine_threadsafe(self._cancel_all(), self.loop).result(
+                    timeout=max(1.0, self.deadline or 5.0)
+                )
+            except (asyncio.TimeoutError, asyncio.CancelledError, RuntimeError):
+                pass
+            finally:
+                self.loop.call_soon_threadsafe(self.loop.stop)
+                self.thread.join()
+                self.loop.close()
+                self.loop = self.thread = self.client = None
+
+    async def _cancel_all(self) -> None:
+        """Cancel every task and await it, repeating until the loop is quiescent.
+
+        A single snapshot is not enough: cancelling a task can create or reveal
+        children (``wait_for`` owns an inner task), so the loop is swept until two
+        consecutive passes find nothing left to cancel.
+        """
+        current = asyncio.current_task()
+        for _ in range(8):
+            pending = {task for task in asyncio.all_tasks() if task is not current}
+            if not pending:
+                return
+            for task in pending:
+                task.cancel()
+            await asyncio.gather(*pending, return_exceptions=True)
+            # Let cancellation of children propagate before re-checking.
+            await asyncio.sleep(0)
 
 
 @dataclass

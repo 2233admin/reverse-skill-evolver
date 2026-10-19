@@ -1,5 +1,8 @@
 import json
+import asyncio
 import threading
+import time
+import warnings
 import weakref
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any
@@ -13,6 +16,7 @@ from reverse_skill.mcp import (
     MAX_SSE_EVENTS,
     MODERN_VERSION,
     McpClient,
+    _NetworkTransport,
     encode_header_value,
     encode_parameter_header,
 )
@@ -521,3 +525,103 @@ def test_normal_responses_still_read_within_the_budgets() -> None:
 
     with McpClient("http://mock/mcp", transport=httpx.MockTransport(handler)) as client:
         assert client.request("resources/list") == {"value": payload}
+
+
+def test_transport_close_drains_a_cancelled_in_flight_task() -> None:
+    """#16: closing must not destroy a pending task.
+
+    Cancelling only requests cancellation; the task still has to run its
+    ``finally`` on a live loop. Measured before the fix: the task is destroyed
+    while pending and its cleanup never runs.
+    """
+    transport = _NetworkTransport(None)
+    finished: list[str] = []
+
+    async def noop() -> None:
+        return None
+
+    async def suspended() -> None:
+        try:
+            await asyncio.sleep(60)
+        finally:
+            finished.append("cleaned")
+
+    transport.run(noop())  # starts the loop the way a real request would
+    asyncio.run_coroutine_threadsafe(suspended(), transport.loop)
+    time.sleep(0.2)
+    assert transport.thread.is_alive()
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        transport.close()
+
+    messages = [str(w.message) for w in caught]
+    assert not [m for m in messages if "never awaited" in m], messages
+    assert not [m for m in messages if "destroyed but it is pending" in m], messages
+    assert finished == ["cleaned"], "the cancelled task never ran its cleanup"
+    assert transport.loop is None and transport.thread is None
+    assert transport.closed is True
+
+
+def test_closed_transport_is_not_resurrected_by_unwinding_cleanup() -> None:
+    """#16: a retired transport must not be restarted.
+
+    ``run()`` lazily creates the loop and thread, so calling it after ``close()``
+    — as an unwinding ``_NetworkStream.close()`` does — previously left a live
+    daemon loop and thread behind.
+    """
+    transport = _NetworkTransport(None)
+
+    async def noop() -> None:
+        return None
+
+    transport.run(noop())
+    transport.close()
+    assert transport.loop is None and transport.thread is None
+
+    async def closing() -> None:
+        return None
+
+    pending = closing()
+    try:
+        with pytest.raises(McpTransportError, match="closed"):
+            transport.run(pending, cleanup=True)
+    finally:
+        pending.close()  # never submitted; close it so it is not left un-awaited
+
+    assert transport.loop is None, "the transport was resurrected by a post-close run()"
+    assert transport.thread is None
+
+
+def test_stream_close_after_transport_close_is_a_no_op() -> None:
+    """The unwind path: a stream closing after terminal shutdown must do nothing."""
+    from reverse_skill.mcp import _NetworkStream
+
+    transport = _NetworkTransport(None)
+
+    async def noop() -> None:
+        return None
+
+    class FakeResponse:
+        async def aclose(self) -> None:
+            raise AssertionError("aclose must not run on a retired transport")
+
+    transport.run(noop())
+    stream = _NetworkStream(transport, FakeResponse())
+    transport.close()
+    stream.close()  # must not raise and must not restart the transport
+    assert transport.loop is None and transport.thread is None
+
+
+def test_transport_close_after_a_budget_failure_leaves_no_warning() -> None:
+    """The end-to-end shape: an over-budget SSE response, then close."""
+    with _StreamingServer("text/event-stream", b"data: " + b"z" * (128 * 1024) + b"\n") as server:
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            client = McpClient(server.url, timeout=30.0)
+            with pytest.raises(McpProtocolError):
+                client.request("resources/list")
+            client.close()
+
+    unraisable = [w for w in caught if "never awaited" in str(w.message)]
+    assert not unraisable, [str(w.message) for w in unraisable]
