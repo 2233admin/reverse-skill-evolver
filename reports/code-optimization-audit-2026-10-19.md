@@ -44,7 +44,7 @@ Honest caveat: the two biggest *measured* costs (FTS5 trigram build at ~1.27 s, 
 |---|---|---|---|---|---|
 | 1 | HIGH | DB | `read_node_text` per node over **UNINDEXED** FTS5 column (`index_store.py:368`, loop `index_api.py:225-229`) | Batch with `WHERE node_id IN (...)`, build a result map, keep requested order | **measured 38.5×** at K=100/20k nodes |
 | 2 | MED | DB | Node-by-node ancestor reads + repeated hydration in hybrid (`index_store.py:411-423`, `retrieval.py:248-336`) | One recursive CTE for the ancestor chain; reuse shortlist metadata | ~1600 queries at `top_k=200`/depth 5 |
-| 3 | LOW | DB | `nodes_parent(parent_id)` lacks `ordinal` (`index_store.py:121,397`) | `CREATE INDEX nodes_parent ON nodes(parent_id, ordinal)` | Realistic after IDA import (100k functions under one root) |
+| 3 | LOW | DB | `nodes_parent(parent_id)` lacks `ordinal` (`index_store.py:122`) | `CREATE INDEX nodes_parent ON nodes(parent_id, ordinal)` | Serves the `ORDER BY n.ordinal` in `read_children` (`index_store.py:418`); was a temp b-tree |
 | 4 | LOW | Dead | `read_nodes` (`index_store.py:373`) and `read_link_targets` (`:471`) unreferenced | **Reuse `read_nodes` for #1; delete `read_link_targets`** | — |
 
 Measured proof for #1, 20,000-row FTS5 corpus:
@@ -314,8 +314,8 @@ Probe and benchmark scripts were removed after use; only the two source files ar
 
 ### Still open from this audit
 
-Findings 3, 5, 6, 8, 10, 11 and 16–30 are **not** fixed. Finding 4 was fixed in commit `478af86`
-(see below); 15 and 23 in `ed00994`; 1, 2, 7, 9 and 12–14 earlier.
+Findings 8, 10, 11 and 16–30 are **not** fixed. Finding 3 was fixed in commit `13d5917`, 4 in
+`478af86` (both below); 15 and 23 in `ed00994`; 1, 2, 7, 9 and 12–14 earlier.
 
 ### Findings 15 and 23 — commit `ed00994`
 
@@ -392,4 +392,35 @@ direction and are cheap to falsify:
 
 The only module importing `cli` at import time is `__main__.py:1`, which is the package entry point
 and therefore the correct direction rather than a reverse dependency.
+
+### Finding 3 — `nodes_parent` widened to `(parent_id, ordinal)`, commit `13d5917`
+
+The audit cited `index_store.py:121,397`. Both anchors are wrong, and it matters which query is
+actually involved: `:121` is the index definition itself, and `:397` is a `return []` inside
+`read_nodes`, which filters by `node_id` and never touches this index. The query that depends on it
+is `read_children` at **`:418`** — `WHERE n.parent_id = ? ORDER BY n.ordinal`. Located by behavior,
+not by the report's line numbers.
+
+With `parent_id` alone the planner could seek the filter but built a temp b-tree for the sort.
+`EXPLAIN QUERY PLAN` after the change keeps `SEARCH n USING INDEX nodes_parent (parent_id=?)` and
+drops the `USE TEMP B-TREE FOR ORDER BY`. That plan is the claim; no timing is asserted and the
+report's original "100k functions under one root" scenario was not reproduced.
+
+Two edits were required, because `CREATE INDEX IF NOT EXISTS` matches on **name alone** — changing
+the definition in `SCHEMA_SQL` would otherwise be a silent no-op on every existing index file:
+
+1. `SCHEMA_SQL` widens the definition so a fresh build is correct immediately.
+2. `ensure_query_indexes` drops and rebuilds a pre-existing narrow index. It is the codebase's
+   existing seam for this (it already does the same for `nodes_title`) and runs inside the apply
+   transaction at `index_build.py:1411` and `ida_ingest.py:341`, so no call site was added. The
+   check is a no-op when the columns already match, so repeated applies do not churn the index.
+
+`SCHEMA_VERSION` stays at `"1"`: table shape is unchanged, and the upgrade lands on the next apply.
+
+**Regression evidence:** `python -m pytest -q` → **865 passed, 5 skipped** (baseline 862; +3 tests).
+`gates all` → `ok true`, three checks `clean`. The three new tests fail against the unmodified
+`index_store.py`, and the plan test fails on the literal `TEMP B-TREE`, so it discriminates on the
+sort rather than on the index name. Both paths were also exercised directly: fresh `create_schema`
+yields `[parent_id, ordinal]`, a hand-built narrow index upgrades to the same, a second
+`ensure_query_indexes` call is idempotent, and `sqlite_master` holds exactly one `nodes_parent` row.
 
