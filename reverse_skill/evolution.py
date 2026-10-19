@@ -143,6 +143,26 @@ def validate_trace_card(trace: Any) -> None:
         references(oracle.get("evidence_refs"), "oracle evidence_refs")
         if oracle["status"] != "not_run":
             require(bool(oracle["evidence_refs"]), "observed oracle result needs evidence")
+    chain_files = route.get("chain_files")
+    require(chain_files is None or isinstance(chain_files, list), "route chain_files must be a list")
+    if chain_files:
+        require(all(nonempty(item) for item in chain_files), "route chain_files entries must be nonempty")
+        require(len(chain_files) == len(set(chain_files)), "route chain_files must be unique")
+    self_check = trace.get("self_check")
+    require(self_check is None or isinstance(self_check, list), "self_check must be a list")
+    if chain_files:
+        require(isinstance(self_check, list) and bool(self_check), "a route that selected chain_files requires a nonempty self_check")
+    for entry in self_check or []:
+        require(isinstance(entry, dict), "self_check entry must be an object")
+        require(nonempty(entry.get("chain_ref")), "self_check chain_ref must be nonempty")
+        require(entry.get("result") in ("consistent", "contradicted", "not_applicable"), "unknown self_check result")
+        require("note" not in entry or isinstance(entry["note"], str), "self_check note must be a string")
+        if "evidence" in entry:
+            references(entry["evidence"], "self_check evidence")
+    if chain_files and self_check:
+        checked = [entry["chain_ref"] for entry in self_check]
+        unchallenged = [ref for ref in chain_files if ref not in checked]
+        require(not unchallenged, f"self_check must cover every selected chain file; missing {unchallenged}")
     if tier == "validated" or promotion:
         require(not unresolved, "open outcome-affecting unknown blocks validated or promotion claims")
         require(bool(oracles) and all(oracle["status"] == "pass" for oracle in oracles), "validated or promotion claims require all oracles passed")

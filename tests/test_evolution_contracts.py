@@ -460,3 +460,50 @@ def test_trace_with_no_evidence_can_be_candidate_but_not_validated(trace_card: d
     trace_card["memory_tier"] = "validated"
     with pytest.raises(ToolOperationError, match="all oracles passed"):
         evolution.validate_trace_card(trace_card)
+
+
+def test_trace_without_chain_files_needs_no_self_check(trace_card: dict) -> None:
+    """Backward compatibility: a v2 record predating routing injection stays valid."""
+    trace_card["route"]["chain_files"] = []
+    evolution.validate_trace_card(trace_card)
+    assert trace_card.get("self_check") is None
+
+
+def test_route_with_chain_files_requires_a_nonempty_self_check(trace_card: dict) -> None:
+    trace_card["route"]["chain_files"] = ["chains/rev.md"]
+    with pytest.raises(ToolOperationError, match="requires a nonempty self_check"):
+        evolution.validate_trace_card(trace_card)
+    schema = json.loads(TRACE_SCHEMA.read_text(encoding="utf-8"))
+    assert not Draft202012Validator(schema).is_valid(trace_card)
+    trace_card["self_check"] = [{"chain_ref": "chains/rev.md", "result": "consistent"}]
+    evolution.validate_trace_card(trace_card)
+    Draft202012Validator(schema).validate(trace_card)
+
+
+def test_self_check_must_cover_every_selected_chain_file(trace_card: dict) -> None:
+    trace_card["route"]["chain_files"] = ["chains/web.md", "chains/priv.md"]
+    trace_card["self_check"] = [{"chain_ref": "chains/web.md", "result": "consistent"}]
+    with pytest.raises(ToolOperationError, match=r"missing \['chains/priv\.md'\]"):
+        evolution.validate_trace_card(trace_card)
+
+
+def test_self_check_entry_rejects_unknown_result_and_bad_evidence(trace_card: dict) -> None:
+    trace_card["route"]["chain_files"] = ["chains/rev.md"]
+    trace_card["self_check"] = [{"chain_ref": "chains/rev.md", "result": "maybe"}]
+    with pytest.raises(ToolOperationError, match="unknown self_check result"):
+        evolution.validate_trace_card(trace_card)
+    trace_card["self_check"] = [{"chain_ref": "chains/rev.md", "result": "contradicted", "evidence": ["dangling"]}]
+    with pytest.raises(ToolOperationError, match="dangling evidence"):
+        evolution.validate_trace_card(trace_card)
+    trace_card["self_check"] = [{"chain_ref": "chains/rev.md", "result": "contradicted", "evidence": ["ev-1"]}]
+    evolution.validate_trace_card(trace_card)
+
+
+def test_chain_files_must_be_unique_and_nonempty(trace_card: dict) -> None:
+    trace_card["route"]["chain_files"] = ["chains/rev.md", "chains/rev.md"]
+    trace_card["self_check"] = [{"chain_ref": "chains/rev.md", "result": "consistent"}]
+    with pytest.raises(ToolOperationError, match="must be unique"):
+        evolution.validate_trace_card(trace_card)
+    trace_card["route"]["chain_files"] = [""]
+    with pytest.raises(ToolOperationError, match="must be nonempty"):
+        evolution.validate_trace_card(trace_card)

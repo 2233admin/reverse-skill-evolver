@@ -16,7 +16,13 @@
       "properties": {
         "macro_route": { "$ref": "#/$defs/nonempty" },
         "selected_by": { "type": "string" },
-        "alternatives_considered": { "type": "array" }
+        "alternatives_considered": { "type": "array" },
+        "chain_files": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/nonempty" },
+          "description": "Decision skeletons the routing selected, as returned in build_plan chain_files. Optional; v2 records that predate routing injection omit it."
+        }
       }
     },
     "steps": {
@@ -96,6 +102,21 @@
       }
     },
     "learning": { "type": "object" },
+    "self_check": {
+      "type": "array",
+      "description": "Per-skeleton consistency check, required when route.chain_files is nonempty and omitted otherwise.",
+      "items": {
+        "type": "object",
+        "required": ["chain_ref", "result"],
+        "additionalProperties": false,
+        "properties": {
+          "chain_ref": { "$ref": "#/$defs/nonempty" },
+          "result": { "enum": ["consistent", "contradicted", "not_applicable"] },
+          "note": { "type": "string" },
+          "evidence": { "$ref": "#/$defs/evidenceIds" }
+        }
+      }
+    },
     "memory_tier": { "enum": ["validated", "candidate", "forensic"] },
     "promotion_candidate": { "type": "boolean" }
   },
@@ -104,6 +125,15 @@
     "evidenceIds": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/nonempty" } }
   },
   "allOf": [
+    {
+      "if": {
+        "properties": {
+          "route": { "properties": { "chain_files": { "minItems": 1 } }, "required": ["chain_files"] }
+        },
+        "required": ["route"]
+      },
+      "then": { "required": ["self_check"], "properties": { "self_check": { "minItems": 1 } } }
+    },
     {
       "if": {
         "anyOf": [
