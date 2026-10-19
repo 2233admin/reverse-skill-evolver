@@ -314,8 +314,8 @@ Probe and benchmark scripts were removed after use; only the two source files ar
 
 ### Still open from this audit
 
-Findings 3–6, 8, 10, 11 and 16–30 are **not** fixed. Finding 15 and 23 were fixed in commit
-`ed00994` (see below); 1, 2, 7, 9 and 12–14 earlier.
+Findings 3, 5, 6, 8, 10, 11 and 16–30 are **not** fixed. Finding 4 was fixed in commit `478af86`
+(see below); 15 and 23 in `ed00994`; 1, 2, 7, 9 and 12–14 earlier.
 
 ### Findings 15 and 23 — commit `ed00994`
 
@@ -349,4 +349,34 @@ cache tests exercise a new API rather than a before/after behaviour.
 
 `python -m pytest -q` → **848 passed, 5 skipped** (baseline 840; the +8 are the new tests).
 `python scripts/run.py --json gates all` → `ok true`, all three checks `clean`.
+
+### Finding 4 — unused `read_link_targets` deleted, commit `478af86`
+
+The `read_nodes` reuse half of #4 landed with #1 in `2285e91`. This closes the second half: the
+dead public name `read_link_targets` (`index_store.py:492`) is removed, 13 lines, no replacement.
+
+The "Unverified boundaries" note required an external-consumer check rather than a grep result,
+because this package ships a CLI. The check was run across every surface:
+
+| Surface | Result |
+|---|---|
+| Callers in `reverse_skill/` and `tests/` | none |
+| Re-exports, `__all__` | none |
+| The four `index_store` importers (`index_api`, `index_build`, `retrieval`, `ida_ingest`) | name `read_nodes`, `read_nodes_text`, `read_ancestors`, `read_children`, `read_node` — never `read_link_targets` |
+| String refs, `getattr`, CLI dispatch, JSON output keys | none |
+| Docs, skills, CHANGELOG | only this report names it |
+| `pytest.raises` `match=` strings | none |
+
+`cli.py` reaches index commands only through `index_cli` and never touches `index_store`, so no CLI
+surface exposes the name. One false lead worth recording: `index_build.py` has many `link_targets`
+hits, but they are a local dict threading document id → heading map during edge resolution, not
+this function.
+
+Clean cutover, no deprecation shim.
+
+**Regression evidence:** `python -m pytest -q` → **862 passed, 5 skipped**, unchanged from the
+pre-change baseline — the expected result for deleting a function with no consumers, and therefore
+also the reason this change needs the consumer table above rather than the test count as its
+evidence. `gates all` → `ok true`, three checks `clean`. `hasattr(index_store,
+"read_link_targets")` is `False` after the change.
 
