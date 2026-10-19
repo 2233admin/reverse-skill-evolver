@@ -8,9 +8,9 @@ session produced the number) and **source-backed** (static reading; no benchmark
 
 **0 critical, 2 high, 6 medium, 11 low.**
 
-> **Status update.** Findings 1, 2, 7, 9, 12, 13 and 14 were fixed after this audit, in
-> commit `2285e91` (1–2) and `5bbe0ec` (7, 9, 12–14). See "Fixes applied" at the end for the
-> before/after measurements.
+> **Status update.** Findings 1, 2, 7, 9, 12, 13, 14, 15 and 23 were fixed after this audit, in
+> commit `2285e91` (1–2), `5bbe0ec` (7, 9, 12–14) and `ed00994` (15, 23). See "Fixes applied" at the
+> end for the before/after measurements.
 
 The stack rules out most of the usual domains: no web server, no ORM, no frontend, no container
 build in this package. 11 lanes ran; **three returned only ruled-out false positives**, which is the
@@ -201,8 +201,8 @@ Ordered by impact ÷ risk. Nothing here is a rewrite.
 
 ## Unverified boundaries
 
-- Lanes were **read-only**: no lane applied a fix. Fixes for findings 1, 2, 7, 9, 12–14 were made
-  separately by the coordinator and are recorded under "Fixes applied"; all other findings remain
+- Lanes were **read-only**: no lane applied a fix. Fixes for findings 1, 2, 7, 9, 12–14 and 15/23
+  were made in later sessions and are recorded under "Fixes applied"; all other findings remain
   unfixed and un-retested.
 - Timing is **Windows / Python 3.14 / warm cache**. The quadratic regexes are the most portable
   result (algorithmic, not platform); the SQLite and import numbers are not.
@@ -314,6 +314,39 @@ Probe and benchmark scripts were removed after use; only the two source files ar
 
 ### Still open from this audit
 
-Findings 3–6, 8, 10, 11, 15–30 are **not** fixed. Highest remaining: #15 (unbounded MCP response
-buffering) and #23 (artifact re-hashed once per evidence record).
+Findings 3–6, 8, 10, 11 and 16–30 are **not** fixed. Finding 15 and 23 were fixed in commit
+`ed00994` (see below); 1, 2, 7, 9 and 12–14 earlier.
+
+### Findings 15 and 23 — commit `ed00994`
+
+Both were fixed together in one session, with tests.
+
+**#15 — MCP responses are bounded.** The deadline bounds waiting time, not memory: a fast sender
+could keep every per-chunk deadline check satisfied while the buffer grew without limit, and a
+single SSE event streamed as one long line was unbounded even with an event cap. `MAX_RESPONSE_BYTES`
+(8 MiB) and `MAX_SSE_EVENTS` (4096) are now enforced **while accumulating**, on both the SSE and the
+byte path, and exceeding one raises `McpProtocolError` naming the observed size rather than
+truncating silently. Response encoding is captured before the stream is consumed, so a failure path
+never touches a closed response.
+
+**#23 — one hash per artifact per review.** Validity is decided by stat **before and after** the
+read, not by a stored mtime: Windows mtime granularity can be coarse enough that a rewrite lands
+inside one tick, so a stored timestamp would claim a state the file no longer has. The cache entry is
+set only when the file proved byte-stable across the read that produced the digest; otherwise `None`
+is stored, so a concurrent rewrite is neither cached nor reported with a digest describing no single
+state. Scope is one `review_case` call, never persisted.
+
+Independent verification (a throwaway probe counting `Path.open` calls, not the committed tests):
+three hashes of one file → **one read**; after rewriting the file → **two reads** and a changed
+digest; `cache=None` → **two reads**, preserving the old behaviour.
+
+The fix carries its own stated boundaries: it does not remove the O(records × artifact size) read
+(a fixed immutable evidence layer would, but that adds writes to a command documented as read-only
+in four places); the budgets were not exercised against a real remote MCP server; and the three new
+cache tests exercise a new API rather than a before/after behaviour.
+
+### Regression evidence for this batch
+
+`python -m pytest -q` → **848 passed, 5 skipped** (baseline 840; the +8 are the new tests).
+`python scripts/run.py --json gates all` → `ok true`, all three checks `clean`.
 
