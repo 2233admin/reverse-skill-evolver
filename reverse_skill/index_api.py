@@ -30,12 +30,31 @@ from .index_store import (
     probe_capabilities,
     read_node,
     read_node_text,
+    read_nodes,
+    read_nodes_text,
     read_subtree,
     validate_node_id,
 )
 from .retrieval import retrieve
 
 _MAX_DESCENDANTS = 500
+
+
+def _read_bodies(connection: Any, node_ids: Sequence[str]) -> Dict[str, str]:
+    """Bodies for the requested nodes, keyed by node id.
+
+    ``fts_terms.node_id`` is UNINDEXED, so an equality lookup scans the corpus;
+    one statement per id is O(K*N). A single ``IN`` statement costs O(N) but pays
+    a fixed setup, so the small-K path stays a loop — measured faster below ~5.
+    """
+    if len(node_ids) < 5:
+        bodies: Dict[str, str] = {}
+        for node_id in node_ids:
+            text = read_node_text(connection, node_id)
+            if text is not None:
+                bodies[node_id] = text
+        return bodies
+    return read_nodes_text(connection, node_ids)
 
 
 def _resolve_index_path(root: Path, index_path: Optional[Path]) -> Path:
@@ -221,12 +240,14 @@ def index_read_nodes(
     connection = open_read_only(resolved)
     try:
         meta = _read_meta(connection)
+        nodes = {row["node_id"]: row for row in read_nodes(connection, node_ids)}
+        bodies = _read_bodies(connection, node_ids)
         rows = []
         for node_id in node_ids:
-            node = read_node(connection, node_id)
+            node = nodes.get(node_id)
             if node is None:
                 raise NodeNotFound(f"node_id not found in index: {node_id}")
-            text = read_node_text(connection, node_id)
+            text = bodies.get(node_id)
             if text is None:
                 raise IndexCorrupt(f"indexed body is missing for node_id: {node_id}")
             payload = _node_payload(node)

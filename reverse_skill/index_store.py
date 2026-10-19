@@ -370,6 +370,27 @@ def read_node_text(connection: sqlite3.Connection, node_id: str) -> Optional[str
     return str(row["body"]) if row is not None else None
 
 
+def read_nodes_text(
+    connection: sqlite3.Connection, node_ids: Iterable[str]
+) -> Dict[str, str]:
+    """Bodies for many nodes in one statement, keyed by node id.
+
+    ``fts_terms.node_id`` is UNINDEXED, so each equality lookup scans the corpus;
+    batching turns K scans into one. Missing ids are absent from the result, which
+    callers treat the same way as ``read_node_text`` returning ``None``.
+    """
+    ids = list(node_ids)
+    if not ids:
+        return {}
+    placeholders = ",".join("?" for _ in ids)
+    rows = connection.execute(
+        f"SELECT node_id, body FROM fts_terms "
+        f"WHERE node_id IN ({placeholders})",
+        ids,
+    ).fetchall()
+    return {row["node_id"]: str(row["body"]) for row in rows}
+
+
 def read_nodes(connection: sqlite3.Connection, node_ids: Iterable[str]) -> List[Dict[str, Any]]:
     ids = list(node_ids)
     if not ids:
