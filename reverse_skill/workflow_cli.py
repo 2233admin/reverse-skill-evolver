@@ -5,6 +5,8 @@ from __future__ import annotations
 import click
 from pathlib import Path
 
+from .output import emit
+
 
 @click.command()
 @click.argument("task")
@@ -14,7 +16,6 @@ from pathlib import Path
 @click.pass_obj
 def route(state, task, target_kind, input_path, route_id):
     """Suggest a skill for TASK; does not execute or authorize it."""
-    from .cli import emit
     from .routing import build_plan
 
     emit(state, "route", build_plan({"task": task, "target_kind": target_kind,
@@ -26,8 +27,18 @@ def gates():
     """Check repository contracts or explicitly scan selected files."""
 
 
+def _root_command_group():
+    """The registered root command tree, owned by the command layer.
+
+    Resolved lazily so this module does not import ``cli`` at import time; ``cli``
+    imports this module, so a module-level import would create a cycle.
+    """
+    from .cli import cli as root_group
+
+    return root_group
+
+
 def _emit_check(state, action, result):
-    from .cli import emit
     from .errors import ToolOperationError
 
     if result["status"] not in {"clean", "reported"}:
@@ -44,7 +55,7 @@ def gates_all(state):
     """Run command, version, data and routing checks."""
     from .gates import run_all
 
-    _emit_check(state, "all", run_all())
+    _emit_check(state, "all", run_all(command_group=_root_command_group()))
 
 
 @gates.command(name="doc-facts")
@@ -53,7 +64,7 @@ def gates_docs(state):
     """Check CLI descriptions and packaged routing data."""
     from .gates import doc_facts
 
-    _emit_check(state, "doc-facts", doc_facts())
+    _emit_check(state, "doc-facts", doc_facts(command_group=_root_command_group()))
 
 
 @gates.command(name="version")
@@ -107,7 +118,6 @@ def case_init(state, hint, case_name, preset, network_profile, auth_status, auth
               evidence_of_auth, target_url, sample, in_scope_assets, package_root):
     """Create a new work/<name>/ case without executing the selected workflow."""
     from .case import CasePackageError, init_case
-    from .cli import emit
     from .errors import ToolOperationError
 
     try:
@@ -132,7 +142,6 @@ def case_init(state, hint, case_name, preset, network_profile, auth_status, auth
 def case_review(state, case_root, output_format, strict, verify_hashes):
     """Review traceability and optionally verify artifact hashes, without writes."""
     from .case import render_markdown, review_case
-    from .cli import emit
     from .errors import ToolOperationError
 
     report = review_case(str(case_root), strict=strict, verify_hashes=verify_hashes)

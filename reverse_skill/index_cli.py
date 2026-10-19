@@ -7,14 +7,10 @@ from typing import TYPE_CHECKING
 
 import click
 
+from .output import emit
+
 if TYPE_CHECKING:
     from .cli import State
-
-
-def emit(state, command, data):
-    from .cli import emit as emit_result
-
-    emit_result(state, command, data)
 
 
 @click.group(name='index')

@@ -206,7 +206,12 @@ def load_fixtures(path: Path, route_ids: set[str]) -> list[Fixture]:
     return _load_fixtures(path, route_ids)[0]
 
 
-def _answer_text(output: str) -> str:
+def answer_text(output: str) -> str:
+    """Strip OMP print-mode framing from one captured response.
+
+    Public because ``swarm`` unwraps the same OMP output; keep both callers on this
+    single implementation.
+    """
     # OMP print mode may emit one leading progress line; nothing inside the answer is framing.
     text = output.lstrip()
     if text.startswith("Working...\r\n"):
@@ -214,6 +219,10 @@ def _answer_text(output: str) -> str:
     if text.startswith("Working...\n"):
         return text[len("Working...\n"):].strip()
     return text.strip()
+
+
+# Internal alias: existing call sites inside this module keep the private name.
+_answer_text = answer_text
 
 
 def _parse_response(output: str, route_ids: set[str]) -> tuple[str | None, str | None]:
@@ -271,7 +280,12 @@ def _preflight_candidate(candidate_text: str, timeout: int) -> None:
     _check_windows_argv(_omp_args(shutil.which("omp") or "omp", working_dir, candidate_text, timeout))
 
 
-def _omp(prompt: str, system_prompt: str, timeout: int) -> str:
+def omp(prompt: str, system_prompt: str, timeout: int) -> str:
+    """Run one bounded OMP print-mode call and return its stdout.
+
+    Public because ``swarm`` uses it as the default agent invoker; both callers must
+    share the same argv limits and failure shape.
+    """
     executable = shutil.which("omp")
     if executable is None:
         raise EnvironmentUnavailable("OMP CLI is required for evolution; install or expose `omp` on PATH")
@@ -300,6 +314,10 @@ def _omp(prompt: str, system_prompt: str, timeout: int) -> str:
             failure.process_output = {"stdout": result.stdout, "stderr": result.stderr, "exit_code": result.returncode}
             raise failure
         return result.stdout
+
+
+# Internal alias: existing call sites inside this module keep the private name.
+_omp = omp
 
 
 def _route_prompt(fixture: Fixture, catalog_json: str) -> str:

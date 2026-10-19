@@ -316,7 +316,7 @@ def test_cli_uses_real_subprocess_stdin_without_model_use(tmp_path: Path, monkey
 def test_cli_failure_has_nonzero_exit_and_report_location(tmp_path: Path, monkeypatch, capsys) -> None:
     context = tmp_path / "context.txt"
     context.write_text("evidence")
-    monkeypatch.setattr(evolution, "_omp", lambda *_: 'not JSON')
+    monkeypatch.setattr(evolution, "omp", lambda *_: 'not JSON')
     exit_code = swarm_cli.main(["--json", "--goal", "Analyze", "--context", str(context),
                                 "--output", str(tmp_path / "run"), "--max-calls", "4"])
     payload = json.loads(capsys.readouterr().out)

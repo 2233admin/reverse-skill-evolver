@@ -157,8 +157,15 @@ def _result(checks: list[dict[str, Any]]) -> dict[str, Any]:
     return {"status": "findings" if failures else "clean", "checks": checks, "failures": failures}
 
 
-def doc_facts(repo_root: Path | None = None) -> dict[str, Any]:
-    from .cli import cli
+def doc_facts(repo_root: Path | None = None, command_group=None) -> dict[str, Any]:
+    """Reconcile the registered command tree against the OpenCLI description.
+
+    The command tree is supplied by the caller (``cli``) rather than imported here: this
+    module is a dependency of the command layer, so importing it back would invert the
+    direction. Default resolution stays lazy for direct/legacy callers.
+    """
+    if command_group is None:
+        from .cli import cli as command_group
 
     root = repo_root or _resolve_repo_root()
     spec = json.loads((root / "reverse-skill.opencli.json").read_text(encoding="utf-8"))
@@ -174,14 +181,14 @@ def doc_facts(repo_root: Path | None = None) -> dict[str, Any]:
             if hasattr(actual[name], "commands"):
                 compare(actual[name], described[name], path + " " + name)
 
-    compare(cli, spec["command"], "reverse-skill")
+    compare(command_group, spec["command"], "reverse-skill")
     canonical = json.loads((root / "skills/routing.json").read_text(encoding="utf-8"))
     packaged = json.loads((root / "reverse_skill/data/routing.json").read_text(encoding="utf-8"))
     checks.append({"name": "packaged_routes_match", "ok": canonical == packaged,
                    "detail": "skills/routing.json vs reverse_skill/data/routing.json"})
     for filename in ("README.md", "README_zh.md"):
         text = (root / filename).read_text(encoding="utf-8")
-        unknown = sorted(set(re.findall(r"reverse-skill\s+([a-z][a-z0-9-]*)", text)) - set(cli.commands))
+        unknown = sorted(set(re.findall(r"reverse-skill\s+([a-z][a-z0-9-]*)", text)) - set(command_group.commands))
         checks.append({"name": filename + ":commands", "ok": not unknown, "detail": unknown})
     return _result(checks)
 
@@ -207,9 +214,9 @@ def routing_coherence(repo_root: Path | None = None) -> dict[str, Any]:
     return _result(checks)
 
 
-def run_all(repo_root: Path | None = None) -> dict[str, Any]:
+def run_all(repo_root: Path | None = None, command_group=None) -> dict[str, Any]:
     root = repo_root or _resolve_repo_root()
-    results = {"doc-facts": doc_facts(root), "version": version_consistency(root),
+    results = {"doc-facts": doc_facts(root, command_group), "version": version_consistency(root),
                "routing-coherence": routing_coherence(root)}
     failed = [name for name, value in results.items() if value["status"] != "clean"]
     return {"status": "findings" if failed else "clean", "results": results, "failures": failed}

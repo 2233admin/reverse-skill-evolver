@@ -38,7 +38,7 @@ def _object(response: str) -> dict[str, Any]:
         return value
 
     try:
-        value = json.loads(evolution._answer_text(response), object_pairs_hook=unique)
+        value = json.loads(evolution.answer_text(response), object_pairs_hook=unique)
     except ValueError as exc:
         raise ToolOperationError(f"Agent must return one complete JSON object: {exc}") from exc
     if not isinstance(value, dict):
@@ -121,7 +121,7 @@ def run_swarm(
         (output_dir / "context.txt").write_bytes(context.encode("utf-8"))
     except OSError as exc:
         raise ToolOperationError(f"Cannot save swarm evidence: {exc}") from exc
-    invoke = invoke or evolution._omp
+    invoke = invoke or evolution.omp
     lock = Lock()
     report: dict[str, Any] = {
         "schemaVersion": "1",
