@@ -546,3 +546,53 @@ def test_tree_count_and_rows_share_snapshot_during_concurrent_update(tmp_path, m
     result = index_api.index_get_tree(tmp_path, root)
     assert result["descendant_count"] == 2
     assert result["descendants"] == [index_api._node_payload(row) for row in expected]
+
+
+def _index_columns(connection, name):
+    return [row["name"] for row in connection.execute(f"PRAGMA index_info('{name}')").fetchall()]
+
+
+def test_fresh_schema_widens_nodes_parent_for_children_reads():
+    """read_children filters on parent_id and sorts by ordinal; one index must serve both."""
+    connection = sqlite3.connect(":memory:")
+    connection.row_factory = sqlite3.Row
+    store.create_schema(connection)
+    assert _index_columns(connection, "nodes_parent") == ["parent_id", "ordinal"]
+
+
+def test_ensure_query_indexes_upgrades_a_pre_widening_nodes_parent():
+    """CREATE INDEX IF NOT EXISTS matches on name, so an existing narrow index must be rebuilt."""
+    connection = sqlite3.connect(":memory:")
+    connection.row_factory = sqlite3.Row
+    store.create_schema(connection)
+    connection.execute("DROP INDEX nodes_parent")
+    connection.execute("CREATE INDEX nodes_parent ON nodes(parent_id)")
+    assert _index_columns(connection, "nodes_parent") == ["parent_id"]
+
+    store.ensure_query_indexes(connection)
+    assert _index_columns(connection, "nodes_parent") == ["parent_id", "ordinal"]
+
+    # Idempotent, and never leaves a duplicate index behind.
+    store.ensure_query_indexes(connection)
+    assert _index_columns(connection, "nodes_parent") == ["parent_id", "ordinal"]
+    count = connection.execute(
+        "SELECT COUNT(*) AS c FROM sqlite_master WHERE type = 'index' AND name = 'nodes_parent'"
+    ).fetchone()["c"]
+    assert count == 1
+
+
+def test_nodes_parent_serves_the_children_sort_without_a_temp_btree():
+    """The widening only pays off if the planner actually uses it for the ORDER BY."""
+    connection = sqlite3.connect(":memory:")
+    connection.row_factory = sqlite3.Row
+    store.create_schema(connection)
+    plan = " ".join(
+        row["detail"]
+        for row in connection.execute(
+            "EXPLAIN QUERY PLAN SELECT n.node_id FROM nodes n "
+            "WHERE n.parent_id = ? ORDER BY n.ordinal",
+            ("0000000000000001",),
+        ).fetchall()
+    )
+    assert "nodes_parent" in plan
+    assert "TEMP B-TREE" not in plan.upper()

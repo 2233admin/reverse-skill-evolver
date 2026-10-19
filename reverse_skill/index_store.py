@@ -119,7 +119,7 @@ CREATE TABLE IF NOT EXISTS nodes (
     symbol_kind  TEXT
 );
 CREATE INDEX IF NOT EXISTS nodes_document ON nodes(document_id);
-CREATE INDEX IF NOT EXISTS nodes_parent  ON nodes(parent_id);
+CREATE INDEX IF NOT EXISTS nodes_parent  ON nodes(parent_id, ordinal);
 CREATE INDEX IF NOT EXISTS nodes_tree    ON nodes(tree_path);
 CREATE INDEX IF NOT EXISTS nodes_title   ON nodes(title, node_id);
 
@@ -325,6 +325,23 @@ def create_schema(connection: sqlite3.Connection) -> None:
 def ensure_query_indexes(connection: sqlite3.Connection) -> None:
     """Upgrade optional query indexes only inside an authorized apply transaction."""
     connection.execute("CREATE INDEX IF NOT EXISTS nodes_title ON nodes(title, node_id)")
+    # read_children filters on parent_id and orders by ordinal (index_store.py:418);
+    # a parent_id-only index cannot serve the sort. CREATE INDEX IF NOT EXISTS matches
+    # on name alone, so an index built before this widening is never upgraded in place
+    # and must be dropped and rebuilt.
+    existing = connection.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = 'nodes_parent'"
+    ).fetchone()
+    if existing is not None:
+        columns = [
+            row["name"]
+            for row in connection.execute("PRAGMA index_info('nodes_parent')").fetchall()
+        ]
+        if columns != ["parent_id", "ordinal"]:
+            connection.execute("DROP INDEX nodes_parent")
+            existing = None
+    if existing is None:
+        connection.execute("CREATE INDEX IF NOT EXISTS nodes_parent ON nodes(parent_id, ordinal)")
 
 
 def document_id_for(connection: sqlite3.Connection, relative_path: str) -> Optional[int]:
