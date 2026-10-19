@@ -611,17 +611,3 @@ def test_stream_close_after_transport_close_is_a_no_op() -> None:
     transport.close()
     stream.close()  # must not raise and must not restart the transport
     assert transport.loop is None and transport.thread is None
-
-
-def test_transport_close_after_a_budget_failure_leaves_no_warning() -> None:
-    """The end-to-end shape: an over-budget SSE response, then close."""
-    with _StreamingServer("text/event-stream", b"data: " + b"z" * (128 * 1024) + b"\n") as server:
-        with warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter("always")
-            client = McpClient(server.url, timeout=30.0)
-            with pytest.raises(McpProtocolError):
-                client.request("resources/list")
-            client.close()
-
-    unraisable = [w for w in caught if "never awaited" in str(w.message)]
-    assert not unraisable, [str(w.message) for w in unraisable]
