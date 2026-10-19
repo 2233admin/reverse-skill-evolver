@@ -23,7 +23,7 @@ import tempfile
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
 
 from .index_store import (
     META_BUILT_AT,
@@ -112,12 +112,28 @@ class ParsedDocument:
     lines: List[str]
     nodes: List[NodeSpec]
     python_parse_failed: bool = False
+    # Set when ``nodes`` was not built because the caller already knows this
+    # document is unchanged; ``materialize_nodes`` fills it on demand.
+    nodes_deferred: bool = False
 
 
 @dataclass
 class SkippedFile:
     relpath: str
     reason: str
+
+
+def materialize_nodes(parsed: ParsedDocument) -> List[NodeSpec]:
+    """Build ``parsed.nodes`` if a cheap scan deferred it, then return it.
+
+    The incremental update path hashes every file but only needs node trees for
+    added/changed documents and for stale link sources, so unknown-but-unchanged
+    files arrive with ``nodes_deferred`` set.
+    """
+    if parsed.nodes_deferred:
+        parsed.nodes = _build_nodes(parsed.relpath, parsed.kind, parsed.lines)
+        parsed.nodes_deferred = False
+    return parsed.nodes
 
 
 # --- Scanning ---------------------------------------------------------------
@@ -152,8 +168,13 @@ def scan_workspace(
     contracts: Dict[str, Any],
     syntax_profile: Optional[str] = None,
     parser_cache: Optional[Path] = None,
+    defer_nodes_for: Optional[Set[str]] = None,
 ) -> Tuple[List[ParsedDocument], List[SkippedFile]]:
-    """Read-only deterministic scan; never follows symlinks."""
+    """Read-only deterministic scan; never follows symlinks.
+
+    ``defer_nodes_for`` names relpaths whose node tree may be built later by
+    ``materialize_nodes`` instead of during the scan.
+    """
     if _is_link_like(root):
         raise IndexPathNotFound(f"workspace path must not be a symlink or junction: {root}")
     exclusions = contracts["default_exclusions"]
@@ -216,6 +237,7 @@ def scan_workspace(
                     stat.st_size,
                     language=syntax_extensions.get(Path(relpath).suffix.lower()),
                     parser_cache=parser_cache,
+                    defer_nodes=defer_nodes_for is not None and relpath in defer_nodes_for,
                 )
             )
     return files, skipped
@@ -442,6 +464,40 @@ def parse_tree_sitter(
     return nodes
 
 
+def _document_kind(relpath: str, language: Optional[str]) -> Optional[str]:
+    """Kind for a file, or ``None`` when a Python parse decides text vs python."""
+    suffix = Path(relpath).suffix.lower()
+    if suffix in {".md", ".markdown"}:
+        return "markdown"
+    if suffix == ".py":
+        return None
+    if language is not None:
+        return "syntax"
+    return "text"
+
+
+def _build_nodes(relpath: str, kind: str, lines: List[str]) -> List[NodeSpec]:
+    """Node tree for already-decoded lines of a document of ``kind``."""
+    if kind == "markdown":
+        return parse_markdown(relpath, lines)
+    if kind in {"python", "text"} and Path(relpath).suffix.lower() == ".py":
+        return parse_python(relpath, lines)[0]
+    if kind == "syntax":
+        raise ParserUnavailable(
+            f"syntax nodes for {relpath} require the parser arguments from the scan"
+        )
+    return [
+        NodeSpec(
+            kind="file",
+            title=relpath,
+            start=1,
+            end=max(len(lines), 1),
+            tree_path=relpath,
+            occurrence=1,
+        )
+    ]
+
+
 def _parse_file(
     relpath: str,
     data: bytes,
@@ -449,35 +505,39 @@ def _parse_file(
     *,
     language: Optional[str] = None,
     parser_cache: Optional[Path] = None,
+    defer_nodes: bool = False,
 ) -> ParsedDocument:
+    """Decode one file. With ``defer_nodes``, hash and lines are computed but the
+    node tree is left for ``materialize_nodes`` — the update path needs a hash for
+    every file yet a node tree only for added/changed/stale ones."""
     sha256_hex = hashlib.sha256(data).hexdigest()
     text = _decode_text(data)
     lines = re.split(r"\r\n|\r|\n", text)
     if lines and not lines[-1]:
         lines.pop()
     line_count = len(lines)
-    suffix = Path(relpath).suffix.lower()
-    if suffix in {".md", ".markdown"}:
-        nodes = parse_markdown(relpath, lines)
-        return ParsedDocument(relpath, "markdown", sha256_hex, line_count, size_bytes, lines, nodes)
-    if suffix == ".py":
+    kind = _document_kind(relpath, language)
+    if kind is None:
         nodes, failed = parse_python(relpath, lines)
-        kind = "text" if failed else "python"
-        return ParsedDocument(relpath, kind, sha256_hex, line_count, size_bytes, lines, nodes, failed)
-    if language is not None:
-        nodes = parse_tree_sitter(relpath, lines, language, parser_cache)
-        return ParsedDocument(relpath, "syntax", sha256_hex, line_count, size_bytes, lines, nodes)
-    nodes = [
-        NodeSpec(
-            kind="file",
-            title=relpath,
-            start=1,
-            end=max(line_count, 1),
-            tree_path=relpath,
-            occurrence=1,
+        return ParsedDocument(
+            relpath,
+            "text" if failed else "python",
+            sha256_hex,
+            line_count,
+            size_bytes,
+            lines,
+            nodes,
+            failed,
         )
-    ]
-    return ParsedDocument(relpath, "text", sha256_hex, line_count, size_bytes, lines, nodes)
+    if defer_nodes:
+        return ParsedDocument(
+            relpath, kind, sha256_hex, line_count, size_bytes, lines, [], nodes_deferred=True
+        )
+    if kind == "syntax":
+        nodes = parse_tree_sitter(relpath, lines, language, parser_cache)
+    else:
+        nodes = _build_nodes(relpath, kind, lines)
+    return ParsedDocument(relpath, kind, sha256_hex, line_count, size_bytes, lines, nodes)
 
 
 def _node_links(text: str) -> List[str]:
@@ -732,16 +792,6 @@ def parse_python(relpath: str, lines: List[str]) -> Tuple[List[NodeSpec], bool]:
 # --- Row materialization ----------------------------------------------------
 
 
-def _depth_of(nodes: List[NodeSpec], index: int) -> int:
-    depth = 0
-    cursor = index
-    while cursor != 0:
-        spec = nodes[cursor]
-        cursor = spec.parent_index if spec.parent_index is not None else 0
-        depth += 1
-    return depth
-
-
 def _materialize_document(parsed: ParsedDocument, document_id: int) -> List[Dict[str, Any]]:
     """Turn parsed nodes into node rows plus (node, body) FTS payloads."""
     _assign_bodies(parsed.nodes, parsed.lines)
@@ -750,6 +800,14 @@ def _materialize_document(parsed: ParsedDocument, document_id: int) -> List[Dict
         for parent in parsed.nodes
         for ordinal, child in enumerate(parent.children)
     }
+    # Parents always precede their children, so depth is one forward pass rather
+    # than an ancestor walk per node (which was O(n*h)).
+    depths: List[int] = []
+    for index, spec in enumerate(parsed.nodes):
+        if index == 0 or spec.parent_index is None:
+            depths.append(0)
+        else:
+            depths.append(depths[spec.parent_index] + 1)
     rows: List[Dict[str, Any]] = []
     for index, spec in enumerate(parsed.nodes):
         parent_id = None
@@ -763,7 +821,7 @@ def _materialize_document(parsed: ParsedDocument, document_id: int) -> List[Dict
                 "node_id": node_id_for(parsed.relpath, spec.tree_path, spec.occurrence),
                 "document_id": document_id,
                 "parent_id": parent_id,
-                "depth": _depth_of(parsed.nodes, index),
+                "depth": depths[index],
                 "ordinal": ordinals.get(index, 0),
                 "title": spec.title,
                 "kind": spec.kind,
@@ -793,8 +851,9 @@ def _collect_all(
     root: Path,
     syntax_profile: Optional[str] = None,
     parser_cache: Optional[Path] = None,
+    defer_nodes_for: Optional[Set[str]] = None,
 ) -> Tuple[List[ParsedDocument], List[SkippedFile]]:
-    return scan_workspace(root, load_contracts(), syntax_profile, parser_cache)
+    return scan_workspace(root, load_contracts(), syntax_profile, parser_cache, defer_nodes_for)
 
 
 def _kind_counts(files: List[ParsedDocument]) -> Dict[str, int]:
@@ -1297,7 +1356,11 @@ def update_plan(
             for row in connection.execute("SELECT key, value FROM index_meta")
         }
         effective_profile = _resolve_update_syntax(meta, syntax_profile, parser_cache)
-        files, skipped = _collect_all(root, effective_profile, parser_cache)
+        # Every existing source file starts deferred: the hash below decides whether
+        # its node tree is ever needed.
+        files, skipped = _collect_all(
+            root, effective_profile, parser_cache, defer_nodes_for=set(source_current)
+        )
         touched = sorted(set(source_current) - {item.relpath for item in files}) + [
             item.relpath
             for item in files
@@ -1309,6 +1372,15 @@ def update_plan(
             set(_stale_link_source_relpaths(connection, touched))
             | set(_link_sources_for_added_documents(files, added_relpaths, touched))
         )
+        for item in files:
+            # ``touched`` is removed+changed; added files are separate, and
+            # ``_delta_plan`` counts nodes for added+changed.
+            if (
+                item.relpath in touched
+                or item.relpath in added_relpaths
+                or item.relpath in stale_sources
+            ):
+                materialize_nodes(item)
     finally:
         close(connection)
     return _delta_plan(
@@ -1343,10 +1415,12 @@ def update_apply(
             for row in connection.execute("SELECT key, value FROM index_meta")
         }
         effective_profile = _resolve_update_syntax(meta, syntax_profile, parser_cache)
-        files, skipped = _collect_all(root, effective_profile, parser_cache)
         source_current = {
             path: document for path, document in current.items() if document["kind"] != "ida"
         }
+        files, skipped = _collect_all(
+            root, effective_profile, parser_cache, defer_nodes_for=set(source_current)
+        )
         added = [item for item in files if item.relpath not in source_current]
         changed = [
             item
@@ -1366,6 +1440,12 @@ def update_apply(
                 )
             )
         )
+        # Deferred trees are needed for inserted documents and for stale link
+        # sources, whose bodies are re-derived below.
+        needed = {item.relpath for item in added + changed} | set(stale_sources)
+        for item in files:
+            if item.relpath in needed:
+                materialize_nodes(item)
         delete_documents_cascade(connection, (source_current[path]["document_id"] for path in touched))
         removed_set = set(removed)
         document_ids = {

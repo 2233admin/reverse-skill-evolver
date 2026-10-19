@@ -39,7 +39,16 @@ LEAK_PATTERNS: List[Dict[str, Any]] = [
     },
     {"name": "Email", "regex": re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")},
     {"name": "CN mobile", "regex": re.compile(r"\b1[3-9][0-9]{9}\b")},
-    {"name": "JWT", "regex": re.compile(r"eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}")},
+    {
+        "name": "JWT",
+        # Anchored on a non-base64url boundary so a failed attempt cannot rescan
+        # the rest of the line from every `eyJ` in a run: the unanchored form was
+        # quadratic on one long line (measured 1.4 s at 32k `eyJ` repeats).
+        "regex": re.compile(
+            r"(?<![A-Za-z0-9_.-])eyJ[A-Za-z0-9_-]{10,}"
+            r"\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}"
+        ),
+    },
     {"name": "AWS Access Key", "regex": re.compile(r"\bAKIA[0-9A-Z]{16}\b")},
     {"name": "OpenAI key", "regex": re.compile(r"\bsk-(?:proj-)?[A-Za-z0-9]{20,}\b")},
     {"name": "GitHub token", "regex": re.compile(r"\bgh[pousr]_[A-Za-z0-9]{20,}\b")},
@@ -50,6 +59,10 @@ LEAK_PATTERNS: List[Dict[str, Any]] = [
 ]
 
 SCAN_EXTENSIONS = {".md", ".txt", ".json", ".yaml", ".yml", ".py"}
+# Bound the scanner's work: a generated blob must be reported, never silently
+# skipped, and a file full of matches must not build an unbounded report.
+MAX_SCAN_BYTES = 8 * 1024 * 1024
+MAX_FINDINGS = 1000
 
 _EMAIL_LOCAL = re.compile(r"[A-Za-z0-9._%+-]+")
 _WORD_BOUNDARY = re.compile(r"\b")
@@ -86,27 +99,50 @@ def leak_scan(path: str, report_only: bool = False) -> Dict[str, Any]:
         return {"status": "invalid", "reason": "path_not_found", "path": str(target)}
 
     findings: List[Dict[str, Any]] = []
+    oversized: List[str] = []
+    truncated = False
     for file in files:
         try:
+            if file.stat().st_size > MAX_SCAN_BYTES:
+                # Reported, not skipped: an unreadable-by-policy file must not
+                # look like a clean one.
+                oversized.append(str(file))
+                continue
             lines = file.read_text(encoding="utf-8", errors="replace").splitlines()
         except OSError as exc:
             findings.append({"file": str(file), "line": 0, "kind": "read_error", "value": str(exc)})
             continue
         for index, line in enumerate(lines, 1):
+            if len(findings) >= MAX_FINDINGS:
+                truncated = True
+                break
             for pattern in LEAK_PATTERNS:
                 matches = _email_matches(line) if pattern["name"] == "Email" else pattern["regex"].finditer(line)
                 for match in matches:
                     if pattern["name"] == "Email" and _email_allowed(match.group(0)):
                         continue
+                    if len(findings) >= MAX_FINDINGS:
+                        truncated = True
+                        break
                     findings.append(
                         {"file": str(file), "line": index, "kind": pattern["name"], "value": "[redacted]"}
                     )
+                if truncated:
+                    break
+            if truncated:
+                break
+        if truncated:
+            break
 
     return {
-        "status": "clean" if not findings else ("reported" if report_only else "findings"),
+        "status": "clean" if not findings and not oversized else ("reported" if report_only else "findings"),
         "path": str(target),
         "scanned_files": len(files),
         "findings": findings,
+        "findings_truncated": truncated,
+        "findings_limit": MAX_FINDINGS,
+        "skipped_oversized": oversized,
+        "max_scan_bytes": MAX_SCAN_BYTES,
         "report_only": report_only,
     }
 
