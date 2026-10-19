@@ -380,3 +380,16 @@ also the reason this change needs the consumer table above rather than the test 
 evidence. `gates all` → `ok true`, three checks `clean`. `hasattr(index_store,
 "read_link_targets")` is `False` after the change.
 
+### Architecture findings 1 and 2 — commit `6d93af2` (measures re-verified)
+
+Committed earlier and re-checked here against the current tree, because the claims are about import
+direction and are cheap to falsify:
+
+| Claim | Verified in tree |
+|---|---|
+| No runtime reverse dependency on `cli` from the command layer | `index_cli.py:10` and `workflow_cli.py:8` both `from .output import emit`. `index_cli`'s `from .cli import State` is under `if TYPE_CHECKING` (`:12-13`), and `workflow_cli`'s `from .cli import cli` is inside a function body (`:36`), so neither is an import-time cycle. |
+| `swarm` no longer calls private `evolution` names | `swarm.py:41` calls `evolution.answer_text(...)` and `:124` uses `evolution.omp` — both public names, no leading underscore. |
+
+The only module importing `cli` at import time is `__main__.py:1`, which is the package entry point
+and therefore the correct direction rather than a reverse dependency.
+
