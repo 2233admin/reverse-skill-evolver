@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Reject Windows `.cmd`/`.bat` OMP launchers before evolution preflight or subprocess execution. On Windows, evolution and swarm require a native launcher selected on `PATH`; batch-only installations now fail closed.
+
 ## [1.2.0b2] - 2026-10-16
 
 - Distribute the entire routing package as one installable `reverse-skill-evolver` skill, with shared scripts, CTF resources and adjacent OMP helpers retained. Document Codex, Claude Code, Cursor, OpenCode and OMP installation.

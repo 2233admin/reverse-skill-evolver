@@ -20,6 +20,8 @@ flowchart LR
 
 先安装本分支的 Python 包，并确保 OMP CLI 能在 PATH 中找到。证据文件可来自 IDA 快照、函数列表、导入/字符串摘要或已保存的反编译文本。
 
+Windows 上，PATH 实际选中的 `omp` 不得是 `.cmd`/`.bat` 启动器；请把原生 `omp.exe` 放到更靠前的位置。批处理启动器会被拒绝，失败原因保存在 Agent 记录中；蜂群仍保留现有的失败报告和退出码 5。
+
 ```powershell
 python -m pip install -e ".[test]"
 reverse-skill-swarm --goal "分析样本的网络通信和可疑解密线索" --context evidence.txt --output runs/swarm-001 --max-calls 6 --max-tasks 4 --max-parallel 2 --timeout 120 --json

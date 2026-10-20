@@ -9,7 +9,7 @@ import pytest
 from jsonschema import Draft202012Validator
 
 from reverse_skill import evolution
-from reverse_skill.errors import ToolOperationError
+from reverse_skill.errors import EnvironmentUnavailable, ToolOperationError
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -398,6 +398,30 @@ def test_omp_keeps_response_when_owned_child_still_locks_temp_directory(tmp_path
             child.wait(timeout=3)
 
 
+@pytest.mark.parametrize("launcher_name", ["omp.cmd", "omp.BaT"])
+def test_omp_rejects_windows_batch_launchers(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, launcher_name: str) -> None:
+    launcher = tmp_path / launcher_name
+    started = tmp_path / "batch-started.txt"
+    launcher.write_text(f'@echo off\n@echo launched>"{started}"\n', encoding="utf-8")
+    monkeypatch.setattr(evolution.sys, "platform", "win32")
+    monkeypatch.setattr(evolution.shutil, "which", lambda _: str(launcher))
+    with pytest.raises(EnvironmentUnavailable):
+        evolution.omp("task on stdin", "ordinary candidate", 1)
+    assert not started.exists()
+
+
+def test_evolve_rejects_windows_batch_launcher_before_archiving(evolution_inputs: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    launcher = tmp_path / "omp.cmd"
+    started = tmp_path / "batch-started.txt"
+    launcher.write_text(f'@echo off\n@echo launched>"{started}"\n', encoding="utf-8")
+    monkeypatch.setattr(evolution.sys, "platform", "win32")
+    monkeypatch.setattr(evolution.shutil, "which", lambda _: str(launcher))
+    with pytest.raises(EnvironmentUnavailable):
+        _evolve_inputs(evolution_inputs)
+    assert not evolution_inputs["output"].exists()
+    assert not started.exists()
+
+
 def test_windows_limit_is_not_applied_to_non_windows_argv(monkeypatch: pytest.MonkeyPatch) -> None:
     """Verify non-Windows commands bypass the Windows argument-length guard."""
     monkeypatch.setattr(evolution.sys, "platform", "linux")
@@ -420,6 +444,7 @@ def test_windows_limit_counts_serialized_quotes_utf16_and_nul(monkeypatch: pytes
 def test_oversized_windows_candidate_rejected_before_any_model_call(evolution_inputs: dict[str, Path], monkeypatch: pytest.MonkeyPatch) -> None:
     """Verify an oversized Windows command is rejected before baseline evaluation."""
     monkeypatch.setattr(evolution.sys, "platform", "win32")
+    monkeypatch.setattr(evolution.shutil, "which", lambda _: "omp.exe")
     # Byte-size passes, but Windows doubles embedded quotes in serialized argv.
     evolution_inputs["candidate"].write_text('"' * 20_000, encoding="utf-8")
     monkeypatch.setattr(evolution, "_omp", lambda *_: pytest.fail("must reject before baseline"))

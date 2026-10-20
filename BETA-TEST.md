@@ -48,6 +48,8 @@ python ./scripts/run.py --json gates all
 
 Prepare a UTF-8 `evidence.txt` file that you permit your configured OMP model to receive. OMP CLI and its model configuration must already work. From the wheel installation directory in PowerShell, run:
 
+When testing the current source on Windows, the `omp` selected on `PATH` must not be a `.cmd`/`.bat` launcher. Put a native `omp.exe` earlier on `PATH`; batch-only installations are rejected before any model subprocess starts.
+
 ```powershell
 .\.venv\Scripts\reverse-skill-swarm.exe --goal "List supported conclusions and unknowns" --context .\evidence.txt --output .\runs\beta-swarm-001 --max-calls 3 --max-tasks 1 --max-parallel 1 --timeout 60 --json
 ```
