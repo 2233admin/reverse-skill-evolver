@@ -278,13 +278,18 @@ def _omp_args(executable: str, working_dir: str, system_prompt: str, timeout: in
 
 
 def _check_windows_argv(args: list[str]) -> None:
-    """Reject an oversized serialized command on Windows with ToolOperationError.
+    """Reject batch launchers and oversized serialized commands on Windows.
 
     Count UTF-16 units after argument quoting, including the terminating NUL.
-    Other platforms bypass this Windows-specific limit.
+    Other platforms bypass these Windows-specific checks.
     """
     if sys.platform != "win32":
         return
+    # Windows may shell-parse batch arguments even with shell=False.
+    if Path(args[0]).suffix.lower() in (".cmd", ".bat"):
+        raise EnvironmentUnavailable(
+            "OMP batch launchers are not supported on Windows; put native omp.exe earlier on PATH"
+        )
     command = subprocess.list2cmdline(args)
     units = len(command.encode("utf-16-le", errors="surrogatepass")) // 2 + 1
     if units > MAX_WINDOWS_COMMAND_UNITS:

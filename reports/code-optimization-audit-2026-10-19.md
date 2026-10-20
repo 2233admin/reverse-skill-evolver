@@ -11,6 +11,9 @@ session produced the number) and **source-backed** (static reading; no benchmark
 > **Status update.** Findings 1, 2, 7, 9, 12, 13, 14, 15 and 23 were fixed after this audit, in
 > commit `2285e91` (1–2), `5bbe0ec` (7, 9, 12–14) and `ed00994` (15, 23). See "Fixes applied" at the
 > end for the before/after measurements.
+>
+> Finding 26 was subsequently reproduced on Windows and fixed by the native-launcher requirement;
+> see its verification section below. This change does not re-audit the other findings.
 
 The stack rules out most of the usual domains: no web server, no ORM, no frontend, no container
 build in this package. 11 lanes ran; **three returned only ruled-out false positives**, which is the
@@ -133,8 +136,8 @@ Measured JWT (`for _ in J.finditer(line)` — the iterator must be **consumed**)
 | 27 | — | — | No `shell=True` anywhere; native `.exe` path + UTF-16/NUL guard correct | — | ruled out |
 
 Finding 26 is **conditional and environment-dependent**: it fires only if `omp` resolves to a batch
-launcher. Not reproduced here. The stdlib serialization probe was a pure-string experiment; **no
-shell command was executed.**
+launcher. The original audit used a pure-string serialization probe and did not reproduce it.
+The later Windows reproduction and correction are recorded below.
 
 ### Import cost
 
@@ -201,9 +204,8 @@ Ordered by impact ÷ risk. Nothing here is a rewrite.
 
 ## Unverified boundaries
 
-- Lanes were **read-only**: no lane applied a fix. Fixes for findings 1, 2, 7, 9, 12–14 and 15/23
-  were made in later sessions and are recorded under "Fixes applied"; all other findings remain
-  unfixed and un-retested.
+- Original audit lanes were **read-only** and did not apply fixes. Later fixes and their verification
+  boundaries are recorded under "Fixes applied"; those records supersede the original status.
 - Timing is **Windows / Python 3.14 / warm cache**. The quadratic regexes are the most portable
   result (algorithmic, not platform); the SQLite and import numbers are not.
 - **Memory was not benchmarked** anywhere. Findings 13, 19, 23, 25, 11 are allocation arguments,
@@ -314,8 +316,8 @@ Probe and benchmark scripts were removed after use; only the two source files ar
 
 ### Still open from this audit
 
-Findings 8, 10, 11 and 16–30 are **not** fixed. Finding 3 was fixed in commit `13d5917`, 4 in
-`478af86` (both below); 15 and 23 in `ed00994`; 1, 2, 7, 9 and 12–14 earlier.
+Finding 26 is closed by the launcher guard below. This change does not re-audit the other open
+items; use the individual fix records rather than the original 16–30 range.
 
 ### Findings 15 and 23 — commit `ed00994`
 
@@ -424,3 +426,24 @@ sort rather than on the index name. Both paths were also exercised directly: fre
 yields `[parent_id, ordinal]`, a hand-built narrow index upgrades to the same, a second
 `ensure_query_indexes` call is idempotent, and `sqlite_master` holds exactly one `nodes_parent` row.
 
+### Finding 26 — reject Windows OMP batch launchers
+
+A controlled Windows reproduction through public `evolution.omp` confirmed that a selected batch
+launcher interprets argument text as shell syntax despite `shell=False`. The reproduction used
+only a temporary echo wrapper, not the real OMP CLI or a model service.
+
+The existing Windows argv guard now rejects `.cmd` and `.bat` case-insensitively with
+`EnvironmentUnavailable`. Evolution preflight checks before creating an archive; the actual
+subprocess boundary checks the resolved executable again. Swarm uses the same public invoker and
+preserves its failed report/CLI exit 5; the evolution CLI preserves environment-error exit 3.
+No batch escaping, launcher conversion, automatic fallback or new configuration was added.
+
+The two direct-call regressions (`.cmd` and mixed-case `.BaT`) failed on the pre-fix implementation
+because the wrapper ran instead of raising `EnvironmentUnavailable`. The archive-preflight
+regression also failed before the guard, after creating an incomplete archive. All three use
+harmless wrappers and check that no batch-created marker or evolution archive survives the
+guarded path. The separate controlled reproduction changed from shell-marker output to refusal.
+
+Windows installations selecting only a batch shim are intentionally no longer supported on this
+path: put a native `omp.exe` earlier on PATH. Native executable resolution is not silently changed;
+non-Windows argv handling and existing UTF-16/serialized-length checks are unchanged.
